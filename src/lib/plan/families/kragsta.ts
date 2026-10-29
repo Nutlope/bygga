@@ -59,16 +59,16 @@ function recipe(s: ProductSpec): CustomParams {
   const legBolt = (leg: string, lr: string, ax: Ax, sg: number) => fx("bolt", [P(ax, sg, rL(yLR) + q / 2, yLR)], inw(ax, sg), leg, { ...BOLT, mate: lr });
   const camLocks = (ur: string, ax: Ax) => fx("cam", [-1, 1].map((sg) => P(ax, sg, inUR - 25, yUR + hUR / 2)), [0, -1, 0], ur, { dia: 15 });
   const smallDowels = (ur: string, ax: Ax) => fx("dowel", [-1, 1].map((sg) => P(ax, sg, 150, yU)), [0, -1, 0], ur, { len: 30, dia: 8 });
-  const topBolts = (ur: string, ax: Ax) => fx("bolt", [-1, 1].map((sg) => P(ax, sg, 220, yUR - hUR / 2)), [0, 1, 0], ur, BOLT);
-  // frames wait beside the build until they go onto the top: the first in front, the second behind
+  const topBolts = (ur: string, ax: Ax) => fx("bolt", [-1, 1].map((sg) => P(ax, sg, 220, yUR - hUR / 2)), [0, 1, 0], ur, { ...BOLT, len: 80 });
+  // the first frame is built where it ends up and the top goes on under it; the second waits behind the build until it crosses the first
   const f1 = ["L1", "L2", "UR1", "LR1"], f2 = ["L3", "L4", "UR2", "LR2"];
-  const from = Object.fromEntries([...f1.map((id) => [id, [0, 0, 800]]), ...f2.map((id) => [id, [0, 0, -800]])]) as Record<string, Vec3>;
+  const from = Object.fromEntries([["L2", [800, 0, 0]], ...f2.map((id) => [id, [0, 0, -800]])]) as Record<string, Vec3>;
   const steps: CustomStep[] = [
     {
       title: "Screw a cam pin into each leg",
       detail: "Lay the four legs on a rug and screw the pins into the holes on their inner faces, by hand.",
       fix: eachLeg(({ id, ax, sg }) => fx("camScrew", [P(ax, sg, rL(yUR) - q / 2, yUR)], out(ax, sg), id, { len: 24 })),
-      wait: [...f1.slice(0, 2), ...f2.slice(0, 2)],
+      wait: ["L2", ...f2.slice(0, 2)],
       from,
       warnings: ["floor"],
     },
@@ -79,11 +79,11 @@ function recipe(s: ProductSpec): CustomParams {
       fix: eachLeg(({ id, ax, sg }) => fx("dowel", [P(ax, sg, r1, yU)], [0, -1, 0], id, { len: 40, dia: 10 })),
       tools: ["hammer"],
     },
-    { title: "Push a cross dowel into a lower rail", detail: "Slot up, into the hole near one end. Its notch faces up.", fix: [crossDowel("LR1", "x", -1)], wait: ["LR1"], from },
+    { title: "Push a cross dowel into a lower rail", detail: "Slot up, into the hole near one end. Its notch faces up.", add: ["LR1"], fix: [crossDowel("LR1", "x", -1)], from: { LR1: [300, 0, 0] } },
     { title: "Bolt a leg to the lower rail", detail: "Through the leg into the rail's end, so it catches the cross dowel. Not fully tight yet.", fix: [legBolt("L1", "LR1", "x", -1)], tools: ["allen"] },
-    { title: "Press two cam locks into an upper rail", detail: "One near each end, arrows towards the ends.", fix: [camLocks("UR1", "x")], wait: ["UR1"], from },
+    { title: "Press two cam locks into an upper rail", detail: "One near each end, arrows towards the ends.", fix: [camLocks("UR1", "x")], add: ["UR1"], from: { UR1: [300, 0, 0] } },
     { title: "Fit the upper rail onto the leg", detail: "Its end goes over the leg's cam pin. Turn the cam lock clockwise to pull it tight." },
-    { title: "Fit the second leg on the other ends", detail: "Onto both rails' ends, then turn the cam lock." },
+    { title: "Fit the second leg on the other ends", detail: "Onto both rails' ends, then turn the cam lock.", add: ["L2"] },
     {
       title: "Bolt the second leg to the lower rail",
       detail: "Cross dowel first, then the long bolt. Tighten both leg bolts now.",
@@ -94,11 +94,11 @@ function recipe(s: ProductSpec): CustomParams {
     {
       title: "Bolt the first frame to the top",
       detail: "Lay the top upside down on a rug, stand the frame on it with the dowels in the holes, and screw the two long bolts through the rail into the top.",
-      add: ["T", ...f1],
+      add: ["T"],
       fix: [topBolts("UR1", "x")],
       pose: "-y",
       warnings: ["floor"],
-      from: Object.fromEntries(f1.map((id) => [id, [0, -300, 0]])) as Record<string, Vec3>,
+      from: { T: [0, 300, 0] },
     },
     { title: "Tap two dowels into the other upper rail", detail: "Along its top edge, as before.", fix: [smallDowels("UR2", "z")], wait: ["UR2"], from, tools: ["hammer"] },
     {

@@ -92,6 +92,8 @@ function boxRecipe(s: ProductSpec): { parts: CustomPart[]; steps: CustomStep[] }
       title: "Tap in four dowels and stand the sides on the bottom",
       detail: "The runners face in, towards each other. Push each side down onto its dowels and cam bolts.",
       add: sides,
+      // straight down onto the dowels and cam bolts
+      from: { SIDE_L: [0, 300, 0], SIDE_R: [0, 300, 0] },
       fix: [fx("dowel", dowelsLow, [0, -1, 0], "BOT")],
       tools: ["hammer"],
     },

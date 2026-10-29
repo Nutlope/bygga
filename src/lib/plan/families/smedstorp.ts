@@ -91,7 +91,8 @@ function frameSteps(f: ReturnType<typeof frameParts>, arms: { id: string; x: num
       add: [back.id],
       fix: [
         ...hookOn.map((x) => fx("hook", [f.hookAt(x)], [x < back.pos[0] ? 1 : -1, 0, 0], { ...HOOK, on: back.id })),
-        fx("screw", hookOn.map((x) => f.hookAt(x)), [0, 0, -1], { ...HOOK_SCREW, on: back.id }),
+        // each screw goes through its plate into the end of the backrest
+        ...hookOn.map((x) => fx("screw", [f.hookAt(x)], [x < back.pos[0] ? 1 : -1, 0, 0], { ...HOOK_SCREW, on: back.id })),
       ],
       tools: ["allen"],
       pose: "+z",
@@ -130,8 +131,8 @@ function frameSteps(f: ReturnType<typeof frameParts>, arms: { id: string; x: num
       title: "Bolt the seat to the armrest" + (two ? "s" : ""),
       detail: "A washer on each bolt, through the side rail of the seat into the armrest. Tighten them with the Allen key.",
       fix: arms.flatMap((a) => [
-        fx("washer", f.bolts(a.x - a.sx * AW / 2), [a.sx, 0, 0], { ...WASHER, on: seat.id }),
         fx("bolt", f.bolts(a.x - a.sx * AW / 2), [a.sx, 0, 0], { ...BOLT, on: seat.id, mate: a.id }),
+        fx("washer", f.bolts(a.x - a.sx * AW / 2), [a.sx, 0, 0], { ...WASHER, on: seat.id }),
       ]),
       tools: ["allen"],
     },
@@ -212,7 +213,7 @@ function sectional(s: ProductSpec): CustomParams {
       title: "Bolt the backrest to the chaise seat",
       detail: "Stand the long seat on its inner side on a rug, the backrest against its end. Two bolts with washers; use the shorter bolts here.",
       add: ["cS", "cB"],
-      fix: [fx("washer", [cBoltAt(0.3), cBoltAt(0.7)], [0, 0, -1], { ...WASHER, on: "cS" }), fx("bolt", [cBoltAt(0.3), cBoltAt(0.7)], [0, 0, -1], { ...BOLT, on: "cS", mate: "cB" })],
+      fix: [fx("bolt", [cBoltAt(0.3), cBoltAt(0.7)], [0, 0, -1], { ...BOLT, on: "cS", mate: "cB" }), fx("washer", [cBoltAt(0.3), cBoltAt(0.7)], [0, 0, -1], { ...WASHER, on: "cS" })],
       tools: ["allen"],
       pose: "+x",
       warnings: ["floor"],
@@ -250,7 +251,7 @@ function sectional(s: ProductSpec): CustomParams {
     {
       title: "Bolt the armrest to the chaise",
       detail: "Two long bolts with washers through the side of the seat frame into the armrest.",
-      fix: [fx("washer", armBolts, [1, 0, 0], { ...WASHER, on: "cS" }), fx("bolt", armBolts, [1, 0, 0], { ...LONG_BOLT, on: "cS", mate: "cA" })],
+      fix: [fx("bolt", armBolts, [1, 0, 0], { ...LONG_BOLT, on: "cS", mate: "cA" }), fx("washer", armBolts, [1, 0, 0], { ...WASHER, on: "cS" })],
       tools: ["allen"],
     },
     {

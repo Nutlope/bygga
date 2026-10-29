@@ -48,7 +48,7 @@ function recipe(s: ProductSpec): CustomParams {
     [[-225, by1 - 30, bz - 15], [225, by1, bz + 15]],
     [[-200, by0 + 80, bz - 4], [200, by1 - 30, bz + 4], "fiber"],
     // the bracket: from under the mechanism back, then up behind the seat
-    [[-40, MY - 25, -300], [40, MY - 5, -120], "metal"],
+    [[-40, MY - 25, -300], [40, MY - 5, -95], "metal"],
     [[-40, MY - 25, bz - 20], [40, by0 + 80, bz], "metal"],
   ], "board");
   const parts: CustomPart[] = [
@@ -59,8 +59,9 @@ function recipe(s: ProductSpec): CustomParams {
     back,
     ...[-1, 1].map((g, i) =>
       boxes(`A${i + 1}`, "Armrest", [
-        [[Math.min(g * 90, g * 270), MY - 25, -60], [Math.max(g * 90, g * 270), MY - 5, 20]],
-        [[Math.min(g * 260, g * 285), MY - 5, -40], [Math.max(g * 260, g * 285), 630, 0]],
+        // the bar slides into a slot in the side of the mechanism
+        [[Math.min(g * 60, g * 285), MY + 12, -60], [Math.max(g * 60, g * 285), MY + 32, 20]],
+        [[Math.min(g * 260, g * 285), MY + 32, -40], [Math.max(g * 260, g * 285), 630, 0]],
         [[Math.min(g * 240, g * 300), 630, -130], [Math.max(g * 240, g * 300), 655, 110]],
       ], "board"),
     ),
@@ -100,14 +101,14 @@ function recipe(s: ProductSpec): CustomParams {
       {
         title: "Bolt the backrest on",
         detail: "Three long bolts through the bracket. Then turn the seat over onto its back on the table.",
-        fix: [fix("bolt", [-25, 0, 25].map((x): Vec3 => [x, MY - 25, -160]), [0, 1, 0], { len: 30, dia: 8, on: "K", mate: "M" })],
+        fix: [fix("bolt", [-25, 0, 25].map((x): Vec3 => [x, MY - 25, -112]), [0, 1, 0], { len: 30, dia: 8, on: "K", mate: "M" })],
         tools: ["allen"],
       },
       { title: "Slide in the armrests", detail: "One from each side, into the slots under the seat.", add: ["A1", "A2"], from: { A1: [-300, 0, 0], A2: [300, 0, 0] } },
       {
         title: "Bolt the armrests on",
         detail: "Two short bolts in each, round heads, turned in by hand first.",
-        fix: [-1, 1].map((g, i) => fix("bolt", [-40, 0].map((z): Vec3 => [g * 140, MY - 25, z]), [0, 1, 0], { len: 16, dia: 8, on: `A${i + 1}`, mate: "M" })),
+        fix: [-1, 1].map((g, i) => fix("bolt", [-40, 0].map((z): Vec3 => [g * 80, MY, z]), [0, 1, 0], { len: 16, dia: 8, on: "M", mate: `A${i + 1}` })),
         tools: ["allen"],
       },
       { title: "Tighten the armrest bolts", detail: "All four, firmly, so the heads sit flat.", tools: ["allen"] },
@@ -122,7 +123,8 @@ function recipe(s: ProductSpec): CustomParams {
       {
         title: "Bolt the headrest",
         detail: "One bolt from behind, with the Allen key.",
-        fix: [fix("bolt", [[0, by1 - 40, bz - 25]], [0, 0, 1], { len: 16, dia: 6, on: "HR", mate: "K" })],
+        // through one of the headrest's prongs into the backrest's top bar
+        fix: [fix("bolt", [[10, by1 - 15, bz - 28]], [0, 0, 1], { len: 16, dia: 6, on: "HR", mate: "K" })],
         tools: ["allen"],
       },
     ],

@@ -103,7 +103,8 @@ function chair(s: ProductSpec): CustomParams {
       title: "Bolt the bracket to the backrest",
       detail: "Four bolts through the bracket into the bottom of the backrest frame.",
       add: ["B", "K"],
-      fix: [fix("bolt", [-1, 1].flatMap((g) => [520, 550].map((y): Vec3 => [g * 22, y, -290])), [0, 0, -1], { len: 16, dia: 8, on: "K" })],
+      // from the bracket's face, back into the foot of the leaning backrest
+      fix: [fix("bolt", [-1, 1].flatMap((g) => [520, 550].map((y): Vec3 => [g * 24, y, -262])), [0, 0, -1], { len: 16, dia: 8, on: "K" })],
       tools: ["allen"],
     },
     {

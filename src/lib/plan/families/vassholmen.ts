@@ -94,14 +94,15 @@ function chair(): CustomParams {
       {
         title: "Bolt the top of each leg to the seat frame",
         detail: "A spring washer, then a flat washer, on each short bolt. Turn them in with the Allen key, but don't tighten yet.",
-        fix: [...legBolt("washer", { len: 1.5, dia: 14 }), ...legBolt("washer", { name: "Spring washer", len: 2, dia: 10 }), ...legBolt("bolt", { len: 20, dia: 6 })],
+        // bolts first: the engine stacks each washer onto the bolt already at its point
+        fix: [...legBolt("bolt", { len: 20, dia: 6 }), ...legBolt("washer", { name: "Spring washer", len: 2, dia: 10 }), ...legBolt("washer", { len: 1.5, dia: 14 })],
         tools: ["allen"],
       },
-      { title: "Slide the cross stretcher between the leg frames", detail: "Its holes face out, lined up with the holes in the side stretchers.", add: ["X"], from: { X: [-300, 0, 0] } },
+      { title: "Slide the cross stretcher between the leg frames", detail: "Lower it in between them from above, holes facing out and lined up with the holes in the side stretchers.", add: ["X"], from: { X: [0, -300, 0] } },
       {
         title: "Bolt the cross stretcher from each side",
         detail: "A washer on each long bolt, one through each side stretcher. Tighten them.",
-        fix: [...sideBolt("washer", { len: 1.5, dia: 14 }), ...sideBolt("bolt", { len: 45, dia: 6 })],
+        fix: [...sideBolt("bolt", { len: 45, dia: 6 }), ...sideBolt("washer", { len: 1.5, dia: 14 })],
         tools: ["allen"],
       },
       { title: "Tighten the four leg bolts", detail: "Now that the stretcher holds the legs square, tighten each one firmly.", tools: ["allen"], check: "square" },

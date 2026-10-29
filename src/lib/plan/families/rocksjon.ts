@@ -103,7 +103,10 @@ function footstool(p = "", ox = 0, oz = 0): { parts: CustomPart[]; steps: Custom
     size: [fw, FH, fd],
     pos: [ox, fy, oz],
     material: "wood",
-    pieces: [box([fw, FH, FT], [0, 0, -fd / 2 + FT / 2]), box([fw, FH, FT], [0, 0, fd / 2 - FT / 2]), box([FT, FH, fd - 2 * FT], [-fw / 2 + FT / 2, 0, 0]), box([FT, FH, fd - 2 * FT], [fw / 2 - FT / 2, 0, 0]), box([fw - 2 * FT, 6, fd - 2 * FT], [0, FH / 2 - 3, 0], "fiber")],
+    pieces: [box([fw, FH, FT], [0, 0, -fd / 2 + FT / 2]), box([fw, FH, FT], [0, 0, fd / 2 - FT / 2]), box([FT, FH, fd - 2 * FT], [-fw / 2 + FT / 2, 0, 0]), box([FT, FH, fd - 2 * FT], [fw / 2 - FT / 2, 0, 0]), box([fw - 2 * FT, 6, fd - 2 * FT], [0, FH / 2 - 3, 0], "fiber"),
+      // a block in each corner takes the leg's screws
+      ...[-1, 1].flatMap((g) => [-1, 1].map((gz) => box([60, FH, 60], [g * (W / 2 - 50), 0, gz * (D / 2 - 50)]))),
+    ],
   };
   const lg = legs(p, ox, oz, W / 2 - 50, D / 2 - 50);
   const top = LEG + FH, cy = (LEG + H) / 2;

@@ -45,7 +45,8 @@ function recipe(s: ProductSpec): CustomParams {
   const yFlare = yPlate - 110;
   const parts: CustomPart[] = [
     stack("BP", "Base plate", [[BD - 40, 0, PT]], "metal"),
-    stack("PO", "Pole", [[36, PT, yPlate + 6]], "metal"),
+    // a welded foot flange at the bottom of the pole takes the four bolts
+    stack("PO", "Pole", [[90, PT, PT + 8], [36, PT + 8, yPlate + 6]], "metal"),
     // a low dome rising to a collar round the column
     stack("BC", "Base cover", [[BD, 0, 16], ...profile(16, 96, 5, (t) => 50 + (BD / 2 - 50) * (1 - t) ** 2.2)], "board"),
     // narrowest a little above the middle, wider at the foot

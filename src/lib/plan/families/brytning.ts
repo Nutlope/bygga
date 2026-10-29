@@ -68,10 +68,12 @@ function desk(s: ProductSpec, drawer: boolean): CustomParams {
     sides.flatMap((sx) => sides.map((sz) => at(kind, ys.map((y) => [sx * cx, y, sz * fz] as Vec3), [0, 0, sz], leg(sx, sz), sp(sx), o)));
   const inner = (sx: number, ys: number[], zs: number[]): Vec3[] => ys.flatMap((y) => zs.map((z) => [sx * xi, y, z] as Vec3));
 
+  // the legs, the back panel and the back rail all join the side panel near its back edge: their holes are at
+  // different heights (legs 528-650, back panel 575 and 630, back rail 670-718)
   const steps: CustomStep[] = [
-    { title: "Tap two dowels into each leg", detail: "Lay the legs on a rug. The short dowels go into the two holes high up on the inner face.", fix: perLeg("dowel", [590, 660], DOWEL), tools: ["hammer"], warnings: ["floor"] },
+    { title: "Tap two dowels into each leg", detail: "Lay the legs on a rug. The short dowels go into the two holes high up on the inner face.", fix: perLeg("dowel", [552, 612], DOWEL), tools: ["hammer"], warnings: ["floor"] },
     { title: "Tap a large dowel into each leg", detail: "Into the single hole low down, for the side rail.", fix: perLeg("dowel", [140], BIG_DOWEL), tools: ["hammer"] },
-    { title: "Screw three cam bolts into each leg", detail: "Two high up beside the dowels, one low down. By hand or with a screwdriver until they stop.", fix: perLeg("camScrew", [545, 705, 165], CAM_BOLT), tools: ["screwdriver"] },
+    { title: "Screw three cam bolts into each leg", detail: "Two high up beside the dowels, one low down. By hand or with a screwdriver until they stop.", fix: perLeg("camScrew", [528, 650, 165], CAM_BOLT), tools: ["screwdriver"] },
     {
       title: "Push a floor glide into each leg's foot",
       detail: "Tap it in until its rim sits flat.",
@@ -79,15 +81,15 @@ function desk(s: ProductSpec, drawer: boolean): CustomParams {
     },
     { title: "Push the side panels and rails onto the legs", detail: "Two legs to each side frame, the grooved face of the panel outwards. Push them together over the dowels and cam bolts.", add: [sp(-1), sr(-1), sp(1), sr(1)] },
     { title: "Turn the large cam locks in the rails", detail: "Arrow towards the bolt, then clockwise until the rail pulls tight against the leg.", fix: sides.map((sx) => at("cam", sides.map((sz) => [sx * (cx - 17.5), 165, sz * (fz - 30)] as Vec3), [sx, 0, 0], sr(sx), undefined, BIG_CAM)), tools: ["screwdriver"] },
-    { title: "Turn the cam locks in the side panels", detail: "Four in each panel, the same way.", fix: sides.map((sx) => at("cam", inner(sx, [545, 705], [-(fz - 34), fz - 34]), [sx, 0, 0], sp(sx), undefined, CAM)), tools: ["screwdriver"] },
+    { title: "Turn the cam locks in the side panels", detail: "Four in each panel, the same way.", fix: sides.map((sx) => at("cam", inner(sx, [528, 650], [-(fz - 34), fz - 34]), [sx, 0, 0], sp(sx), undefined, CAM)), tools: ["screwdriver"] },
     { title: "Screw two short cam bolts into each side panel", detail: "Into the holes low down on the inside: the shelf locks onto these.", fix: sides.map((sx) => at("camScrew", inner(sx, [551], [-40, 150]), [sx, 0, 0], sp(sx), undefined, SHORT_BOLT)), tools: ["screwdriver"] },
-    { title: "Screw a cam bolt into each side panel for the back rail", detail: "Into the hole high up at the back.", fix: sides.map((sx) => at("camScrew", [[sx * xi, 689, -fz + 9]], [sx, 0, 0], sp(sx), "BR", CAM_BOLT)), tools: ["screwdriver"] },
-    { title: "Tap four dowels into the back rail", detail: "Two into each end.", fix: sides.map((sx) => at("dowel", [[sx * xi, 665, -fz + 9], [sx * xi, 713, -fz + 9]], [-sx, 0, 0], "BR", sp(sx), DOWEL)), tools: ["hammer"] },
+    { title: "Screw a cam bolt into each side panel for the back rail", detail: "Into the hole high up at the back.", fix: sides.map((sx) => at("camScrew", [[sx * xi, 718, -fz + 9]], [sx, 0, 0], sp(sx), "BR", CAM_BOLT)), tools: ["screwdriver"] },
+    { title: "Tap four dowels into the back rail", detail: "Two into each end.", fix: sides.map((sx) => at("dowel", [[sx * xi, 670, -fz + 9], [sx * xi, 694, -fz + 9]], [-sx, 0, 0], "BR", sp(sx), DOWEL)), tools: ["hammer"] },
     { title: "Stand the back panel on the shelf support", detail: "The narrow strip goes along the top of the back panel, on its front side. Just lay them together for now.", add: ["SB", "BP", "ST"] },
     {
       title: "Tap three dowels into each end of it",
       detail: "Two into the shelf support, one into the back panel.",
-      fix: sides.flatMap((sx) => [at("dowel", [[sx * xi, 551, -160], [sx * xi, 551, -105]], [-sx, 0, 0], "SB", sp(sx), DOWEL), at("dowel", [[sx * xi, 600, -fz + 9]], [-sx, 0, 0], "BP", sp(sx), DOWEL)]),
+      fix: sides.flatMap((sx) => [at("dowel", [[sx * xi, 551, -160], [sx * xi, 551, -105]], [-sx, 0, 0], "SB", sp(sx), DOWEL), at("dowel", [[sx * xi, 575, -fz + 9]], [-sx, 0, 0], "BP", sp(sx), DOWEL)]),
       tools: ["hammer"],
     },
     { title: "Tap a large dowel into each end of the stretcher", fix: sides.map((sx) => at("dowel", [[sx * (cx - 17.5), 152, -12]], [-sx, 0, 0], "LS", sr(sx), BIG_DOWEL)), tools: ["hammer"] },
@@ -97,7 +99,7 @@ function desk(s: ProductSpec, drawer: boolean): CustomParams {
       detail: "Two through each side panel into the shelf support and back panel, one through each rail into the stretcher.",
       fix: sides.flatMap((sx) => [
         at("screw", [[sx * (cx + 9), 551, -132]], [-sx, 0, 0], sp(sx), "SB", LONG_SCREW),
-        at("screw", [[sx * (cx + 9), 620, -fz + 9]], [-sx, 0, 0], sp(sx), "BP", LONG_SCREW),
+        at("screw", [[sx * (cx + 9), 630, -fz + 9]], [-sx, 0, 0], sp(sx), "BP", LONG_SCREW),
         at("screw", [[sx * (cx + 17.5), 152, 12]], [-sx, 0, 0], sr(sx), "LS", LONG_SCREW),
       ]),
       tools: ["allen"],
@@ -155,7 +157,7 @@ function desk(s: ProductSpec, drawer: boolean): CustomParams {
       title: "Screw the sides to the drawer back",
       detail: "Two screws through each side into the back's ends.",
       add: ["DB"],
-      fix: sides.map((sx) => at("screw", [[sx * rx, 610, zb + 9], [sx * rx, 664, zb + 9]], [-sx, 0, 0], sx > 0 ? "DSR" : "DSL", "DB", { len: 40, dia: 5 })),
+      fix: sides.map((sx) => at("screw", [[sx * rx, 610, zb + 9], [sx * rx, 676, zb + 9]], [-sx, 0, 0], sx > 0 ? "DSR" : "DSL", "DB", { len: 40, dia: 5 })),
       tools: ["screwdriver"],
       from: { DB: [0, 0, 500] },
     },
@@ -216,10 +218,11 @@ function cupboardDesk(s: ProductSpec): CustomParams {
   }
   for (const sx of sides) {
     const x0 = sx * xw, x1 = sx * (xw + 18);
-    parts.push(P(wall(sx), "Cupboard wall", Math.min(x0, x1), Math.max(x0, x1), yBot(sx) - 18, yT, zbF, fz));
+    parts.push(P(wall(sx), "Cupboard wall", Math.min(x0, x1), Math.max(x0, x1), yBot(sx), yT, zbF, fz));
   }
+  // each bottom runs under its wall: the wall stands on it, joined by dowels and cam bolts in the bottom's top face
   for (const sx of sides) {
-    const a = sx * (xw + 18), b = sx * (cx - 9);
+    const a = sx * xw, b = sx * (cx - 9);
     parts.push(P(bot(sx), "Cupboard bottom", Math.min(a, b), Math.max(a, b), yBot(sx) - 18, yBot(sx), zbF, fz));
   }
   parts.push(P("ST1", "Top strip", -xw, xw, yT - 80, yT, zbF, zbF + 18));
@@ -275,11 +278,11 @@ function cupboardDesk(s: ProductSpec): CustomParams {
     { title: "Push a floor glide into each leg", detail: "Into the foot, until the rim sits flat.", fix: [at("glide", sides.flatMap((sx) => sides.map((sz) => [sx * cx, 0, sz * cz] as Vec3)), [0, 1, 0], undefined, undefined, GLIDE)] },
     { title: "Stand the two cupboard walls on the back board", detail: "Against the back board, one at each inner end of a cupboard, their cam holes facing the back.", add: [wall(-1), wall(1)] },
     { title: "Lock the walls to the back board", detail: "Two cam locks in each wall, near the back edge.", fix: sides.map((sx) => camsIn(wall(sx), [[wallX(sx), 520, zbF + 34], [wallX(sx), 680, zbF + 34]], [-sx, 0, 0])), tools: ["screwdriver"] },
-    { title: "Screw cam bolts into the cupboard bottoms", detail: "Two in each, near the end that meets the wall.", fix: sides.map((sx) => at("camScrew", [[sx * (xw + 18), yBot(sx) - 9, -100], [sx * (xw + 18), yBot(sx) - 9, 100]], [sx, 0, 0], bot(sx), undefined, CAM_BOLT)), tools: ["screwdriver"] },
-    { title: "Tap dowels into the cupboard bottoms", detail: "Two in the other end of each.", fix: sides.map((sx) => at("dowel", [[sx * (cx - 9), yBot(sx) - 9, -100], [sx * (cx - 9), yBot(sx) - 9, 100]], [-sx, 0, 0], bot(sx), sp(sx), DOWEL)), tools: ["hammer"] },
-    { title: "Fit the bottoms between the side panels and the walls", add: [bot(-1), bot(1)] },
-    { title: "Lock the bottoms to the walls", detail: "Two cam locks in each wall, low down.", fix: sides.map((sx) => camsIn(wall(sx), [[wallX(sx), yBot(sx) - 9, -100 + 34], [wallX(sx), yBot(sx) - 9, 100 - 34]], [sx, 0, 0])), tools: ["screwdriver"] },
-    { title: "Turn it upside down and screw the bottoms to the sides", detail: "Four medium screws, two through each side panel into the end of a bottom.", fix: sides.map((sx) => at("screw", [[sx * (cx + 9), yBot(sx) - 9, -100], [sx * (cx + 9), yBot(sx) - 9, 100]], [-sx, 0, 0], sp(sx), bot(sx), { len: 50, dia: 6, name: "Medium screw" })), pose: "-y", tools: ["allen"], people: 2, warnings: ["two"] },
+    { title: "Screw cam bolts into the cupboard bottoms", detail: "Two in each, in the top face at the end that goes under the wall.", fix: sides.map((sx) => at("camScrew", [[wallX(sx), yBot(sx), -100], [wallX(sx), yBot(sx), 100]], [0, -1, 0], bot(sx), wall(sx), CAM_BOLT)), tools: ["screwdriver"], wait: [bot(-1), bot(1)] },
+    { title: "Tap dowels into the cupboard bottoms", detail: "Two in each, beside the cam bolts.", fix: sides.map((sx) => at("dowel", [[wallX(sx), yBot(sx), -160], [wallX(sx), yBot(sx), 160]], [0, -1, 0], bot(sx), wall(sx), DOWEL)), tools: ["hammer"] },
+    { title: "Push the bottoms up under the walls", detail: "Between the side panel and the wall, the dowels and bolts into the wall's lower edge.", add: [bot(-1), bot(1)], from: { [bot(-1)]: [0, -250, 0], [bot(1)]: [0, -250, 0] } },
+    { title: "Lock the bottoms to the walls", detail: "Two cam locks in each wall, low down.", fix: sides.map((sx) => camsIn(wall(sx), [[wallX(sx), yBot(sx) + 34, -100], [wallX(sx), yBot(sx) + 34, 100]], [-sx, 0, 0])), tools: ["screwdriver"] },
+    { title: "Turn it upside down and screw the bottoms to the sides", detail: "Four medium screws, two through each side panel into the end of a bottom.", fix: sides.map((sx) => at("screw", [[sx * (cx + 9), yBot(sx) - 9, -110], [sx * (cx + 9), yBot(sx) - 9, 110]], [-sx, 0, 0], sp(sx), bot(sx), { len: 50, dia: 6, name: "Medium screw" })), pose: "-y", tools: ["allen"], people: 2, warnings: ["two"] },
     { title: "Tap dowels into the top strip", detail: "Two in each end.", fix: sides.map((sx) => at("dowel", [[sx * xw, yT - 60, zbF + 9], [sx * xw, yT - 20, zbF + 9]], [-sx, 0, 0], "ST1", wall(sx), DOWEL)), tools: ["hammer"] },
     { title: "Fit the top strip between the walls", detail: "At the back, along the back board.", add: ["ST1"] },
     { title: "Fit the front strip between the walls", detail: "Along their front edges.", add: ["ST2"] },
@@ -312,7 +315,17 @@ function cupboardDesk(s: ProductSpec): CustomParams {
     { title: "Screw it to the walls", detail: "One medium screw through each wall.", fix: sides.map((sx) => at("screw", [[sx * (xw + 18), 569, zbF + 55]], [-sx, 0, 0], wall(sx), "CS", { len: 50, dia: 6, name: "Medium screw" })), tools: ["allen"] },
     { title: "Stand it up and push in the shelf pins", detail: "Four, in the right-hand cupboard.", fix: [at("pin", [[xw + 18, 573, -120], [xw + 18, 573, 120], [cx - 9, 573, -120], [cx - 9, 573, 120]], [1, 0, 0], undefined, undefined, { len: 16, dia: 5 })], pose: "+y", people: 2, warnings: ["two"] },
     { title: "Slide the shelf in", detail: "From the front, onto the pins.", add: ["SH"], from: { SH: [0, 0, 450] } },
-    { title: "Screw on the shelf catches", detail: "One under the top, either side of the shelf, so it can't tip.", fix: [at("clip", [[xw + 30, 600, fz - 40], [cx - 21, 600, fz - 40]], [0, 0, -1], "SH", undefined, { len: 30, dia: 16, name: "Shelf catch" }), at("screw", [[xw + 30, 600, fz - 40], [cx - 21, 600, fz - 40]], [0, 0, -1], "SH", undefined, { len: 14, dia: 4 })], tools: ["screwdriver"] },
+    {
+      title: "Screw on the shelf catches",
+      detail: "One on the wall and one on the side panel, just over the shelf, so it can't tip.",
+      fix: [
+        at("clip", [[xw + 18, 602, fz - 40]], [-1, 0, 0], wall(1), undefined, { len: 30, dia: 16, name: "Shelf catch" }),
+        at("clip", [[cx - 9, 602, fz - 40]], [1, 0, 0], sp(1), undefined, { len: 30, dia: 16, name: "Shelf catch" }),
+        at("screw", [[xw + 18, 602, fz - 66]], [-1, 0, 0], wall(1), undefined, { len: 14, dia: 4 }),
+        at("screw", [[cx - 9, 602, fz - 66]], [1, 0, 0], sp(1), undefined, { len: 14, dia: 4 }),
+      ],
+      tools: ["screwdriver"],
+    },
     {
       title: "Screw the hinges onto the doors",
       detail: "Two on each door, into the round holes. Lay the doors face down.",
@@ -416,7 +429,7 @@ function chair(): CustomParams {
   const legScrews: Vec3[] = angles.flatMap((a) => [60, 95].map((r) => [dirOf(a)[0] * r, 100, dirOf(a)[1] * r] as Vec3));
   const tips: Vec3[] = angles.map((a) => [dirOf(a)[0] * R, 70, dirOf(a)[1] * R]);
   const seatBolts: Vec3[] = [[-70, 390, -90], [70, 390, -90], [-70, 390, 50], [70, 390, 50]];
-  const backBolts: Vec3[] = [[-18, 378, -90], [18, 378, -90], [-18, 378, -150], [18, 378, -150]];
+  const backBolts: Vec3[] = [[-18, 378, -60], [18, 378, -60], [-18, 378, -110], [18, 378, -110]];
   const steps: CustomStep[] = [
     { title: "Push the five legs into the hub", detail: "On a rug, each leg straight into its socket until it stops.", add: ["HUB", "A0", "A1", "A2", "A3", "A4"], warnings: ["floor"] },
     { title: "Screw the legs to the hub", detail: "Two screws with washers in each leg, with the Allen key.", fix: [at("washer", legScrews, [0, -1, 0], "HUB", undefined, { len: 1.5, dia: 16 }), at("bolt", legScrews, [0, -1, 0], "HUB", undefined, { len: 16, dia: 6, name: "Screw" })], tools: ["allen"] },

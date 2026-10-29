@@ -91,7 +91,7 @@ function armchair(s: ProductSpec): CustomParams {
       {
         title: "Start two bolts in the back of the base",
         detail: "Turn the base upside down again. A washer on each bolt, turned in by hand a few turns only.",
-        fix: [washers(backAt), { ...bolts(backAt), mate: undefined }],
+        fix: [{ ...bolts(backAt), mate: undefined }, washers(backAt)],
         pose: "-y",
       },
       {
@@ -104,7 +104,7 @@ function armchair(s: ProductSpec): CustomParams {
       {
         title: "Bolt the base to the arms",
         detail: "Four more bolts, each with a washer, through the base into the arms.",
-        fix: [washers(sideAt), bolts(sideAt)],
+        fix: [bolts(sideAt), washers(sideAt)],
         tools: ["allen"],
       },
       { title: "Tighten the two back bolts", detail: "Now turn the first two bolts tight with the Allen key.", tools: ["allen"] },

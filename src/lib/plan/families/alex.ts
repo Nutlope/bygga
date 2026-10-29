@@ -576,7 +576,7 @@ function buildDesk(b: PlanBuilder, st: Stepper, W: number, D: number, H: number)
   const RUNNER: HwDef = { kind: "runner", len: runLen, dia: 20 };
   const runnerFits = (on: string, x: number, into: number) => ({
     r: { on, at: [x, ry, rz] as Vec3, dir: [into, 0, 0] as Vec3, hole: false as const },
-    s: [rz + runLen / 2 - 30, rz - runLen / 2 + 30].map((z): FitOpts => ({ on, at: [x - into * 12, ry, z], dir: [into, 0, 0] })),
+    s: [rz + runLen / 2 - 30, rz - runLen / 2 + 30].map((z): FitOpts => ({ on, at: [x - into * 5, ry, z], dir: [into, 0, 0] })), // through the runner's thin flange
   });
   const divRun = sgs.map((g) => runnerFits(divider, g * (T / 2), -g));
   const endRun = sgs.map((g, i) => runnerFits(ends[i], g * (W / 2 - T), g));
@@ -607,10 +607,12 @@ function buildDesk(b: PlanBuilder, st: Stepper, W: number, D: number, H: number)
     b.then(0.15);
     b.fits(FLAP_PLATE, px.map((x): FitOpts => ({ on: backRail, at: [x, yU - 20, -D / 2 + T], dir: [0, 0, -1], hole: false })), 0.2);
   });
-  st({ title: "Join the end panels to the back rail", detail: "Two dowels in each end of the rail, then push the end panels on.", tools: ["hammer"], kind: "join" }, () => {
+  st({ title: "Tap dowels into the back rail and lay it on the top", detail: "Two dowels in each end of the rail, then set it along the back edge of the top.", tools: ["hammer"], kind: "dowels" }, () => {
     b.fits(DOWEL, sgs.flatMap((g) => [yI + ih * 0.3, yI + ih * 0.7].map((y): FitOpts => ({ on: backRail, at: [g * (W / 2 - T), y, -D / 2 + T / 2], dir: [-g, 0, 0], mate: ends[g < 0 ? 0 : 1] }))), 0.1);
     b.then(0.15);
     b.add(backRail, [0, -250, 0]);
+  });
+  st({ title: "Push the end panels onto the back rail", detail: "Onto its dowels from each side.", kind: "join" }, () => {
     b.stagger(0.25);
     b.add(ends[0], [-250, -150, 0]);
     b.add(ends[1], [250, -150, 0]);

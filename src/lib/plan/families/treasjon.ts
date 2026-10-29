@@ -49,7 +49,7 @@ function recipe(s: ProductSpec): CustomParams {
         detail: "Lay the top and bottom on a rug. A hanger goes in each back corner of the top, two screws each. Stick the two bumper pads on the back edge of the bottom.",
         fix: [
           { kind: "angle", name: "Wall hanger", count: 2, at: hangers, dir: [0, 1, 0], on: "T" },
-          { kind: "screw", count: 4, len: 12, dia: 4, at: hangers.flatMap((p) => [-12, 12].map((dx): Vec3 => [p[0] + dx, yHi, p[2]])), dir: [0, 1, 0], on: "T" },
+          { kind: "screw", count: 4, len: 12, dia: 4, at: hangers.flatMap((p) => [-24, 24].map((dx): Vec3 => [p[0] + dx, yHi, p[2]])), dir: [0, 1, 0], on: "T" },
           { kind: "glide", name: "Bumper pad", count: 2, at: [-1, 1].map((sx): Vec3 => [sx * (W / 2 - 60), t / 2, zB]), dir: [0, 0, 1], on: "B" },
         ],
         wait: ["T", "B"],

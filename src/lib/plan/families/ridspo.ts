@@ -36,7 +36,9 @@ function recipe(s: ProductSpec): CustomParams {
 
   box("BA", "Back rail", [2 * (xs - L / 2), aH, t], [0, ay, -zl]);
   SIDES.forEach((sx, i) => box(`SA${i + 1}`, "Side rail", [t, aH, 2 * (zl - L / 2)], [sx * xs, ay, 0]));
-  box("DV", "Divider", [t, aH, zl - t / 2 + rz1], [0, ay, (-zl + t / 2 + rz1) / 2]);
+  // the divider runs from the back rail to just behind the front edge, over the front rail
+  const dvz1 = zl - 2;
+  box("DV", "Divider", [t, aH, dvz1 + zl - t / 2], [0, ay, (-zl + t / 2 + dvz1) / 2]);
   leg("L3", -xs, -zl);
   leg("L4", xs, -zl);
   leg("L1", -xs, zl);
@@ -161,14 +163,14 @@ function recipe(s: ProductSpec): CustomParams {
       title: "Bolt the side footrests between the legs",
       detail: "The holes in the footrest face in. Two long bolts each, one through each leg.",
       add: ["SS1", "SS2"],
-      fix: SIDES.map((sx, i) => at("bolt", SIDES.map((sz) => [sx * xs, 230, sz * (zl + L / 2)] as Vec3), [0, 0, 1], undefined, `SS${i + 1}`, { len: 40, dia: 6 })),
+      fix: SIDES.flatMap((sx, i) => SIDES.map((sz) => at("bolt", [[sx * xs, 230, sz * (zl + L / 2)]], [0, 0, -sz], undefined, `SS${i + 1}`, { len: 40, dia: 6 }))),
       tools: ["allen"],
     },
     {
       title: "Bolt the back footrest between the back legs",
       detail: "Use the two round-headed bolts.",
       add: ["BS"],
-      fix: [at("bolt", SIDES.map((sx) => [sx * (xs + L / 2), 280, -zl] as Vec3), [-1, 0, 0], undefined, "BS", { len: 30, dia: 6 })],
+      fix: SIDES.map((sx) => at("bolt", [[sx * (xs + L / 2), 280, -zl]], [-sx, 0, 0], undefined, "BS", { len: 30, dia: 6 })),
       tools: ["allen"],
     },
     { title: "Tighten the back leg nuts again", detail: "Check all four nuts on the brackets are tight, with the spring washers flat.", tools: ["wrench"] },
@@ -208,8 +210,9 @@ function recipe(s: ProductSpec): CustomParams {
       detail: "Each side of each opening, front ends to the front. Three screws in each, through the holes the drawing marks.",
       add: ["RI1", "RO1", "RI2", "RO2"],
       fix: SIDES.flatMap((sx, i) => [
-        at("screw", [-100, 60, 200].map((z) => [sx * open0, 670, z] as Vec3), [-sx, 0, 0], `RI${i + 1}`, "DV", { len: 12, dia: 4 }),
-        at("screw", [-100, 60, 200].map((z) => [sx * open1, 670, z] as Vec3), [sx, 0, 0], `RO${i + 1}`, `PK${i + 1}`, { len: 12, dia: 4 }),
+        // clear of the packer's own screws
+        at("screw", [-120, 30, 240].map((z) => [sx * open0, 670, z] as Vec3), [-sx, 0, 0], `RI${i + 1}`, "DV", { len: 12, dia: 4 }),
+        at("screw", [-120, 30, 240].map((z) => [sx * open1, 670, z] as Vec3), [sx, 0, 0], `RO${i + 1}`, `PK${i + 1}`, { len: 12, dia: 4 }),
       ]),
       tools: ["screwdriver"],
     },
@@ -251,7 +254,12 @@ function recipe(s: ProductSpec): CustomParams {
       fix: drawers((cx, n) => [at("camScrew", SIDES.flatMap((ex) => [670, 710].map((y) => [cx + ex * (dx - open0 - 12 - sideT / 2), y, fz - t / 2] as Vec3)), [0, 0, 1], `DF${n}`, undefined, { len: 34 })]),
       warnings: ["floor"],
     },
-    { title: "Push the drawer sides onto the cam bolts", detail: "Holes for the cam locks face in.", add: ["DS10", "DS11", "DS20", "DS21"] },
+    {
+      title: "Push the drawer sides onto the cam bolts",
+      detail: "Holes for the cam locks face in.",
+      add: ["DS10", "DS11", "DS20", "DS21"],
+      from: { DS10: [0, 0, -250], DS11: [0, 0, -250], DS20: [0, 0, -250], DS21: [0, 0, -250] },
+    },
     {
       title: "Lock the sides with cam locks",
       detail: "Two in each side. Turn them clockwise until the side pulls tight to the front.",
@@ -262,7 +270,8 @@ function recipe(s: ProductSpec): CustomParams {
       title: "Screw the bottom stay to the drawer front",
       detail: "One screw through its bent foot, in the middle of the front. Leave it hanging down for now.",
       add: ["ST1", "ST2"],
-      fix: drawers((cx, n) => [at("screw", [[cx, dy0 - 6, fz - t / 2 - 10]], [0, 1, 0], `ST${n}`, `DF${n}`, { len: 14, dia: 4 })]),
+      // through the stay's bent-up foot into the back of the front
+      fix: drawers((cx, n) => [at("screw", [[cx, dy0 - 3, fz - t / 2 - 4]], [0, 0, 1], `ST${n}`, `DF${n}`, { len: 14, dia: 4 })]),
       tools: ["screwdriver"],
     },
     { title: "Slide in the drawer bottoms", detail: "Down the grooves in the sides, into the groove of the front.", add: ["DB1", "DB2"], from: { DB1: [0, 300, 0], DB2: [0, 300, 0] } },

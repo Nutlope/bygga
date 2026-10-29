@@ -1,5 +1,5 @@
 import type { HwItem, PartItem, ProductSpec, Step, ToolId, Vec3 } from "../types";
-import { HW, PlanBuilder, type FitOpts, type HwDef } from "./builder";
+import { HW, PlanBuilder, defOf, type FitOpts, type HwDef } from "./builder";
 import { clamp, rotate, toWorld } from "./math";
 import { slidingDoors } from "./sliding";
 
@@ -63,7 +63,7 @@ export function buildRow(b: PlanBuilder, s: ProductSpec, one: (b: PlanBuilder, s
   // the first one's wall fixing waits until they all stand together
   let anchor: { def: Step; items: HwItem[] } | undefined;
   const lastStep = b.steps[b.steps.length - 1];
-  if (lastStep?.kind === "anchor") {
+  if (lastStep && (lastStep.kind === "anchor" || lastStep.wall) && !b.items.some((it) => it.kind === "part" && it.states.some((x) => x.step === lastStep.n))) {
     const items = b.items.filter((it): it is HwItem => it.kind === "hw" && it.step === lastStep.n);
     b.items = b.items.filter((it) => !(it.kind === "hw" && it.step === lastStep.n));
     for (const it of items) b.map.delete(it.key);
@@ -112,7 +112,7 @@ export function buildRow(b: PlanBuilder, s: ProductSpec, one: (b: PlanBuilder, s
           const ht = b.hw.get(h.ref)!;
           const key = copies.get(h.parent!)![k - 1];
           const f = b.partItem(key).final;
-          const k2 = b.preset({ kind: ht.kind, len: ht.len, dia: ht.dia, notIncluded: ht.notIncluded }, { on: key, at: toWorld(h.pos, f.pos, f.rot), dir: rotate(h.dir, f.rot), twist: h.twist, scale: h.scale, hole: false });
+          const k2 = b.preset(defOf(ht), { on: key, at: toWorld(h.pos, f.pos, f.rot), dir: rotate(h.dir, f.rot), twist: h.twist, scale: h.scale, hole: false });
           const c = b.map.get(k2) as HwItem;
           c.spin = h.spin;
           c.turn = h.turn;
@@ -180,7 +180,7 @@ export function buildRow(b: PlanBuilder, s: ProductSpec, one: (b: PlanBuilder, s
         b.stagger(0.12);
         for (const h of a.items) {
           const ht = b.hw.get(h.ref)!;
-          const def = { kind: ht.kind, len: ht.len, dia: ht.dia, notIncluded: ht.notIncluded };
+          const def = defOf(ht);
           for (let k = 0; k < n; k++) {
             if (h.parent) {
               const key = frameOf(h.parent, k);

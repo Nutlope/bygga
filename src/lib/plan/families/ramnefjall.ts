@@ -60,7 +60,8 @@ function recipe(s: ProductSpec) {
   });
   parts.push({ id: "HA", name: "Headboard top", size: [2 * xp + P, H - 15 - yArch + 25, 50], pos: [0, (yArch + H - 15) / 2, zF], material: wood, pieces: arch });
   for (const sx of [-1, 1]) parts.push({ id: `HP${sx}`, name: "Headboard post", size: [P, yArch - yFoot, 50], pos: [sx * xp, (yArch + yFoot) / 2, zF], material: wood });
-  parts.push({ id: "HS", name: "Centre stile", size: [40, yArch - 260, 40], pos: [0, (yArch + 260) / 2, zF], material: wood });
+  const yStile = archY(0) - 50; // up to the underside of the curve
+  parts.push({ id: "HS", name: "Centre stile", size: [40, yStile - 260, 40], pos: [0, (yStile + 260) / 2, zF], material: wood });
   parts.push({ id: "HR", name: "Headboard bottom rail", size: [2 * xp - P, 60, 50], pos: [0, 230, zF], material: wood });
   for (const sx of [-1, 1]) parts.push({ id: `HF${sx}`, name: "Headboard foot", size: [P + 10, yFoot, 60], pos: [sx * xp, yFoot / 2, zF], material: wood });
   parts.push({ id: "HBD", name: "Headboard board", size: [2 * xp + P, yArch - 200, 6], pos: [0, (yArch + 200) / 2, zF + 28], material: "board" });
@@ -105,7 +106,21 @@ function recipe(s: ProductSpec) {
   }
   const xin = xr - 25; // inside of the slat rails
   parts.push({ id: "CB", name: "Cross bar", size: [2 * xin, 40, 60], pos: [0, ySl - 20, 0], material: wood });
-  if (wide) parts.push({ id: "CM", name: "Centre beam", size: [60, 40, Lr], pos: [0, ySl - 20, (zi0 + zi1) / 2], material: wood });
+  if (wide) {
+    // the beam, with its leg down towards the floor where the foot bolt goes in
+    const zc = (zi0 + zi1) / 2, legZ = -L / 4 - zc, legLo = 20;
+    parts.push({
+      id: "CM",
+      name: "Centre beam",
+      size: [60, ySl - legLo, Lr],
+      pos: [0, (ySl + legLo) / 2, zc],
+      material: wood,
+      pieces: [
+        { shape: "box", size: [60, 40, Lr], pos: [0, (ySl - legLo) / 2 - 20, 0] },
+        { shape: "box", size: [50, ySl - 40 - legLo, 50], pos: [0, -20, legZ] },
+      ],
+    });
+  }
   const rolls = wide ? [-1, 1].map((sx) => ({ id: `SL${sx}`, x: (sx * (xin + 30)) / 2, w: xin - 40 })) : [{ id: "SL", x: 0, w: 2 * xin - 10 }];
   for (const r of rolls) parts.push({ id: r.id, name: "Slatted bed base", size: [r.w, 14, Lr - 20], pos: [r.x, ySl + 7, (zi0 + zi1) / 2], material: wood, pieces: slatRoll(r.w, Lr - 20) });
 
@@ -117,13 +132,14 @@ function recipe(s: ProductSpec) {
       title: "Bolt the posts to the headboard top",
       detail: "Lay the parts face up on a rug. Two bolts through each post into the curved top, turned with the key in its handle.",
       add: ["HA", "HP-1", "HP1"],
-      fix: sides.map((sx): CustomFix => ({ ...BOLT, count: 2, at: [-1, 1].map((d): Vec3 => [sx * xp + d * 12, yArch, zF]), dir: [0, 1, 0], on: `HP${sx}`, mate: "HA" })),
+      // down through the ends of the curve into the tops of the posts
+      fix: sides.map((sx): CustomFix => ({ ...BOLT, count: 2, at: [-1, 1].map((d): Vec3 => [sx * xp, archY(xp), zF + d * 12]), dir: [0, -1, 0], on: "HA", mate: `HP${sx}` })),
       pose: "+z",
       tools: ["allen"],
       warnings: ["floor"],
       from: { "HP-1": [0, -300, 0], HP1: [0, -300, 0] },
     },
-    { title: "Bolt in the centre stile", detail: "Up into the middle of the curved top, two bolts.", add: ["HS"], fix: [{ ...BOLT, count: 2, at: [-1, 1].map((d): Vec3 => [d * 10, archY(0) - 50, zF]), dir: [0, -1, 0], on: "HA", mate: "HS" }], tools: ["allen"], from: { HS: [0, -300, 0] } },
+    { title: "Bolt in the centre stile", detail: "Up into the middle of the curved top, two bolts.", add: ["HS"], fix: [{ ...BOLT, count: 2, at: [-1, 1].map((d): Vec3 => [0, archY(0), zF + d * 12]), dir: [0, -1, 0], on: "HA", mate: "HS" }], tools: ["allen"], from: { HS: [0, -300, 0] } },
     {
       title: "Bolt on the bottom rail",
       detail: "Its strip of grip tape faces out. One bolt through each post and one into the stile.",
@@ -168,9 +184,13 @@ function recipe(s: ProductSpec) {
       title: "Turn in the screws for the rails",
       detail: wide ? "Four into the headboard and four into the footboard where the rails go, and one more in each for the centre beam. Leave the heads standing out." : "Four into the headboard and four into the footboard where the rails go. Leave the heads standing out.",
       fix: [
-        ...keyScrews(zi0 + 5, -1, (sx) => `HP${sx}`),
-        ...keyScrews(zi1, 1, () => "FB"),
-        ...(wide ? [{ ...SCREW, count: 2, at: [[0, ySl - 20, zi0], [0, ySl - 20, zi1]] as Vec3[], dir: [0, 0, -1] as Vec3 }] : []),
+        // into the frame faces inside the covers
+        ...keyScrews(zF + 31, -1, (sx) => `HP${sx}`),
+        ...keyScrews(zf - 15, 1, () => "FB"),
+        ...(wide ? [
+          { ...SCREW, count: 1, at: [[0, ySl - 20, zF + 31]] as Vec3[], dir: [0, 0, -1] as Vec3, on: "HBD", mate: "HS" },
+          { ...SCREW, count: 1, at: [[0, ySl - 20, zf - 15]] as Vec3[], dir: [0, 0, 1] as Vec3, on: "FB" },
+        ] : []),
       ],
       tools: ["allen"],
     },

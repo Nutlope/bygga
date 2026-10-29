@@ -76,7 +76,9 @@ function armchair(s: ProductSpec): CustomParams {
   parts.push({ id: "RF", name: "Rail", size: [2 * xi, 50, 30], pos: [0, yRail, zPost], material: "wood" });
   parts.push({ id: "RB", name: "Rail", size: [2 * xi, 30, 50], pos: [0, 15, zBack], material: "wood" });
 
-  const ends = (y: number, z: number): Vec3[] => [-1, 1].map((sx) => [sx * xt, y, z] as Vec3);
+  // one fitting at each end, from the outside of the side tube in towards the middle
+  const tubeEnds = (kind: CustomFix["kind"], p: Vec3, mate: string, o: Partial<CustomFix>): CustomFix[] =>
+    ([[-1, "S1"], [1, "S2"]] as const).map(([sx, on]) => at(kind, [[sx * (xt + 10), p[1], p[2]]], [-sx, 0, 0], on, mate, o));
   const sideScrews = (id: "L" | "R") => {
     const sx = id === "L" ? -1 : 1;
     return [
@@ -96,7 +98,7 @@ function armchair(s: ProductSpec): CustomParams {
         title: "Bolt the side tubes to the cross tube",
         detail: "Lay the two bent tubes on a rug with their curves the same way. Turn the bolts in by hand first, then tighten.",
         add: ["S1", "S2", "X"],
-        fix: [at("bolt", ends(B[1], B[2]).map((p) => [p[0] + Math.sign(p[0]) * 10, p[1], p[2]] as Vec3), [1, 0, 0], "S1", "X", { len: 30, dia: 6 })],
+        fix: tubeEnds("bolt", B, "X", { len: 30, dia: 6 }),
         tools: ["allen"],
         warnings: ["floor"],
       },
@@ -104,14 +106,14 @@ function armchair(s: ProductSpec): CustomParams {
         title: "Screw the top tube between them",
         detail: "Push it onto the tops of the side tubes so the holes line up, one screw at each end.",
         add: ["TT"],
-        fix: [at("screw", ends(T[1], T[2]).map((p) => [p[0] + Math.sign(p[0]) * 10, p[1], p[2]] as Vec3), [1, 0, 0], "S1", "TT", { len: 12, dia: 4 })],
+        fix: tubeEnds("screw", T, "TT", { len: 12, dia: 4 }),
         tools: ["screwdriver"],
       },
       {
         title: "Screw the front tube on",
         detail: "Same at the front of the seat: one screw at each end.",
         add: ["FT"],
-        fix: [at("screw", ends(F[1], F[2]).map((p) => [p[0] + Math.sign(p[0]) * 10, p[1], p[2]] as Vec3), [1, 0, 0], "S1", "FT", { len: 12, dia: 4 })],
+        fix: tubeEnds("screw", F, "FT", { len: 12, dia: 4 }),
         tools: ["screwdriver"],
       },
       {

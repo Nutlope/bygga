@@ -103,6 +103,11 @@ const HW_NAMES: Record<HwKind, string> = {
   spacer: "Wall spacer",
 };
 
+/** The fitting a placed one was made from, own name included, to fit the same again (rows repeating a frame). */
+export function defOf(ht: HwType): HwDef {
+  return { kind: ht.kind, len: ht.len, dia: ht.dia, notIncluded: ht.notIncluded, ...(ht.name !== HW_NAMES[ht.kind] ? { name: ht.name } : {}) };
+}
+
 export function hwSpecText(kind: HwKind, len: number, dia: number) {
   switch (kind) {
     case "dowel":
@@ -312,6 +317,21 @@ export class PlanBuilder {
   }
 
   /** Part is shown somewhere else (laid flat, upside down...) from this step until it is added. */
+  /** Where a fitting going in at `at` along `dir` meets a part: its hole is there, not where the fitting starts. */
+  entry(key: string, at: Vec3, dir: Vec3, len: number): Vec3 {
+    const it = this.partItem(key);
+    const size = this.parts.find((p) => p.id === it.ref)?.size;
+    if (!size) return at;
+    const l = toLocal(at, it.final.pos, it.final.rot);
+    const n = unrotate(dir, it.final.rot);
+    const inside = (q: Vec3) => q.every((v, i) => Math.abs(v) <= size[i] / 2 + 0.5);
+    if (inside(l)) return at;
+    for (let t = 1; t <= len + 2; t++) {
+      if (inside([l[0] + n[0] * t, l[1] + n[1] * t, l[2] + n[2] * t])) return [at[0] + dir[0] * t, at[1] + dir[1] * t, at[2] + dir[2] * t];
+    }
+    return at;
+  }
+
   stage(key: string, pos: Vec3, rot: Vec3, from?: Vec3) {
     const it = this.partItem(key);
     const s = this.step_;
@@ -331,7 +351,7 @@ export class PlanBuilder {
       const r = o.hole === false ? 0 : (o.hole ?? holeR(def));
       if (r > 0) p.holes.push({ p: pos, n: [-dir[0], -dir[1], -dir[2]], r });
     }
-    if (o.mate) this.hole(o.mate, o.at, o.dir, o.mateHole ?? Math.max(holeR(def), 3));
+    if (o.mate) this.hole(o.mate, this.entry(o.mate, o.at, o.dir, def.len), o.dir, o.mateHole ?? Math.max(holeR(def), 3));
     const travel = o.travel ?? defaultTravel(def);
     const extra = def.kind === "cam" ? 0.7 : o.spin ? 0.35 : 0;
     const it: HwItem = {

@@ -115,7 +115,9 @@ function carcass(s: ProductSpec, what: "open" | "drawers"): CustomParams {
       {
         title: i ? "Build the second drawer the same way" : "Fit cam bolts and dowels in the drawer front",
         detail: i ? "Front face down, sides on, cams, bottom, back." : "Lay the front face down on a rug. Two cam bolts and four dowels along its inside, then push the sides onto them.",
-        add: [id("F"), id("DL"), id("DR")],
+        // all along the cam bolts: the sides come in through the opening, then the front closes onto them
+        add: [id("DL"), id("DR"), id("F")],
+        from: { [id("DL")]: [0, 0, 350], [id("DR")]: [0, 0, 350], [id("F")]: [0, 0, 350] },
         fix: [
           camBolts([-1, 1].map((k) => [k * sx, fy, fz] as Vec3), [0, 0, 1], id("F")),
           dowel([-1, 1].flatMap((k) => [-1, 1].map((j) => [k * sx, fy + j * (dh / 2 - 25), fz] as Vec3)), [0, 0, 1], id("F")),
@@ -124,7 +126,7 @@ function carcass(s: ProductSpec, what: "open" | "drawers"): CustomParams {
         ],
         tools: ["screwdriver", "hammer"],
       },
-      { title: i ? "Slide in its bottom and screw on the back" : "Slide in the bottom and screw on the back", detail: "Bottom into the grooves of the sides and front, then the back over it with two long screws on each side, using the Allen key.", add: [id("DF"), id("DB")], fix: [{ kind: "bolt", count: 4, len: 40, dia: 5, at: [-1, 1].flatMap((k) => [-1, 1].map((j) => [k * (sx + 7), fy + j * (dh / 2 - 20), D / 2 - T - bd + 7] as Vec3)), dir: [0, 0, 1] }] },
+      { title: i ? "Slide in its bottom and screw on the back" : "Slide in the bottom and screw on the back", detail: "Bottom into the grooves of the sides and front, then the back over it with two long screws on each side, using the Allen key.", add: [id("DF"), id("DB")], fix: [-1, 1].map((k): CustomFix => ({ kind: "bolt", count: 2, len: 40, dia: 5, at: [-1, 1].map((j) => [k * (sx + 7), fy + j * (dh / 2 - 20), D / 2 - T - bd + 7] as Vec3), dir: [-k, 0, 0], on: id(k < 0 ? "DL" : "DR"), mate: id("DB") })) },
       { title: i ? "Clip its runner locks on and push it in" : "Clip the runner locks under the front and push the drawer in", detail: "One lock under each front corner, screwed in. Pull the runners out, set the drawer on them and push it home until it clicks.", fix: [{ kind: "clip", name: "Runner lock", count: 2, at: [-1, 1].map((k) => [k * (sx - 20), T + gap + i * (fh + gap) + 10, D / 2 - T - 40] as Vec3), dir: [0, 1, 0] }] },
     ];
   };
@@ -162,7 +164,8 @@ function island(s: ProductSpec, rack: boolean): CustomParams {
     material: "wood",
     pieces: [
       ...[-1, 1].map((k): PartPiece => ({ shape: "box", size: [2 * ix, 50, 30], pos: [0, 0, k * (sd / 2 - 15)] })),
-      ...Array.from({ length: slats }, (_, i): PartPiece => ({ shape: "box", size: [48, 16, sd - 60], pos: [-ix + 40 + ((2 * ix - 80) * i) / (slats - 1), 17, 0] })),
+      ...[-1, 1].map((k): PartPiece => ({ shape: "box", size: [30, 50, sd - 60], pos: [k * (ix - 15), 0, 0] })),
+      ...Array.from({ length: slats }, (_, i): PartPiece => ({ shape: "box", size: [48, 16, sd - 60], pos: [-ix + 60 + ((2 * ix - 120) * i) / (slats - 1), 17, 0] })),
     ],
   });
   const rz = FZ - LW / 2 - 8;
@@ -326,8 +329,8 @@ function island79(): CustomParams {
   const BOLT = { len: 100, dia: 6 };
   // the back rail and each shelf rail meet a leg: dowels in the end, a bolt through the leg into a barrel nut
   const brDowels = (sx: number) => dowel([yTR - 30, yTR + 30].map((y) => [sx * ix, y, -lz] as Vec3), [-sx, 0, 0], "BR", ef(sx));
-  const brNuts = (sx: number): CustomFix => ({ kind: "nut", count: 2, at: [yTR - 10, yTR + 10].map((y) => [sx * (ix - 40), y, -lz + 10] as Vec3), dir: [0, 0, -1], on: "BR", ...NUT });
-  const brBolts = (sx: number): CustomFix => ({ kind: "bolt", count: 2, at: [yTR - 10, yTR + 10].map((y) => [sx * (lx + LW / 2), y, -lz] as Vec3), dir: [-sx, 0, 0], on: ef(sx), mate: "BR", ...BOLT });
+  const brNuts = (sx: number): CustomFix => ({ kind: "nut", count: 2, at: [yTR - 14, yTR + 14].map((y) => [sx * (ix - 40), y, -lz + 10] as Vec3), dir: [0, 0, -1], on: "BR", ...NUT });
+  const brBolts = (sx: number): CustomFix => ({ kind: "bolt", count: 2, at: [yTR - 14, yTR + 14].map((y) => [sx * (lx + LW / 2), y, -lz] as Vec3), dir: [-sx, 0, 0], on: ef(sx), mate: "BR", ...BOLT });
   const shDowels = (id: string, top: number): CustomFix[] =>
     S.map((sx) => dowel(S.flatMap((sz) => [-24, 8, 24].map((dy2) => [sx * ix, top - 30 + dy2, sz * lz] as Vec3)), [-sx, 0, 0], id, ef(sx)));
   const shNuts = (sx: number): CustomFix => ({ kind: "nut", count: 4, at: shelfTop.flatMap((t) => S.map((sz) => [sx * (ix - 40), t - 38, sz * (lz - 10)] as Vec3)), dir: [0, 1, 0], ...NUT });

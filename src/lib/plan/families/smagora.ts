@@ -297,7 +297,7 @@ function wardrobe(s: ProductSpec): CustomParams {
       title: "Fit the knobs and the door buffers",
       detail: "A knob on each door near the middle, screwed from inside. Then press the four buffers in where the doors close.",
       fix: [
-        ...sx2.map((k) => fx({ kind: "knob", at: [[k * 60, dy + 60, zF]], dir: [0, 0, -1], on: k < 0 ? "DL" : "DR" })),
+        ...sx2.map((k) => fx({ kind: "knob", at: [[k * 60, dy + 60, zF + 6]], dir: [0, 0, -1], on: k < 0 ? "DL" : "DR" })),
         fx({ kind: "screw", len: 30, dia: 4, at: sx2.map((k) => [k * 60, dy + 60, zF - T] as Vec3), dir: [0, 0, 1] }),
         fx({ kind: "glide", name: "Door buffer", len: 3, dia: 10, at: [yBot + T / 2, yTop - T / 2].flatMap((y) => sx2.map((k) => [k * (iw / 2 - 40), y, zF - T - 4] as Vec3)), dir: [0, 0, -1] }),
       ],
@@ -413,8 +413,9 @@ function cot(c: Cot): CustomParams {
         title: "Screw on the side locks",
         detail: "One at each end of the bottom rails, through the lock into the post.",
         fix: sx2.flatMap((k) => [
-          fx({ kind: "clip", name: "Side lock", len: 20, dia: 16, at: sx2.map((e) => [e * (Lin / 2 - 30), yR0 + 30, k * (zr + 12)] as Vec3), dir: [0, 0, -k], on: k < 0 ? "S1" : "S2" }),
-          fx({ kind: "screw", len: 16, dia: 4, at: sx2.map((e) => [e * (Lin / 2 - 30), yR0 + 30, k * (zr + 14)] as Vec3), dir: [0, 0, -k], on: k < 0 ? "S1" : "S2" }),
+          // on the outside of the bottom rail: the lock, and its screw beside it into the rail
+          fx({ kind: "clip", name: "Side lock", len: 20, dia: 16, at: sx2.map((e) => [e * (Lin / 2 - 42), yR0 - 8, k * (zr + 12)] as Vec3), dir: [0, 0, -k], on: k < 0 ? "S1" : "S2" }),
+          fx({ kind: "screw", len: 16, dia: 4, at: sx2.map((e) => [e * (Lin / 2 - 20), yR0 + 8, k * (zr + 14)] as Vec3), dir: [0, 0, -k], on: k < 0 ? "S1" : "S2" }),
         ]),
         tools: ["screwdriver"],
       },
@@ -517,7 +518,7 @@ function deskTop(b: PlanBuilder, s: ProductSpec) {
   b.step({ title: "Fit the end pieces", detail: "Two dowels into each end of the upstand, then push an end piece onto each.", scene: "top", kind: "dowels", tools: ["hammer"] }, () => {
     b.fits(HW.dowel, sx2.flatMap((k) => [yU - 40, yU + 30].map((y): FitOpts => ({ on: board, at: [k * (W / 2 - T), y, -D / 2 + T / 2], dir: [-k, 0, 0], mate: ends[k < 0 ? 0 : 1] }))), 0.08);
     b.then(0.15);
-    for (const e of ends) stage(e, [0, 0, 200]);
+    ends.forEach((e, i) => stage(e, [sx2[i] * 200, 0, 0])); // along the dowels
   });
   b.step({ title: "Lock the end pieces", detail: "One cam lock in each, arrow towards the bolt, then clockwise.", scene: "top", kind: "cams", tools: ["screwdriver"] }, () => {
     b.fits(HW.cam, sx2.map((k): FitOpts => ({ on: ends[k < 0 ? 0 : 1], at: [k * (W / 2 - T), yU, -D / 2 + T + 30], dir: [k, 0, 0] })), 0.1);
@@ -567,12 +568,13 @@ function deskTop(b: PlanBuilder, s: ProductSpec) {
 /** The changing table: a bookshelf built lying on a side, then a tray with rims screwed together and bolted on top. */
 function changingTable(s: ProductSpec): CustomParams {
   // IKEA: 60 wide, 81 deep and 103 high with the tray; the bookshelf alone is 40 deep and 90 high
-  const W = s.size.w * 10 || 600, T = 16, G = 3;
+  const W = Math.min(s.size.w, s.size.d) * 10 || 600, T = 16, G = 3; // the catalog has 81 as the width; it is the depth
   const Hb = 900, z0 = -405, z1 = z0 + 400; // the bookshelf stands against the wall, the tray reaches forward
   const xs = W / 2 - T / 2, xi = W / 2 - T;
   const yBot = 80, ySh = 480, yTop = Hb - T;
-  const yF = 960, yR = 1030; // tray floor and rim tops
+  const yF = Hb + T, yR = 1030; // the tray's floor boards lie on the bookshelf, the rims stand on them
   const zT1 = -z0; // the tray's front edge
+  const zM = z0 + 400, zA = zT1 - 100; // floor, middle board and front board, back to front
   const B = (id: string, name: string, x0: number, x1: number, y0: number, y1: number, za: number, zb: number, material?: CustomPart["material"]): CustomPart => ({
     id,
     name,
@@ -581,28 +583,28 @@ function changingTable(s: ProductSpec): CustomParams {
     ...(material ? { material } : {}),
   });
   const rimPieces = (): PartPiece[] => {
-    const L = zT1 - z0;
+    const L = zT1 - z0, yc = (yF + yR) / 2, y1 = yF + 60;
     return [
-      { shape: "box", size: [T, yF - Hb, L], pos: [0, (Hb + yF) / 2 - (Hb + yR) / 2, 0] },
-      { shape: "box", size: [T, yR - yF, L * 0.55], pos: [0, (yF + yR) / 2 - (Hb + yR) / 2, -L / 2 + L * 0.275] },
-      { shape: "box", size: [T, (yR - yF) * 0.5, L * 0.45], pos: [0, yF + (yR - yF) * 0.25 - (Hb + yR) / 2, L / 2 - L * 0.225] },
+      { shape: "box", size: [T, y1 - yF, L], pos: [0, (yF + y1) / 2 - yc, 0] },
+      { shape: "box", size: [T, yR - y1, L * 0.55], pos: [0, (y1 + yR) / 2 - yc, -L / 2 + L * 0.275] },
+      { shape: "box", size: [T, (yR - y1) * 0.5, L * 0.45], pos: [0, y1 + (yR - y1) * 0.25 - yc, L / 2 - L * 0.225] },
     ];
   };
   const parts: CustomPart[] = [
     B("L", "Side panel", -W / 2, -xi, G, yTop, z0, z1),
     B("R", "Side panel", xi, W / 2, G, yTop, z0, z1),
-    B("PL", "Plinth", -xi, xi, G + 10, yBot, z1 - T, z1),
-    B("BOT", "Bottom", -xi, xi, yBot - T / 2, yBot + T / 2, z0 + 8, z1),
+    B("PL", "Plinth", -xi, xi, G + 10, yBot + T / 2, z1 - T, z1), // in front of the bottom's edge
+    B("BOT", "Bottom", -xi, xi, yBot - T / 2, yBot + T / 2, z0 + 8, z1 - T),
     B("FOOT", "Back support", -T / 2, T / 2, G, yBot - T / 2, z0 + 8, z0 + 200),
     B("SH", "Shelf", -xi, xi, ySh, ySh + T, z0 + 8, z1),
     B("BK", "Back panel", -xi, xi, yBot - T / 2, yTop, z0 + 5, z0 + 8, "fiber"),
     B("TOP", "Top", -W / 2, W / 2, yTop, Hb, z0, z1),
-    B("TB", "Tray back rim", -xi, xi, Hb, yR, z0, z0 + T),
-    { id: "TL", name: "Tray side rim", size: [T, yR - Hb, zT1 - z0], pos: [-xs, (Hb + yR) / 2, 0], pieces: rimPieces() },
-    { id: "TR", name: "Tray side rim", size: [T, yR - Hb, zT1 - z0], pos: [xs, (Hb + yR) / 2, 0], pieces: rimPieces() },
-    B("TF", "Tray floor", -xi, xi, yF - T, yF, z0 + T, 0),
-    B("TA", "Tray front rail", -xi, xi, Hb + 10, yF - T, zT1 - T, zT1),
-    B("TG", "Tray front floor", -xi, xi, yF - T, yF, 0, zT1 - T),
+    B("TB", "Tray back rim", -xi, xi, yF, yR - 30, z0, z0 + T),
+    { id: "TL", name: "Tray side rim", size: [T, yR - yF, zT1 - z0], pos: [-xs, (yF + yR) / 2, (z0 + zT1) / 2], pieces: rimPieces() },
+    { id: "TR", name: "Tray side rim", size: [T, yR - yF, zT1 - z0], pos: [xs, (yF + yR) / 2, (z0 + zT1) / 2], pieces: rimPieces() },
+    B("TF", "Tray floor", -W / 2, W / 2, Hb, yF, z0, zM),
+    B("TA", "Tray front board", -W / 2, W / 2, Hb, yF, zA, zT1),
+    B("TG", "Tray middle board", -xi, xi, Hb, yF, zM, zA),
   ];
   const side = (sx: number) => (sx < 0 ? "L" : "R");
   const tray = ["TB", "TL", "TR", "TF", "TA", "TG"];
@@ -616,26 +618,26 @@ function changingTable(s: ProductSpec): CustomParams {
     {
       title: "Screw ten cam bolts into the side panels",
       detail: "Lay both sides on a rug, inside up. Five in each, by hand until they stop.",
-      add: ["L", "R"],
+      wait: ["L", "R"],
       fix: sx2.map((sx) => fx({ kind: "camScrew", on: side(sx), dir: [-sx, 0, 0], at: [...bolts(sx, yBot, 2), ...bolts(sx, ySh + T / 2, 2), [sx * xi, yBot - 30, z1 - 8]], len: 34, dia: 7 })),
       tools: ["screwdriver"],
       warnings: ["floor"],
     },
     { title: "Push the glides into the bottom of the sides", detail: "Two in each side's bottom edge.", fix: sx2.map((sx) => fx({ kind: "glide", on: side(sx), dir: [0, 1, 0], at: [[sx * xs, G, z0 + 50], [sx * xs, G, z1 - 50]], len: 3, dia: 20, name: "Glide" })) },
-    { title: "Tap six dowels into the bottom", detail: "Two along the front edge for the plinth, two in each end.", add: ["BOT"], fix: [fx({ kind: "dowel", on: "BOT", mate: "PL", dir: [0, 0, 1], at: [[-150, yBot - 4, z1 - T], [150, yBot - 4, z1 - T]], ...DOW }), ...sx2.map((sx) => fx({ kind: "dowel", on: "BOT", mate: side(sx), dir: [sx, 0, 0], at: [[sx * xi, yBot, z0 + 80], [sx * xi, yBot, z1 - 80]], ...DOW }))], tools: ["hammer"] },
-    { title: "Screw four cam bolts in", detail: "Two into the plinth's top edge, two into the bottom's underside.", fix: [fx({ kind: "camScrew", on: "PL", dir: [0, -1, 0], at: [[-200, yBot - T / 2, z1 - 8], [200, yBot - T / 2, z1 - 8]], len: 34, dia: 7 }), fx({ kind: "camScrew", on: "BOT", dir: [0, 1, 0], at: [[0, yBot - T / 2, z0 + 60], [0, yBot - T / 2, z0 + 160]], len: 34, dia: 7 })], tools: ["screwdriver"] },
+    { title: "Tap six dowels into the bottom", detail: "Two along the front edge for the plinth, two in each end.", add: ["BOT"], fix: [fx({ kind: "dowel", on: "BOT", mate: "PL", dir: [0, 0, 1], at: [[-150, yBot, z1 - T], [150, yBot, z1 - T]], ...DOW }), ...sx2.map((sx) => fx({ kind: "dowel", on: "BOT", mate: side(sx), dir: [sx, 0, 0], at: [[sx * xi, yBot, z0 + 80], [sx * xi, yBot, z1 - 80]], ...DOW }))], tools: ["hammer"] },
+    { title: "Screw four cam bolts in", detail: "Two into the back of the plinth, two into the bottom's underside.", fix: [fx({ kind: "camScrew", on: "PL", mate: "BOT", dir: [0, 0, 1], at: [[-200, yBot, z1 - T], [200, yBot, z1 - T]], len: 34, dia: 7 }), fx({ kind: "camScrew", on: "BOT", dir: [0, 1, 0], at: [[0, yBot - T / 2, z0 + 60], [0, yBot - T / 2, z0 + 160]], len: 34, dia: 7 })], tools: ["screwdriver"] , wait: ["PL"] },
     { title: "Push the plinth onto the bottom", detail: "Along the front edge, curved edge down.", add: ["PL"] },
-    { title: "Lock it with two cam locks", detail: "In the bottom, clockwise until tight.", fix: [fx({ kind: "cam", on: "BOT", dir: [0, -1, 0], at: [[-200, yBot + T / 2, z1 - 40], [200, yBot + T / 2, z1 - 40]] })], tools: ["screwdriver"] },
+    { title: "Lock it with two cam locks", detail: "In the bottom, clockwise until tight.", fix: [fx({ kind: "cam", on: "BOT", dir: [0, -1, 0], at: [[-200, yBot + T / 2, z1 - T - 34], [200, yBot + T / 2, z1 - T - 34]] })], tools: ["screwdriver"] },
     { title: "Tap a dowel into the back support", detail: "Into its top edge.", fix: [fx({ kind: "dowel", on: "FOOT", mate: "BOT", dir: [0, -1, 0], at: [[0, yBot - T / 2, z0 + 110]], ...DOW })], tools: ["hammer"], wait: ["FOOT"] },
     { title: "Push a glide into its bottom", fix: [fx({ kind: "glide", on: "FOOT", dir: [0, 1, 0], at: [[0, G, z0 + 110]], len: 3, dia: 20, name: "Glide" })] },
     { title: "Stand the back support under the bottom", detail: "At the middle of the back edge, onto the bolts.", add: ["FOOT"], from: { FOOT: [0, -250, 0] } },
     { title: "Lock it with two cam locks", detail: "In the back support, one each side of the bolts.", fix: [fx({ kind: "cam", on: "FOOT", dir: [1, 0, 0], at: [[-T / 2, yBot - 40, z0 + 60], [-T / 2, yBot - 40, z0 + 160]] })], tools: ["screwdriver"] },
-    { title: "Stand the bottom on one side panel", detail: "Lay the left side flat and push the bottom onto its dowels and bolts.", pose: "+x" },
+    { title: "Stand the bottom on one side panel", detail: "Lay the left side flat and push the bottom onto its dowels and bolts.", pose: "+x", add: ["L"] },
     { title: "Turn three cam locks", detail: "Two in the bottom, one in the plinth.", fix: [fx({ kind: "cam", on: "BOT", dir: [0, -1, 0], at: bolts(-1, yBot + T / 2, 2).map((p): Vec3 => [-(xi - 34), p[1], p[2]]) }), fx({ kind: "cam", on: "PL", dir: [0, 0, 1], at: [[-(xi - 34), yBot - 30, z1 - T]] })], tools: ["screwdriver"] },
     { title: "Tap four dowels into the shelf", detail: "Two in each end.", fix: sx2.map((sx) => fx({ kind: "dowel", on: "SH", mate: side(sx), dir: [sx, 0, 0], at: [[sx * xi, ySh + T / 2, z0 + 80], [sx * xi, ySh + T / 2, z1 - 80]], ...DOW })), tools: ["hammer"], wait: ["SH"] },
     { title: "Push the shelf into the side panel", add: ["SH"] },
     { title: "Lock it with two cam locks", fix: camAt(ySh, bolts(-1, 0, 2).map((p) => p[2]), false, "SH").slice(0, 1), tools: ["screwdriver"] },
-    { title: "Put the other side panel on", detail: "Line it up over all the dowels and bolts and press it down.", people: 2, warnings: ["two"] },
+    { title: "Put the other side panel on", detail: "Line it up over all the dowels and bolts and press it down.", add: ["R"], people: 2, warnings: ["two"] },
     { title: "Turn five cam locks", detail: "Two in the bottom, one in the plinth, two in the shelf.", fix: [fx({ kind: "cam", on: "BOT", dir: [0, -1, 0], at: bolts(1, yBot + T / 2, 2).map((p): Vec3 => [xi - 34, p[1], p[2]]) }), fx({ kind: "cam", on: "PL", dir: [0, 0, 1], at: [[xi - 34, yBot - 30, z1 - T]] }), ...camAt(ySh, bolts(1, 0, 2).map((p) => p[2]), false, "SH").slice(1)], tools: ["screwdriver"] },
     { title: "Stand it up and slide the back in", detail: "Down the grooves at the back, cut-outs at the top.", add: ["BK"], pose: "+y", from: { BK: [0, 700, 0] } },
     { title: "Screw the back on", detail: "Six screws: two into the bottom, two into the shelf, two into the back support.", fix: [fx({ kind: "screw", on: "BK", dir: [0, 0, 1], at: [[-150, yBot, z0 + 5], [150, yBot, z0 + 5], [-150, ySh + 8, z0 + 5], [150, ySh + 8, z0 + 5], [0, 40, z0 + 5], [0, 65, z0 + 5]], len: 16, dia: 4 })], tools: ["screwdriver"] },
@@ -643,16 +645,16 @@ function changingTable(s: ProductSpec): CustomParams {
     { title: "Screw four cam bolts into the top", detail: "Lay it face down; two near each end.", fix: [fx({ kind: "camScrew", on: "TOP", dir: [0, 1, 0], at: sx2.flatMap((sx) => [[sx * xs, yTop, z0 + 120], [sx * xs, yTop, z1 - 120]] as Vec3[]), len: 34, dia: 7 })], tools: ["screwdriver"], wait: ["TOP"] },
     { title: "Put the top on", add: ["TOP"], from: { TOP: [0, 300, 0] } },
     { title: "Lock the top with four cam locks", detail: "In the sides, just under the top.", fix: sx2.map((sx) => fx({ kind: "cam", on: side(sx), dir: [-sx, 0, 0], at: [[sx * xi, yTop - 34, z0 + 120], [sx * xi, yTop - 34, z1 - 120]] })), tools: ["screwdriver"] },
-    { title: "Tap dowels into the tray's back rim", detail: "Now the tray. Two in each end of the back rim.", fix: sx2.map((sx) => fx({ kind: "dowel", on: "TB", mate: sx < 0 ? "TL" : "TR", dir: [sx, 0, 0], at: [[sx * xi, Hb + 40, z0 + 8], [sx * xi, yR - 40, z0 + 8]], ...DOW })), wait: tray, from: aside, tools: ["hammer"] },
-    { title: "Screw the side rims to the back rim", detail: "One long screw through each side rim, with the Allen key.", fix: sx2.map((sx) => fx({ kind: "bolt", on: sx < 0 ? "TL" : "TR", mate: "TB", dir: [-sx, 0, 0], at: [[sx * (W / 2), (Hb + yR) / 2, z0 + 8]], ...LONG })), tools: ["allen"] },
-    { title: "Tap nine dowels into the rims", detail: "Along the lower edges, for the tray floor.", fix: [fx({ kind: "dowel", on: "TB", dir: [0, 1, 0], at: [[-150, yF - T, z0 + 8], [150, yF - T, z0 + 8], [0, yF - T, z0 + 8]], ...DOW }), ...sx2.map((sx) => fx({ kind: "dowel", on: sx < 0 ? "TL" : "TR", dir: [0, 1, 0], at: [[sx * (xi + 2), yF - T, -300], [sx * (xi + 2), yF - T, -150], [sx * (xi + 2), yF - T, 200]], ...DOW }))], tools: ["hammer"] },
-    { title: "Screw the tray floor on", detail: "Lay it on the dowels and drive six long screws down into the rims.", fix: [fx({ kind: "bolt", on: "TF", dir: [0, -1, 0], at: [[-xi + 8, yF, -300], [-xi + 8, yF, -100], [xi - 8, yF, -300], [xi - 8, yF, -100], [-150, yF, z0 + 24], [150, yF, z0 + 24]], ...LONG })], tools: ["allen"] },
-    { title: "Screw the front rail between the rims", detail: "One long screw through each rim into its ends.", fix: sx2.map((sx) => fx({ kind: "bolt", on: sx < 0 ? "TL" : "TR", mate: "TA", dir: [-sx, 0, 0], at: [[sx * (W / 2), (Hb + yF) / 2, zT1 - 8]], ...LONG })), tools: ["allen"] },
-    { title: "Slide the front floor in", detail: "Two dowels in its back edge go into the floor.", fix: [fx({ kind: "dowel", on: "TG", mate: "TF", dir: [0, 0, -1], at: [[-150, yF - 8, 0], [150, yF - 8, 0]], ...DOW })], tools: ["hammer"] },
+    { title: "Tap dowels into the tray's back rim", detail: "Now the tray. Two in each end of the back rim.", fix: sx2.map((sx) => fx({ kind: "dowel", on: "TB", mate: sx < 0 ? "TL" : "TR", dir: [sx, 0, 0], at: [[sx * xi, yF + 25, z0 + 8], [sx * xi, yR - 60, z0 + 8]], ...DOW })), wait: tray, from: aside, tools: ["hammer"] },
+    { title: "Screw the side rims to the back rim", detail: "One long screw through each side rim, with the Allen key.", fix: sx2.map((sx) => fx({ kind: "bolt", on: sx < 0 ? "TL" : "TR", mate: "TB", dir: [-sx, 0, 0], at: [[sx * (W / 2), (yF + yR - 30) / 2, z0 + 8]], ...LONG })), tools: ["allen"] },
+    { title: "Tap nine dowels into the rims", detail: "Turn the frame upside down, shaped edges on the floor. Three dowels in the edge of each rim.", fix: [fx({ kind: "dowel", on: "TB", mate: "TF", dir: [0, 1, 0], at: [[-150, yF, z0 + 8], [150, yF, z0 + 8], [0, yF, z0 + 8]], ...DOW }), ...sx2.flatMap((sx) => [fx({ kind: "dowel", on: sx < 0 ? "TL" : "TR", mate: "TF", dir: [0, 1, 0], at: [[sx * xs, yF, -300], [sx * xs, yF, -150]], ...DOW }), fx({ kind: "dowel", on: sx < 0 ? "TL" : "TR", mate: "TA", dir: [0, 1, 0], at: [[sx * xs, yF, zT1 - 50]], ...DOW })])], tools: ["hammer"] },
+    { title: "Screw the tray floor on", detail: "Lay it over the rims' edges, onto the dowels, and drive six long screws through it into the rims.", fix: [fx({ kind: "bolt", on: "TF", dir: [0, 1, 0], at: [[-xs, Hb, -320], [-xs, Hb, -100], [xs, Hb, -320], [xs, Hb, -100], [-240, Hb, z0 + 8], [240, Hb, z0 + 8]], ...LONG })], tools: ["allen"] },
+    { title: "Screw the front board on", detail: "Across the front ends of the rims, two long screws through it.", fix: [fx({ kind: "bolt", on: "TA", dir: [0, 1, 0], at: sx2.map((sx): Vec3 => [sx * xs, Hb, zT1 - 30]), ...LONG })], tools: ["allen"] },
+    { title: "Fit the middle board", detail: "Two dowels into the floor's front edge, then press the middle board onto them.", fix: [fx({ kind: "dowel", on: "TF", mate: "TG", dir: [0, 0, -1], at: [[-150, Hb + T / 2, zM], [150, Hb + T / 2, zM]], ...DOW })], tools: ["hammer"] },
     {
       title: "Screw the two wall brackets under the tray",
       detail: "Turn the tray over. A washer and a screw for each bracket, its upright against the back rim.",
-      fix: [fx({ kind: "angle", on: "TF", dir: [0, 1, 0], at: [[-150, yF - T, z0 + 30], [150, yF - T, z0 + 30]], len: 80, dia: 30, name: "Wall bracket", included: true }), fx({ kind: "washer", on: "TF", dir: [0, 1, 0], at: [[-150, yF - T - 2, z0 + 60], [150, yF - T - 2, z0 + 60]] }), fx({ kind: "screw", on: "TF", dir: [0, 1, 0], at: [[-150, yF - T - 2, z0 + 60], [150, yF - T - 2, z0 + 60]], len: 16, dia: 4 })],
+      fix: [fx({ kind: "angle", on: "TF", dir: [0, 1, 0], at: [[-150, Hb, z0 + 30], [150, Hb, z0 + 30]], len: 80, dia: 30, name: "Wall bracket", included: true }), fx({ kind: "washer", on: "TF", dir: [0, 1, 0], at: [[-150, Hb - 2, z0 + 60], [150, Hb - 2, z0 + 60]] }), fx({ kind: "screw", on: "TF", dir: [0, 1, 0], at: [[-150, Hb - 2, z0 + 60], [150, Hb - 2, z0 + 60]], len: 16, dia: 4 })],
       tools: ["screwdriver"],
     },
     { title: "Lay the tray on the bookshelf", detail: "Turn it right way up and set it on, flush with the back.", add: tray, from: Object.fromEntries(tray.map((id) => [id, [0, 400, 0] as Vec3])) },

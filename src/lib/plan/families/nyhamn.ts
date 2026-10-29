@@ -135,7 +135,8 @@ function recipe(s: ProductSpec): CustomParams {
     {
       title: "Screw the catches down",
       detail: "One short bolt in each, with the Allen key.",
-      fix: [fx("bolt", sides.map((sx): Vec3 => [sx * (xS - 35), yT + t / 2, 0]), [0, -1, 0], "S1", SHORT)],
+      // each catch sits on top of its side frame tube, the bolt goes down into the tube
+      fix: [fx("bolt", sides.map((sx): Vec3 => [sx * xS, yT + t / 2, 0]), [0, -1, 0], "S1", SHORT)],
       tools: ["allen"],
     },
     { title: "Click the back hinges up", detail: "Lift each hinge upright at the back until it clicks." },

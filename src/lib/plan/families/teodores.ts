@@ -107,7 +107,7 @@ function chair(s: ProductSpec): CustomParams {
       {
         title: "Screw the backrest to the uprights",
         detail: "One small screw through the back of each upright into the backrest, with a screwdriver, not a drill.",
-        fix: [-1, 1].map((sx) => fx("screw", [[sx * xs, yB0 + 30, zUp(yB0 + 30) - T / 2]], [0, 0, 1], sx < 0 ? "SIDE_L" : "SIDE_R", { len: 16, dia: 3.5, mate: "BACK" })),
+        fix: [-1, 1].map((sx) => fx("screw", [[sx * xs, 720, zUp(720) - T / 2]], [0, 0, 1], sx < 0 ? "SIDE_L" : "SIDE_R", { len: 16, dia: 3.5, mate: "BACK" })),
         tools: ["screwdriver"],
       },
       {
@@ -127,8 +127,9 @@ function chair(s: ProductSpec): CustomParams {
         title: "Screw the seat on from underneath",
         detail: "Lay the chair upside down on a table, the backrest over the edge. A plastic bush, then a screw, at each of the four holes in the side rails. Use a screwdriver, not a drill.",
         fix: [-1, 1].flatMap((sx) => [
-          fx("washer", bySide(seatPts, sx), [0, 1, 0], sx < 0 ? "SIDE_L" : "SIDE_R", { name: "Plastic bush", len: 6, dia: 14 }),
+          // the screw first: the bush then shares its point instead of pushing it aside
           fx("screw", bySide(seatPts, sx), [0, 1, 0], sx < 0 ? "SIDE_L" : "SIDE_R", { len: 20, dia: 4, mate: "SEAT" }),
+          fx("washer", bySide(seatPts, sx), [0, 1, 0], sx < 0 ? "SIDE_L" : "SIDE_R", { name: "Plastic bush", len: 6, dia: 14 }),
         ]),
         pose: "-y",
         tools: ["screwdriver"],

@@ -59,7 +59,8 @@ function chair(): CustomParams {
     { id: "RF", name: "Cross rail", size: [2 * xi, 50, 24], pos: [0, yRail - 10, zF], material: "wood" },
     { id: "RB", name: "Cross rail", size: [2 * xi, 50, 24], pos: [0, yRail - 10, zB(yRail) + L / 2 + 12], material: "wood" },
     side("SR", 1),
-    { id: "BACK", name: "Backrest", size: [2 * xi + 40, hBack, 30], pos: [0, yBack, zB(yBack) + L / 2 + 15], rot: [-0.1, 0, 0], material: "fiber" },
+    // between the uprights, in line with them, so the bolts through the uprights go into its edges
+    { id: "BACK", name: "Backrest", size: [2 * xi, hBack, 30], pos: [0, yBack, zB(yBack)], rot: [Math.atan2(zBt - zB0, H), 0, 0], material: "fiber" },
     { id: "SEAT", name: "Seat", size: [W + 20, seatT, D - 70], pos: [0, ySeat - seatT / 2, 20], material: "fiber" },
   ];
   const long = (sx: number) => fx("bolt", [parts[1], parts[2]].map((r): Vec3 => [sx * W / 2, r.pos[1], r.pos[2]]), [-sx, 0, 0], sx < 0 ? "SL" : "SR", { len: 80, dia: 6, name: "Long Allen screw" });

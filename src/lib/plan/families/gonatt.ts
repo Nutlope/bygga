@@ -108,11 +108,11 @@ function cot(s: ProductSpec): CustomParams {
     {
       title: "Tap the dowels into the slatted base",
       detail: "Lay both slat sections and the three bars on a rug. Use the longer dowels here.",
-      add: ["B"],
-      fix: [-1, 1].map((g) => fix("dowel", [-zi + 20, zi - 20].flatMap((z): Vec3[] => [[g * (xi - 5), BY - 28, z - 8], [g * (xi - 5), BY - 28, z + 8]]), [g, 0, 0], { on: "B" })),
+      // the base waits on the rug until it is dropped into the end panel
+      wait: ["B"],
+      fix: [-1, 1].map((g) => fix("dowel", [-zi + 20, zi - 20].flatMap((z): Vec3[] => [[g * (xi - 5), BY - 28, z - 8], [g * (xi - 5), BY - 28, z + 8]]), [-g, 0, 0], { on: "B" })),
       tools: ["hammer"],
       warnings: ["floor"],
-      from: { B: [0, -300, 0] },
     },
     {
       title: "Bolt the sides and front rail to one end",
@@ -136,6 +136,8 @@ function cot(s: ProductSpec): CustomParams {
       title: "Stand it on its end and drop the base in",
       detail: "Rest the end panel on the rug. The supports go into the upper holes for a newborn, the lower ones once your baby can sit up.",
       pose: "+x",
+      add: ["B"],
+      from: { B: [400, 0, 0] },
       people: 2,
       warnings: ["two", "floor"],
     },
@@ -157,8 +159,9 @@ function cot(s: ProductSpec): CustomParams {
       title: "Screw in the drawer stops",
       detail: "One on the inside of each end panel, low down at the front.",
       fix: [
-        ...[-1, 1].map((g) => fix("clip", [DY0 + 60, DY1 - 60].map((y): Vec3 => [g * xi, y, Z - 60]), [-g, 0, 0], { name: "Drawer stop", len: 20, dia: 20, on: g < 0 ? "E0" : "E1" })),
-        ...[-1, 1].map((g) => fix("screw", [DY0 + 60, DY1 - 60].map((y): Vec3 => [g * xi, y, Z - 60]), [-g, 0, 0], { len: 16, dia: 4, on: g < 0 ? "E0" : "E1" })),
+        ...[-1, 1].map((g) => fix("clip", [DY0 + 60, DY1 - 60].map((y): Vec3 => [g * xi, y, Z - 50]), [-g, 0, 0], { name: "Drawer stop", len: 20, dia: 20, on: g < 0 ? "E0" : "E1" })),
+        // through the stop's back end into the end panel
+        ...[-1, 1].map((g) => fix("screw", [DY0 + 60, DY1 - 60].map((y): Vec3 => [g * xi, y, Z - 74]), [g, 0, 0], { len: 16, dia: 4, on: g < 0 ? "E0" : "E1" })),
       ],
       tools: ["screwdriver"],
     },
@@ -216,7 +219,7 @@ function cot(s: ProductSpec): CustomParams {
     {
       title: "Screw on the knobs and push the drawer in",
       detail: "A screw through the front into each of the three knobs. The drawer stops keep it from coming all the way out.",
-      fix: [fix("knob", knobX.map((x): Vec3 => [x, (DY0 + DY1) / 2, Z]), [0, 0, -1], { len: 30, dia: 50, on: "DF" }), fix("screw", knobX.map((x): Vec3 => [x, (DY0 + DY1) / 2, dz1]), [0, 0, 1], { len: 30, dia: 4 })],
+      fix: [fix("knob", knobX.map((x): Vec3 => [x, (DY0 + DY1) / 2, Z]), [0, 0, -1], { len: 30, dia: 50, on: "DF" }), fix("screw", knobX.map((x): Vec3 => [x, (DY0 + DY1) / 2, Z - 23]), [0, 0, 1], { len: 30, dia: 4 })],
       tools: ["screwdriver"],
     },
     { title: "Lay the mattress in", detail: "It should fit snugly, with no gap wider than two fingers at the sides.", add: ["M"] },

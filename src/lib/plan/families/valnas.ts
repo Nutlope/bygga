@@ -84,8 +84,8 @@ function legFits(b: Base): CustomFix[] {
   for (const l of b.legs)
     for (const r of railsOf(l.id)) {
       const p = b.joint(l.id, r);
-      dowel.push(add(p, across(l.n), 8));
-      pin.push(add(p, across(l.n), -8));
+      dowel.push(add(p, across(l.n), 12));
+      pin.push(add(p, across(l.n), -12));
       dirs.push(l.n);
     }
   // each fix holds one direction, so one fix per leg
@@ -125,16 +125,17 @@ function coffee(): CustomParams {
   const parts: P[] = [...b.parts, { id: "TOP", name: "Table top", size: [W, T, Dd], pos: [0, H - T / 2, 0], material: "wood", pieces: oval(W, T, Dd) }];
   const xL = W / 2 - 90, zL = Dd / 2 - 70;
   const steps: CustomStep[] = [
-    { title: "Tap the dowels into the legs", detail: "Lay the four legs on a rug. Two dowels in each, in the small side holes.", add: ["La", "Lb", "Lc", "Ld"], fix: legFits(b).filter((f) => f.kind === "dowel"), tools: ["hammer"], warnings: ["floor"] },
+    { title: "Tap the dowels into the legs", detail: "Lay the four legs on a rug. Two dowels in each, in the small side holes.", wait: ["La", "Lb", "Lc", "Ld"], fix: legFits(b).filter((f) => f.kind === "dowel"), tools: ["hammer"], warnings: ["floor"] },
     {
       title: "Screw the connector pins into the legs",
       detail: "By hand with the Allen key, not a drill, until the shoulder meets the wood.",
       fix: legFits(b).filter((f) => f.kind === "camScrew"),
       tools: ["allen"],
     },
-    { title: "Push the cross nuts into the rails", detail: "Into the holes on top, near each end, slot turned towards the end.", add: ["RLu", "RLl", "RSu", "RSl"], fix: nuts(b, ends(["RLu", "RLl", "RSu", "RSl"], [-1, 1])), from: { RLu: [0, 300, 0], RLl: [0, 300, 0], RSu: [0, 300, 0], RSl: [0, 300, 0] } },
+    { title: "Push the cross nuts into the rails", detail: "Into the holes on top, near each end, slot turned towards the end.", add: ["RLu", "RLl"], wait: ["RSu", "RSl"], fix: nuts(b, ends(["RLu", "RLl", "RSu", "RSl"], [-1, 1])), from: { RLu: [0, 300, 0], RLl: [0, 300, 0] } },
     {
       title: "Join the long rails to two legs and lock them",
+      add: ["La", "Lb"],
       detail: "Push the pins and dowels of the two end legs into the long rails, notches facing up on the lower rail. A set screw into each cross nut pulls the joint tight.",
       fix: [setScrews(b, ends(["RLu", "RLl"], [-1, 1]))],
       tools: ["allen"],
@@ -142,6 +143,8 @@ function coffee(): CustomParams {
     {
       title: "Drop the short rails over the long ones",
       detail: "Their notches slot down over the long rails where they cross. Then push on the other two legs and lock them the same way.",
+      add: ["RSu", "RSl", "Lc", "Ld"],
+      from: { RSu: [0, 300, 0], RSl: [0, 300, 0] },
       fix: [setScrews(b, ends(["RSu", "RSl"], [-1, 1]))],
       tools: ["allen"],
     },
@@ -217,7 +220,7 @@ function trolley(): CustomParams {
     {
       title: "Tap the dowels into the legs",
       detail: "Lay the four legs on a rug, castors up. Two dowels in each, in the small side holes.",
-      add: ["La", "Lb", "Lc", "Ld"],
+      wait: ["La", "Lb", "Lc", "Ld"],
       fix: legFits(b).filter((f) => f.kind === "dowel"),
       tools: ["hammer"],
       pose: "-y",
@@ -225,7 +228,7 @@ function trolley(): CustomParams {
     },
     { title: "Screw the connector pins into the legs", detail: "By hand with the Allen key, not a drill.", fix: legFits(b).filter((f) => f.kind === "camScrew"), tools: ["allen"] },
     { title: "Push the cross nuts into the long rails", detail: "Into the holes near each end, slot towards the end.", add: ["RLu", "RLl"], fix: nuts(b, ends(["RLu", "RLl"], [-1, 1])), from: { RLu: [0, -300, 0], RLl: [0, -300, 0] } },
-    { title: "Join the long rails to two legs", detail: "Pins and dowels into the rail ends, castors still up.", fix: [setScrews(b, ends(["RLu", "RLl"], [-1, 1]))], tools: ["allen"] },
+    { title: "Join the long rails to two legs", detail: "Pins and dowels into the rail ends, castors still up.", add: ["La", "Lb"], fix: [setScrews(b, ends(["RLu", "RLl"], [-1, 1]))], tools: ["allen"] },
     {
       title: "Drop the short rails over the long ones",
       detail: "Notches slot together where they cross.",
@@ -233,7 +236,7 @@ function trolley(): CustomParams {
       from: { RSu: [0, -300, 0], RSl: [0, -300, 0] },
     },
     { title: "Push cross nuts into the short rails", detail: "One in each, at the end nearest you.", fix: nuts(b, [["RSu", -1], ["RSl", -1]]) },
-    { title: "Push a third leg on and lock it", detail: "Two set screws into the cross nuts.", fix: [setScrews(b, [["RSu", -1], ["RSl", -1]])], tools: ["allen"] },
+    { title: "Push a third leg on and lock it", detail: "Two set screws into the cross nuts.", add: ["Lc"], fix: [setScrews(b, [["RSu", -1], ["RSl", -1]])], tools: ["allen"] },
     { title: "Bolt the upper rails together", detail: "The short bolt, through the middle where they cross.", fix: [{ kind: "bolt", count: 1, len: 50, dia: 6, name: "Short bolt", at: [[0, upper[0], 0]], dir: [0, 1, 0], on: "RSu", mate: "RLu" }], tools: ["allen"] },
     {
       title: "Tap two dowels into the lower rails",
@@ -250,7 +253,7 @@ function trolley(): CustomParams {
       tools: ["allen"],
     },
     { title: "Push cross nuts into the free rail ends", detail: "The last two, in the short rails.", fix: nuts(b, [["RSu", 1], ["RSl", 1]]) },
-    { title: "Push the last leg on and lock it", detail: "Two set screws into the cross nuts.", fix: [setScrews(b, [["RSu", 1], ["RSl", 1]])], tools: ["allen"] },
+    { title: "Push the last leg on and lock it", detail: "Two set screws into the cross nuts.", add: ["Ld"], fix: [setScrews(b, [["RSu", 1], ["RSl", 1]])], tools: ["allen"] },
     {
       title: "Press the pads under the top tray",
       detail: "Lay it upside down: eight pads, each pushed into its two holes. They protect the table you set it on.",

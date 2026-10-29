@@ -64,7 +64,7 @@ function recipe(s: ProductSpec): CustomParams {
       {
         title: "Lock the legs with grub screws",
         detail: "One in the inside of each leg, just below the rim. Turn them in with the small Allen key until they stop.",
-        fix: [-1, 1].map((sz) => fx("screw", [-1, 1].map((sx): Vec3 => [sx * lx, stubLo + 15, sz * (lz - r)]), { name: "Grub screw", dir: [0, 0, -sz], len: 8, dia: 6 })),
+        fix: [-1, 1].map((sz) => fx("screw", [-1, 1].map((sx): Vec3 => [sx * lx, stubLo - 12, sz * (lz - r)]), { name: "Grub screw", dir: [0, 0, sz], len: 8, dia: 6 })),
         tools: ["allen"],
       },
       {

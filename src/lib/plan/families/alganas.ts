@@ -104,7 +104,7 @@ function clothesRack(s: ProductSpec): CustomParams {
     { id: "LR", name: "Lower leg", ...lowR, shape: "cyl", material: "metal" },
     { id: "SH", name: "Shoe shelf", size: [sw, 14, sd], pos: [(sx0 + sx1) / 2, yS, zw + 2 + sd / 2], material: "metal", pieces: shelf },
     { id: "CB", name: "Middle bar", size: [cx1 - cx0, 18, 18], pos: [cxm, yC, zA], shape: "cyl", material: "metal" },
-    { id: "KT", name: "Key tray", size: [110, 14, 110], pos: [cxm, yC + 30, zA], shape: "cyl", material: "metal" },
+    { id: "KT", name: "Key tray", size: [110, 14, 110], pos: [cxm, yC + 16, zA], shape: "cyl", material: "metal" }, // resting on the bar
   ];
   const wallTop: Vec3 = [xA, H - 15, zw];
   const wallLow: Vec3[] = [-1, 1].map((k): Vec3 => [(sx0 + sx1) / 2 + k * (sw / 2 - 60), yS - 7, zw + 2]);
@@ -150,7 +150,7 @@ function clothesRack(s: ProductSpec): CustomParams {
       ],
       tools: ["screwdriver"],
     },
-    { title: "Screw on the key tray", detail: "On top of the middle bar, one small screw.", add: ["KT"], fix: [{ kind: "screw", count: 1, len: 10, dia: 4, at: [[cxm, yC + 23, zA]], dir: [0, -1, 0], on: "KT" }], tools: ["screwdriver"] },
+    { title: "Screw on the key tray", detail: "On top of the middle bar, one small screw.", add: ["KT"], fix: [{ kind: "screw", count: 1, len: 10, dia: 4, at: [[cxm, yC + 16, zA]], dir: [0, -1, 0], on: "KT" }], tools: ["screwdriver"] },
     { title: "Hang the strap hooks", detail: "Loop the two straps round the middle bar or the legs, wherever you want them.", fix: [{ kind: "hook", count: 2, at: [-40, 40].map((dx): Vec3 => [cxm + dx, yC - 10, zA]), dir: [0, 1, 0], on: "CB" }] },
   ];
   return { parts, steps };

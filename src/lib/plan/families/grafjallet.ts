@@ -177,7 +177,7 @@ function clothesRack(s: ProductSpec): CustomParams {
       title: "Screw the wall bracket under the shoe shelf",
       detail: "Two screws through its slots, at the back. Slide it out until its end touches the wall.",
       add: ["WB"],
-      fix: [{ kind: "screw", count: 2, len: 10, dia: 6, at: [[0, yShoe - 12, -zs], [0, yShoe - 12, -zs + 50]], dir: [0, 1, 0], on: "WB" }],
+      fix: [{ kind: "screw", count: 2, len: 10, dia: 6, at: [-1, 1].map((sx): Vec3 => [sx * 12, yShoe - 12, -zs]), dir: [0, 1, 0], on: "WB" }],
       tools: ["allen"],
       from: { WB: [0, -200, 0] },
     },
@@ -215,27 +215,29 @@ function dressingTable(s: ProductSpec): CustomParams {
       ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [12, bh - 24, D - 40], pos: [sx * (W / 2 - 26), yB + (bh - 24) / 2, 0] })),
       ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [(W - 40 - dw) / 2, bh - 24, 12], pos: [sx * (dw / 2 + (W - 40 - dw) / 4), yB + (bh - 24) / 2, D / 2 - 26] })),
       { shape: "box", size: [W - 40, 4, D - 40], pos: [0, yB + 2, 0] },
+      // the corner sockets the legs push into, screwed through from outside
+      ...[-1, 1].flatMap((sx) => [-1, 1].map((sz): PartPiece => ({ shape: "box", size: [34, 40, 6], pos: [sx * xl, yB + 20, sz * (zl + LT / 2 + 3)] }))),
     ]),
   );
   // the sockets stand up out of the top at the back
   parts.push(welded("SK", "Mirror sockets", [-xa - 13, yT, za - 13], [xa + 13, yT + 30, za + 13], [-1, 1].map((sx) => tubeY(sx * xa, za, yT, yT + 30, 26))));
   parts.push({ id: "DR", name: "Drawer", size: [dw, dh, 18], pos: [0, yB + 12 + dh / 2, D / 2 - 26], material: "metal" });
   // the curved foot rail: along both sides and round the back
-  const yr = 200, rc = 80;
+  const yr = 200, rc = 40, xr = xl - LT / 2 - 8;
   const rail: PartPiece[] = [
-    tubeZ(-xl, yr, -zl + rc, zl, 16),
-    tubeZ(xl, yr, -zl + rc, zl, 16),
-    tubeX(-xl + rc, xl - rc, yr, -zl, 16),
+    tubeZ(-xr, yr, -zl, zl + 8, 16),
+    tubeZ(xr, yr, -zl, zl + 8, 16),
+    tubeX(-xr + rc, xr - rc, yr, -zl - rc, 16),
   ];
   // the rounded back corners, drawn flat in the x-z plane at the rail's height
   for (const sx of [-1, 1]) {
-    const pts = arc(sx * (xl - rc), -zl + rc, rc, sx < 0 ? Math.PI : 0, sx < 0 ? 1.5 * Math.PI : -0.5 * Math.PI, 4);
+    const pts = arc(sx * (xr - rc), -zl, rc, sx < 0 ? Math.PI : 0, sx < 0 ? 1.5 * Math.PI : -0.5 * Math.PI, 4);
     for (let i = 1; i < pts.length; i++) {
       const [x0, z0] = pts[i - 1], [x1, z1] = pts[i];
       rail.push({ shape: "box", size: [Math.hypot(x1 - x0, z1 - z0) + 2, 16, 16], pos: [(x0 + x1) / 2, yr, (z0 + z1) / 2], rot: [0, -Math.atan2(z1 - z0, x1 - x0), 0] });
     }
   }
-  parts.push(welded("FR", "Foot rail", [-xl - 8, yr - 8, -zl - 8], [xl + 8, yr + 8, zl], rail));
+  parts.push(welded("FR", "Foot rail", [-xr - 8, yr - 8, -zl - rc - 8], [xr + 8, yr + 8, zl + 8], rail));
   // the mirror: an oval on a bar, between two arch halves
   const yM = H - 225, mw = 330, mh = 450, zm = za + 22;
   const strips = 17;
@@ -252,7 +254,7 @@ function dressingTable(s: ProductSpec): CustomParams {
   parts.push({ id: "BAR", name: "Mirror bar", size: [mw - 40, 16, 16], pos: [0, yM, za], material: "metal" });
 
   const legScrews = (sz: number): CustomFix[] =>
-    [-1, 1].map((sx) => ({ kind: "screw", count: 2, len: 12, dia: 6, at: [-1, 1].map((d): Vec3 => [sx * xl + d * 20, yB + 20, sz * (zl + LT / 2)]), dir: [0, 0, -sz] as Vec3, on: `L${sx}${sz}` }));
+    [-1, 1].map((sx) => ({ kind: "screw", count: 2, len: 12, dia: 6, at: [yB + 7, yB + 33].map((y): Vec3 => [sx * xl, y, sz * (zl + LT / 2 + 6)]), dir: [0, 0, -sz] as Vec3, on: `L${sx}${sz}` }));
   const steps: CustomStep[] = [
     {
       title: "Screw a foot into each leg",
@@ -275,7 +277,7 @@ function dressingTable(s: ProductSpec): CustomParams {
       title: "Bolt the foot rail between the legs",
       detail: "Its curve goes round the back. One bolt through each leg into the rail.",
       add: ["FR"],
-      fix: [-1, 1].flatMap((sx) => [-1, 1].map((sz): CustomFix => ({ kind: "bolt", count: 1, len: 30, dia: 6, at: [[sx * (xl + LT / 2), yr, sz > 0 ? zl - 20 : -zl + 20]], dir: [-sx, 0, 0], on: `L${sx}${sz}`, mate: "FR" }))),
+      fix: [-1, 1].flatMap((sx) => [-1, 1].map((sz): CustomFix => ({ kind: "bolt", count: 1, len: 30, dia: 6, at: [[sx * (xl + LT / 2), yr, sz * zl]], dir: [-sx, 0, 0], on: `L${sx}${sz}`, mate: "FR" }))),
       tools: ["allen"],
       from: { FR: [0, -300, 0] },
     },
@@ -518,8 +520,9 @@ function wallTable(s: ProductSpec): CustomParams {
       detail: "Lay the flap face down. A screw through each rubber ring, near the top corners.",
       add: ["FL"],
       fix: [
-        { kind: "washer", name: "Rubber buffer", count: 2, len: 6, dia: 16, at: [-1, 1].map((sx): Vec3 => [sx * (iw / 2 - 20), yU - 30, zf]), dir: [0, 0, 1], on: "FL" },
+        // the screw first, so the buffer stacks on it rather than pushing it off the flap
         { kind: "screw", count: 2, len: 16, dia: 4, at: [-1, 1].map((sx): Vec3 => [sx * (iw / 2 - 20), yU - 30, zf]), dir: [0, 0, 1], on: "FL" },
+        { kind: "washer", name: "Rubber buffer", count: 2, len: 6, dia: 16, at: [-1, 1].map((sx): Vec3 => [sx * (iw / 2 - 20), yU - 30, zf]), dir: [0, 0, 1], on: "FL" },
       ],
       tools: ["screwdriver"],
       from: { FL: [0, 0, 300] },

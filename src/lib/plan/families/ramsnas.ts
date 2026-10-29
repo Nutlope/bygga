@@ -37,8 +37,11 @@ function chair(): CustomParams {
   // IKEA: 48 wide, 52 deep, 83 high; the seat 43 wide and 40 deep, 49 high on the cushion
   const yA0 = 390, yA1 = 455, X = 215, Z0 = -200, Z1 = 200;
   const legs: PartPiece[] = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => rod([sx * (X - 15), yA0, sz * (sz > 0 ? Z1 - 15 : -Z0 - 15)], [sx * (X + 15), 0, sz * (sz > 0 ? Z1 + 30 : -Z0 + 5)], 30, "box")));
-  const xP = X + 10;
-  const post = (sx: number): PartPiece => rod([sx * xP, 0, Z0 - 38], [sx * (xP - 12), 800, Z0 - 70], 18);
+  // each back tube runs from the floor up through the bracket at the back corner of the seat (centre yB, zB)
+  const yB = 422, zB = Z0 - 20, dx = 12 / 800, dz = 32 / 800;
+  const tubeAt = (y: number): [number, number] => [X - dx * (y - yB), zB - dz * (y - yB)];
+  const [xT, zT] = tubeAt(800);
+  const post = (sx: number): PartPiece => rod([sx * tubeAt(0)[0], 0, tubeAt(0)[1]], [sx * xT, 800, zT], 18);
   const parts: CustomPart[] = [
     part("SEAT", "Seat with legs", [
       box([-X, yA0, Z0], [X, yA1, Z1], "metal"),
@@ -49,12 +52,14 @@ function chair(): CustomParams {
     part("BACK", "Back frame", [
       post(-1),
       post(1),
-      rod([-(xP - 12), 805, Z0 - 70], [xP - 12, 805, Z0 - 70], 18),
-      ...[650, 730].map((y) => box([-(xP - 15), y - 22, Z0 - 64], [xP - 15, y + 22, Z0 - 58])),
+      rod([-xT, 805, zT], [xT, 805, zT], 18),
+      ...[650, 730].map((y) => box([-(xT - 3), y - 22, tubeAt(y)[1] + 6], [xT - 3, y + 22, tubeAt(y)[1] + 12])),
     ], "metal"),
   ];
-  const bolts = (sx: number) => fx("bolt", [410, 435].map((y): Vec3 => [sx * (X - 12), y, Z0 - 25]), [sx, 0, 0], "SEAT", { ...BOLT, mate: "BACK" });
-  const washers = (sx: number) => fx("washer", [410, 435].map((y): Vec3 => [sx * (X - 12), y, Z0 - 25]), [sx, 0, 0], "SEAT");
+  // from outside, through the bracket into the tube; the washers sit under the heads
+  const holes = (sx: number) => [410, 435].map((y): Vec3 => [sx * (X + 12), y, zB]);
+  const bolts = (sx: number) => fx("bolt", holes(sx), [-sx, 0, 0], "SEAT", { ...BOLT, mate: "BACK" });
+  const washers = (sx: number) => fx("washer", holes(sx), [-sx, 0, 0], "SEAT");
   const steps: CustomStep[] = [
     {
       title: "Slide the back frame into the seat",
@@ -66,13 +71,13 @@ function chair(): CustomParams {
     {
       title: "Bolt the left bracket by hand",
       detail: "Two bolts with washers through the bracket into the tube. Hold the back frame steady with your other hand.",
-      fix: [washers(-1), bolts(-1)],
+      fix: [bolts(-1), washers(-1)],
       warnings: ["loose"],
     },
     {
       title: "Bolt the right bracket and tighten",
       detail: "Two more bolts on the other side, then tighten all four with the Allen key.",
-      fix: [washers(1), bolts(1)],
+      fix: [bolts(1), washers(1)],
       tools: ["allen"],
     },
     { title: "Stand the chair up", detail: "Turn it over onto its feet. The cushion's cover can be taken off for washing later.", pose: "+y" },

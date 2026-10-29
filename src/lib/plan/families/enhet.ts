@@ -439,7 +439,7 @@ function buildCabinet(b: PlanBuilder, s: ProductSpec, o: CabOpts) {
       bottom = b.place(b.part("Bottom panel", [iw, PT, inD]), [0, PT / 2, D / 2 - inD / 2]);
     } else {
       strips.push(b.place(b.part("Front rail", [iw, PT, front]), [0, PT / 2, D / 2 - front / 2]));
-      if (o.bottom === "strips") backStrip = b.place(b.part("Back rail", [iw, 90, PT]), [0, 45, D / 2 - inD + PT / 2 + 40]);
+      if (o.bottom === "strips") backStrip = b.place(b.part("Back rail", [iw, 90, PT]), [0, PT + 4 + 45, D / 2 - inD + PT / 2 + 40]); // sits on the rods
     }
     railTop = b.place(b.part("Top rail", [iw, 30, 20], { material: "metal" }), [0, H - 15, D / 2 - 30]);
   } else {
@@ -512,7 +512,7 @@ function buildCabinet(b: PlanBuilder, s: ProductSpec, o: CabOpts) {
         const sx = sd === "L" ? -1 : 1, on = sd === "L" ? sideL : sideR;
         const zc = D / 2 - inD / 2;
         runners.push({ on, at: [sx * xi, runnerY(d), zc], dir: [sx, 0, 0], hole: false });
-        for (const z of [-inD / 3, inD / 3]) screws.push({ on, at: [sx * (xi - 12), runnerY(d), zc + z], dir: [sx, 0, 0], hole: false });
+        for (const z of [-inD / 3, inD / 3]) screws.push({ on, at: [sx * (xi - 6), runnerY(d), zc + z], dir: [sx, 0, 0], hole: false });
       }
     return { runners, screws };
   };
@@ -616,11 +616,12 @@ function buildCabinet(b: PlanBuilder, s: ProductSpec, o: CabOpts) {
     if (o.bottom === "strips" && backStrip) {
       step(b, {
         title: "Fit the back rail low at the back",
-        detail: "Turn the two connecting screws into the sides and one into the rail, then slide the rail down onto them.",
+        detail: "Turn the two connecting screws into the rods at the bottom of the sides, then slide the rail down onto them.",
         tools: ["screwdriver"],
       }, () => {
         const bs = b.partItem(backStrip!).final.pos;
-        b.fits(HW.camScrew, [-1, 1].map((sx): FitOpts => ({ on: sx < 0 ? sideL : sideR, at: [sx * xi, bs[1], bs[2]], dir: [sx, 0, 0] })), 0.12);
+        // they stand up out of the rods in the bottom edges, and the rail drops onto them
+        b.fits(HW.camScrew, [-1, 1].map((sx): FitOpts => ({ on: sx < 0 ? sideL : sideR, at: [sx * (iw / 2 - 30), bs[1] - 45, bs[2]], dir: [0, -1, 0] })), 0.12);
         b.then(0.1);
         b.add(backStrip!, [0, 260, 0]);
       });
@@ -699,7 +700,7 @@ function buildCabinet(b: PlanBuilder, s: ProductSpec, o: CabOpts) {
         detail: "Push its dowels into the side, at the back under the top.",
         pose: "-z",
         kind: "join",
-      }, () => b.add(wallRail!, [0, 0, -200]));
+      }, () => b.add(wallRail!, [200, 0, 0]));
       step(b, {
         title: "Click the bottom onto the side",
         detail: "Hook it into the slots and press until it clicks.",

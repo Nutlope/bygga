@@ -126,7 +126,7 @@ function chair(): CustomParams {
       {
         title: "Screw the seat to the frames",
         detail: "Four screws, two through the brackets on each side.",
-        fix: sides.map((sx) => at("screw", [[sx * xT, yR - TUBE / 2, 80], [sx * xT, yR - TUBE / 2, -80]], [0, 1, 0], sx < 0 ? "F0" : "F1", { ...screw, mate: "S" })),
+        fix: sides.map((sx) => at("screw", [[sx * xT, yR - TUBE / 2, 50], [sx * xT, yR - TUBE / 2, -50]], [0, 1, 0], sx < 0 ? "F0" : "F1", { ...screw, mate: "S" })),
         tools: ["screwdriver"],
       },
       {

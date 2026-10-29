@@ -52,6 +52,8 @@ function chair(s: ProductSpec): CustomParams {
     tube([-xl, yTop, zB], [xl, yTop, zB]),
     ...[-1, 1].flatMap((sx) => [tube([sx * xl, yTop, zB], [sx * xl, yBend, zB]), tube([sx * xl, yBend, zB], [sx * xl, yLow, zLow])]),
     tube([-xl, yLow, zLow], [xl, yLow, zLow]),
+    // the bracket welded to the top bar, flat against the backrest, where its four screws go through
+    { shape: "box", size: [90, 50, 4], pos: [0, yTop, zB + T / 2 - 2] },
   ];
   const backT = 50, zBack = zB + T / 2 + backT / 2;
   const tips: Vec3[] = angles.map((a) => [dirOf(a)[0] * R, tipY - T / 2, dirOf(a)[1] * R]);
@@ -69,7 +71,7 @@ function chair(s: ProductSpec): CustomParams {
     { id: "MEC", name: "Mechanism", size: [170, 30, 170], pos: [0, mechY0 + 15, zSeat], material: "metal" },
     { id: "MCOV", name: "Mechanism cover", size: [90, 30, 40], pos: [0, yLow - T / 2 - 15, zLow], material: "board" },
   ];
-  const backScrews: Vec3[] = [-1, 1].flatMap((sx) => [-15, 15].map((dy): Vec3 => [sx * 25, yTop + dy, zB - T / 2]));
+  const backScrews: Vec3[] = [-1, 1].flatMap((sx) => [-15, 15].map((dy): Vec3 => [sx * 25, yTop + dy, zB + T / 2 - 4]));
   const mecScrews: Vec3[] = [-1, 1].flatMap((sx) => [mz0, mz1].map((z): Vec3 => [sx * 70, mechY0, z]));
   const steps: CustomStep[] = [
     { title: "Push the legs into the hub", detail: "All five, each one as far as it goes into its socket.", add: ["HUB", ...legs.map((l) => l.id)] },

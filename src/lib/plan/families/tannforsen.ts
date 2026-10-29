@@ -555,7 +555,7 @@ class WashStand extends Tf {
         () => {
           for (let i = 0; i < us.length - 1; i++) {
             const a = us[i], c = us[i + 1];
-            b.fits(JOIN_SCREW, [a.y0 + a.H - 80, a.y0 + 80].map((y) => ({ on: a.sideR, at: [a.x + a.W / 2 - T, y, a.D / 2 - 40] as Vec3, dir: [-1, 0, 0] as Vec3, mate: c.sideL })), 0.12);
+            b.fits(JOIN_SCREW, [a.y0 + a.H - 80, a.y0 + 80].map((y) => ({ on: a.sideR, at: [a.x + a.W / 2 - T, y, a.D / 2 - 40] as Vec3, dir: [1, 0, 0] as Vec3, mate: c.sideL })), 0.12);
           }
         },
       );
@@ -632,7 +632,7 @@ class WashStand extends Tf {
         wires: (d.wires === 1 ? [0] : [-1, 1]).map((g): FitOpts => ({ on: d.front, at: [d.x + g * (d.fw / 4), d.ys + 14, d.zF], dir: [0, 0, -1] })),
         dowels: [-1, 1].flatMap((g) => [d.ys + d.sh * 0.3, d.ys + d.sh * 0.7].map((y): FitOpts => ({ on: d.sides[g < 0 ? 0 : 1], at: [d.x + g * (d.xs + 6), y, d.zB + 6], dir: [-g, 0, 0], mate: d.back }))),
         locks: [-1, 1].flatMap((g) => [d.ys + 30, d.ys + d.sh - 30].map((y): FitOpts => ({ on: d.back, at: [d.x + g * (xIn - 22), y, d.zB], dir: [0, 0, 1] }))),
-        support: d.support ? [d.zF - 20, d.zB + 50, d.zB + 20].map((z, i): FitOpts => ({ on: d.support!, at: [d.x + (i === 0 ? 0 : i === 1 ? -4 : 4), d.ys - 12, z], dir: [0, 1, 0], mate: d.bottom })) : [],
+        support: d.support ? [d.zF - 45, d.zB + 65, d.zB + 40].map((z, i): FitOpts => ({ on: d.support!, at: [d.x + (i === 0 ? 0 : i === 1 ? -4 : 4), d.ys - 12, z], dir: [0, 1, 0], mate: d.bottom })) : [],
         divWires: d.dividers.flatMap((k) => {
           const p = this.pos(k);
           return [p[2] - (d.zF - d.zB) / 2 + 60, p[2] + (d.zF - d.zB) / 2 - 60].map((z): FitOpts => ({ on: d.bottom, at: [p[0], d.ys + 8, z], dir: [0, -1, 0] }));

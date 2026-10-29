@@ -44,8 +44,15 @@ function recipe(s: ProductSpec): CustomParams | null {
     { shape: "box", size: [440, 110, 50], pos: [0, -backH / 2 + 230, 16], material: "soft" },
   ];
   const brkPieces: PartPiece[] = [
-    { shape: "box", size: [70, 16, 200], pos: [0, -120, 50] },
+    { shape: "box", size: [70, 40, 200], pos: [0, -120, 50] }, // the sleeve that slides over the mechanism's arm
     { shape: "box", size: [70, 260, 16], pos: [0, 0, -50] },
+  ];
+  // the mechanism, with its arm reaching back into the back bracket's sleeve
+  const armZ = backZ + 12, mz1Body = zSeat - 20 + 130, mz0Body = zSeat - 20 - 130;
+  const mecZ = (armZ + mz1Body) / 2;
+  const mecPieces: PartPiece[] = [
+    { shape: "box", size: [220, 50, 260], pos: [0, 0, zSeat - 20 - mecZ] },
+    { shape: "box", size: [50, 20, mz0Body - armZ], pos: [0, -23, (mz0Body + armZ) / 2 - mecZ] },
   ];
   const armY = 690;
   const armPieces = (sx: number): PartPiece[] => [
@@ -58,7 +65,7 @@ function recipe(s: ProductSpec): CustomParams | null {
   const parts: CustomPart[] = [
     { id: "BASE", name: "Star base", size: [2 * R, 70, 2 * R], pos: [0, baseY, 0], pieces: basePieces, material: "metal" },
     { id: "GAS", name: "Gas lift", size: [50, mechY0 - 90 + 20, 50], pos: [0, (mechY0 + 20 + 90) / 2, 0], shape: "cyl", material: "metal" },
-    { id: "MEC", name: "Tilt mechanism", size: [220, 50, 260], pos: [0, mechY0 + 25, zSeat - 20], material: "metal" },
+    { id: "MEC", name: "Tilt mechanism", size: [220, 50, mz1Body - armZ], pos: [0, mechY0 + 25, mecZ], pieces: mecPieces, material: "metal" },
     { id: "SEAT", name: "Seat", size: [seatW, seatT, seatD], pos: [0, seatY0 + seatT / 2, zSeat], material: "soft" },
     { id: "BRK", name: "Back bracket", size: [70, 260, 116], pos: [0, mechY0 + 130 - 8, backZ + 58], pieces: brkPieces, material: "metal" },
     { id: "BACK", name: "Backrest", size: [500, backH, 60], pos: [0, backY0 + backH / 2, backZ - 30], pieces: backPieces, material: "soft" },
@@ -71,7 +78,7 @@ function recipe(s: ProductSpec): CustomParams | null {
   const mz0 = zSeat - 20 - 100, mz1 = zSeat - 20 + 100;
   const backBolts: Vec3[] = [[-80, mechY0, mz0], [80, mechY0, mz0]];
   const frontBolts: Vec3[] = [[-80, mechY0, mz1], [80, mechY0, mz1]];
-  const brkBolts: Vec3[] = [-40, 0, 40].map((dz, i) => [35, mechY0 + 20 + i * 18, backZ + 60 + dz] as Vec3);
+  const brkBolts: Vec3[] = [-40, 0, 40].map((dz) => [35, mechY0 + 2, backZ + 60 + dz] as Vec3);
   const armBolts = (sx: number): Vec3[] => [-60, 60].map((dz) => [sx * (armX - 30 - 30), seatY0 + 30, zSeat + dz] as Vec3);
   const steps: CustomStep[] = [
     {

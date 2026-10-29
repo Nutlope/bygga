@@ -163,7 +163,9 @@ function recipe(s: ProductSpec): CustomParams | null {
   const both = (f: (sx: -1 | 1) => Vec3[]) => [...f(-1), ...f(1)];
   const railPts = both((sx) => [[sx * ax, 250, -192], [sx * ax, 250, -168]] as Vec3[]);
   const railNuts = railPts.map((p) => [p[0], 200, p[2]] as Vec3);
-  const rollPts = both((sx) => [[sx * (hx + 9), 280, -150]] as Vec3[]);
+  // across, from inside the frame's side tube near its bottom end, out through the roller arm
+  const rollAt = (sx: number) => lb.p(sx * (hx - 25), 5, -12);
+  const rollPts = both((sx) => [rollAt(sx)] as Vec3[]);
   const leverPts = both((sx) => [[sx * (hx + 10), 285, -385]] as Vec3[]);
   const legPts = both((sx) => [[sx * lx, 287, zs1 - 18]] as Vec3[]);
   const pivots = both((sx) => [[sx * (hx + 10), 280, -337]] as Vec3[]);
@@ -184,9 +186,13 @@ function recipe(s: ProductSpec): CustomParams | null {
     },
     {
       title: "Bolt the roller arms to the backrest section",
-      detail: "Stand the section on its long edge, one of you holding it. The rollers face out, as in the drawing. One bolt with a plain shank down through each bracket, washer and nut under it.",
+      detail: "Stand the section on its long edge, one of you holding it. The rollers face out, as in the drawing. One bolt with a plain shank through the side of the frame and each arm, washer and nut on the outside.",
       add: ["B", "WL", "WR"],
-      fix: [at("bolt", rollPts, [0, -1, 0], undefined, "B", SHANK), at("washer", rollPts.map((p) => [p[0], 262, p[2]] as Vec3), [0, 1, 0], undefined, undefined, WASHER), at("nut", rollPts.map((p) => [p[0], 258, p[2]] as Vec3), [0, 1, 0], undefined, undefined, NUT)],
+      fix: [
+        ...[-1, 1].map((sx) => at("bolt", [rollAt(sx)], [sx, 0, 0], "B", sx < 0 ? "WL" : "WR", SHANK)),
+        ...[-1, 1].map((sx) => at("washer", [[sx * (hx + 17), rollAt(sx)[1], rollAt(sx)[2]]], [-sx, 0, 0], undefined, undefined, WASHER)),
+        ...[-1, 1].map((sx) => at("nut", [[sx * (hx + 19), rollAt(sx)[1], rollAt(sx)[2]]], [-sx, 0, 0], undefined, undefined, NUT)),
+      ],
       tools: ["allen", "wrench"],
       people: 2,
       warnings: ["two"],

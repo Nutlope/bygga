@@ -397,7 +397,7 @@ function build(b: PlanBuilder, s: ProductSpec): boolean {
     step({ title: "Cut the two ties that hold the bed folded", detail: "Stand the frame on the floor with the folded bed inside it, and throw the ties away.", scene: bs }, () => show(bs, m, [rec(m, m.k.frame)], [0, 200, 0]));
     step({ title: "Hang the front panel on its two brackets", detail: "One of you at each end. Lower it straight down until both ends sit on the brackets.", scene: bs, kind: "join", people: 2 }, () => show(bs, m, [rec(m, m.k.front)], [0, 260, 160]));
     step({ title: "Lock the front panel with the wing screw", detail: "One of you lifts the front of the bed a little; the other turns the wing screw in through the middle bracket by hand.", scene: bs, kind: "screws", people: 2, warnings: ["two", "hand"] }, () => {
-      fit(WSCREW, [{ ...at(m, [0, LEG + 50, D / 2 - 60], [0, 0, 1], m.k.front, m.k.frame), travel: 70, spin: 3 }]);
+      fit(WSCREW, [{ ...at(m, [0, LEG + 50, D / 2 - 48], [0, 0, 1], m.k.front, m.k.frame), travel: 70, spin: 3 }]);
     });
     step({ title: "Unfold the bed", detail: "Together: lift the seat part up and out, then swing the leg frame over and down onto the floor.", scene: bs, people: 2 });
     step({ title: "Lower the backrest onto the side plates", detail: "Fit the holes at the bottom of the backrest over the pins on both side plates and press it down.", scene: bs, kind: "join", people: 2 }, () => show(bs, m, [rec(m, m.k.back)], [0, 380, 0]));

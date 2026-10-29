@@ -40,8 +40,6 @@ function gridOf(s: ProductSpec): Grid | null {
   const p = s.shelf;
   if (s.archetype !== "shelf" || p?.style !== "grid" || !p.cols || !p.rows) return null;
   const cols = p.cols, rows = p.rows;
-  // no manual for the 3x3
-  if (cols === 3 && rows === 3) return null;
   const U = p.underframe ? Math.round(p.underframe * 10) : 0;
   const W = s.size.w * 10, H = s.size.h * 10 - U, D = s.size.d * 10;
   const T = p.outer ?? 40, ti = p.inner ?? 16;
@@ -98,18 +96,22 @@ function frameRecipe(s: ProductSpec, g: Grid): { recipe: CustomParams; topId: st
     ...o,
   });
   const pair = (x: number, y: number): Vec3[] => [[x, y, -zs], [x, y, zs]];
+  // the 3x3's manual puts two dowels side by side at the front and the back of each joint
+  const dpair = (x: number, y: number): Vec3[] => (g.cols === 3 && g.rows === 3 ? [-zs, -zs + 32, zs - 32, zs].map((z) => [x, y, z] as Vec3) : pair(x, y));
   const boltsTop = (side: "B" | "C") => fix("bolt", "A", side, [0, -1, 0], pair(side === "B" ? xB : xC, Ht), { len: BOLT.len, dia: BOLT.dia });
   const boltsBottom = (side: "B" | "C") => fix("bolt", "D", side, [0, 1, 0], pair(side === "B" ? xB : xC, 0), { len: BOLT.len, dia: BOLT.dia });
   const vIds = (j: number) => Array.from({ length: ct - 1 }, (_, i) => `V${j}_${i + 1}`);
   const above = (j: number) => (j === 1 ? "A" : `S${j - 1}`);
   const below = (j: number) => (j === rt ? "D" : `S${j}`);
-  const vTops = (j: number) => vIds(j).map((id, i) => fix("dowel", id, above(j), [0, -1, 0], pair(divX(i + 1), rowTop(j))));
-  const vBottoms = (j: number) => vIds(j).map((id, i) => fix("dowel", id, below(j), [0, 1, 0], pair(divX(i + 1), rowTop(j) - cellH)));
-  const shelfFace = (k: number) => fix("dowel", `S${k}`, undefined, [0, 1, 0], vIds(k + 1).flatMap((_, i) => pair(divX(i + 1), shelfY(k) - ti / 2)));
+  const vTops = (j: number) => vIds(j).map((id, i) => fix("dowel", id, above(j), [0, -1, 0], dpair(divX(i + 1), rowTop(j))));
+  const vBottoms = (j: number) => vIds(j).map((id, i) => fix("dowel", id, below(j), [0, 1, 0], dpair(divX(i + 1), rowTop(j) - cellH)));
+  const shelfFace = (k: number) => fix("dowel", `S${k}`, undefined, [0, 1, 0], vIds(k + 1).flatMap((_, i) => dpair(divX(i + 1), shelfY(k) - ti / 2)));
   const shelfEnd = (k: number, side: "B" | "C") =>
-    fix("dowel", `S${k}`, side, [side === "B" ? 1 : -1, 0, 0], pair(side === "B" ? -Wt / 2 + T : Wt / 2 - T, shelfY(k)));
+    fix("dowel", `S${k}`, side, [side === "B" ? 1 : -1, 0, 0], dpair(side === "B" ? -Wt / 2 + T : Wt / 2 - T, shelfY(k)));
 
   const steps: CustomStep[] = [];
+  const two = g.cols === 3 && g.rows === 3 ? "four" : "two";
+  const Two = two[0].toUpperCase() + two.slice(1);
   const many = (n: number, one: string, more: string) => (n === 1 ? one : more);
   steps.push({
     title: `Bolt ${w.A} to ${w.B}`,
@@ -144,7 +146,7 @@ function frameRecipe(s: ProductSpec, g: Grid): { recipe: CustomParams; topId: st
   } else {
     steps.push({
       title: many(ct - 1, `Tap dowels into a ${w.V} and push it onto ${w.A}`, `Tap dowels into ${ct - 1} ${w.Vs} and push them onto ${w.A}`),
-      detail: "Two dowels go into one end of each, and that end goes into the panel. The other end stays plain.",
+      detail: `${Two} dowels go into one end of each, and that end goes into the panel. The other end stays plain.`,
       add: vIds(1),
       fix: vTops(1),
       tools: ["hammer"],
@@ -154,20 +156,20 @@ function frameRecipe(s: ProductSpec, g: Grid): { recipe: CustomParams; topId: st
       steps.push({
         title: `Slide in ${k === 1 ? "a" : "the next"} ${w.S}`,
         detail: both
-          ? "Tap two dowels into each end first. It goes in along the row, its end into the side."
-          : "Tap two dowels into the end that goes into the side, then push it against the row.",
+          ? `Tap ${two} dowels into each end first. It goes in along the row, its end into the side.`
+          : `Tap ${two} dowels into the end that goes into the side, then push it against the row.`,
         add: [`S${k}`],
         fix: both ? [shelfEnd(k, "B"), shelfEnd(k, "C")] : [shelfEnd(k, "B")],
         tools: ["hammer"],
       });
       if (ct > 1) {
-        steps.push({ title: `Tap dowels into the ${w.S} for the next row`, detail: "Into the holes on its open face, two for each piece.", fix: [shelfFace(k)], tools: ["hammer"] });
+        steps.push({ title: `Tap dowels into the ${w.S} for the next row`, detail: `Into the holes on its open face, ${two} for each piece.`, fix: [shelfFace(k)], tools: ["hammer"] });
         steps.push({ title: many(ct - 1, `Push in the next ${w.V}`, `Push in the next row of ${w.Vs}`), detail: "Plain end first against the row before, onto the dowels.", add: vIds(k + 1) });
       }
     }
     if (g.pattern === "big") {
       steps.push({ title: `Fit ${w.C}`, detail: rt > 1 ? `Turn it up onto the ends of the ${w.Ss}, then bolt it to the first panel.` : "Stand it on its edge against the first panel and bolt it on.", add: ["C"], fix: [boltsTop("C")], tools: ["allen"] });
-      if (ct > 1) steps.push({ title: many(ct - 1, `Tap dowels into the free end of the ${w.V}`, `Tap dowels into the last row of ${w.Vs}`), detail: "Into the open ends, two in each.", fix: vBottoms(rt), tools: ["hammer"] });
+      if (ct > 1) steps.push({ title: many(ct - 1, `Tap dowels into the free end of the ${w.V}`, `Tap dowels into the last row of ${w.Vs}`), detail: `Into the open ends, ${two} in each.`, fix: vBottoms(rt), tools: ["hammer"] });
       steps.push({
         title: `Bolt on ${w.Dd}`,
         detail: "Turn it up onto the dowels, then two bolts at each end. Tighten all the bolts now.",
@@ -179,7 +181,7 @@ function frameRecipe(s: ProductSpec, g: Grid): { recipe: CustomParams; topId: st
     } else {
       steps.push({
         title: "Tap dowels into the open ends",
-        detail: `Two into each ${w.S} end and two into each piece in the last row.`,
+        detail: `${Two} into each ${w.S} end and ${two} into each piece in the last row.`,
         fix: [...Array.from({ length: rt - 1 }, (_, i) => shelfEnd(i + 1, "C")), ...vBottoms(rt)],
         tools: ["hammer"],
       });
@@ -202,7 +204,7 @@ function frameRecipe(s: ProductSpec, g: Grid): { recipe: CustomParams; topId: st
     const zp = D / 2 - 40;
     const xs = lying
       ? [0, 1, 2, 3].map((i) => -g.W / 2 + 40 + ((g.W - 80) * i) / 3)
-      : g.ct >= 4
+      : g.ct >= 4 || (g.ct === 3 && g.rt === 3) // the 3x3's manual has a pad under each upright too
         ? [-g.W / 2 + T / 2, ...Array.from({ length: g.ct - 1 }, (_, i) => divX(i + 1)), g.W / 2 - T / 2]
         : [-g.W / 2 + 40, g.W / 2 - 40];
     for (const z of [-zp, zp]) for (const x of xs) pads.push([x, 0, z]);

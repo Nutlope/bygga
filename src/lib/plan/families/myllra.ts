@@ -191,7 +191,8 @@ function cot(s: ProductSpec): CustomParams {
       add: ["C0", "E0"],
       fix: endFix(-1),
       tools: ["hammer"],
-      from: { C0: [-300, 0, 0], E0: [-300, 0, 0] },
+      // the built end comes in on a slant, along its own dowels and onto the box's pins at once
+      from: { C0: [-300, 300, 0], E0: [-300, 300, 0] },
     },
     {
       title: "Stand the box on its end on the end panel",
@@ -206,7 +207,7 @@ function cot(s: ProductSpec): CustomParams {
       detail: "Pins, dowels and shell as before. Lay it on top so every pin and dowel finds its hole.",
       add: ["C1", "E1"],
       fix: endFix(1),
-      from: { C1: [300, 0, 0], E1: [300, 0, 0] },
+      from: { C1: [300, 300, 0], E1: [300, 300, 0] },
     },
     { title: "Lock this end", detail: "Four cam locks: two in the top boards and two in the bottom end board.", fix: endLock(1) },
     { title: "Screw in the legs", detail: "Four legs into the bottom end boards by hand, with a glide pushed into each foot.", add: ["LG0", "LG1", "LG2", "LG3"], fix: legFix },
@@ -217,6 +218,8 @@ function cot(s: ProductSpec): CustomParams {
       detail: "Lay the drawer front face down on a rug. Four cam pins into it, a dowel in the front end of each side, then stand the sides on it.",
       add: ["DF", "DS0", "DS1"],
       fix: [...dfPins, ...dsDowels],
+      // the front first, then the sides pushed straight onto its pins
+      from: { DF: [0, 0, -250], DS0: [0, 0, -350], DS1: [0, 0, -350] },
       warnings: ["floor"],
     },
     { title: "Lock the sides to the front", detail: "Four small cam locks.", fix: frontCams },
@@ -315,8 +318,8 @@ function changingTable(): CustomParams {
   });
   const drawerIds = (k: string) => [0, 1].map((i) => `${k}${i}`);
   const sides = ["DS00", "DS01", "DS10", "DS11"];
-  // dowels and cam pins in the inside faces of the side panels, where the box's boards meet them
-  const dowelSpots: [number, number][] = [[349, zb + 40], [349, zb + 110], [349, zf - 110], [349, zf - 40], [591, -200], [591, 100], [815, zb + 9]];
+  // dowels and cam pins in the inside faces of the side panels, where the box's boards meet them (none at the shelf: it slides in)
+  const dowelSpots: [number, number][] = [[349, zb + 40], [349, zb + 110], [349, zf - 110], [349, zf - 40], [349, -150], [349, 60], [815, zb + 9]];
   const pinSpots: [number, number][] = [[840, zb + 9], [349, zb + 75], [349, zf - 75]];
   const sidePts = (kind: CustomFix["kind"], spots: [number, number][], o: Partial<CustomFix>): CustomFix[] =>
     [-1, 1].flatMap((g) => fx(kind, spots.map(([y, z]): [Vec3, Vec3] => [[g < 0 ? xl + T : xr - T, y, z], [g, 0, 0]]), { ...o, on: g < 0 ? "SL" : "SR" }));
@@ -347,7 +350,11 @@ function changingTable(): CustomParams {
     { title: "Lay the other side panel on top", detail: "Together, so every pin and dowel finds its hole." },
     { title: "Lock this side", detail: "Six double cam locks.", fix: [n("cam", 6, ["SR"], { ...CAM, name: "Double cam lock" })] },
     { title: "Turn it over and lock the first side", detail: "Together. Four cam locks.", fix: [n("cam", 4, ["SL"], CAM)], pose: "-x", people: 2, warnings: ["two"] },
-    { title: "Stand it up and fit the shelf", detail: "Three dowels in its back edge, four shelf supports in the side panels, then slide it in from the front.", add: ["SH"], fix: [n("dowel", 3, ["SH"], D), n("pin", 4, ["SH"], { name: "Shelf support", len: 20, dia: 10 })], pose: "+y", from: { SH: [0, 0, 400] } },
+    { title: "Stand it up and fit the shelf", detail: "Three dowels in its back edge, four shelf supports in the side panels, then slide it in from the front.", add: ["SH"], fix: [
+      // the dowels stand out of its back edge, so it slides in along them; the supports go in the side panels under it
+      ...fx("dowel", [-250, 0, 250].map((x): [Vec3, Vec3] => [[40 + x, 591, zb + T], [0, 0, 1]]), { ...D, on: "SH" }),
+      ...[-1, 1].flatMap((g) => fx("pin", [zb + 80, zf - 80].map((z): [Vec3, Vec3] => [[g < 0 ? xl + T : xr - T, 578, z], [g, 0, 0]]), { name: "Shelf support", len: 20, dia: 10, on: g < 0 ? "SL" : "SR" })),
+    ], pose: "+y", from: { SH: [0, 0, 400] } },
     { title: "Dowel the changing top", detail: "Seven dowels and four cam pins in its edges.", fix: [n("dowel", 7, ["TP"], D), n("camScrew", 4, ["TP"], PIN)] },
     { title: "Lower the changing top on", detail: "Onto the left side panel and against the right one, overhanging on the left.", add: ["TP"], from: { TP: [0, 300, 0] } },
     { title: "Fix the top from underneath", detail: "Six screws up through the brackets inside the top of the carcass.", fix: [n("screw", 6, ["TP"], { len: 16, dia: 6 })], tools: ["screwdriver"] },
@@ -365,11 +372,33 @@ function changingTable(): CustomParams {
       wall: true,
       warnings: ["wall", "tip"],
     },
-    { title: "Dowel the frame of the pull-out board", detail: "Eight dowels join the four strips round the board.", add: ["PO"], fix: [n("dowel", 8, ["PO"], D)], from: { PO: [0, 0, 500] } },
+    {
+      title: "Dowel the frame of the pull-out board",
+      detail: "Eight dowels join the four strips round the board.",
+      add: ["PO"],
+      // two in each end of the side strips, into the front and back strips
+      fix: [px0 + 15, px1 - 15].flatMap((x) => fx("dowel", [609, 621].flatMap((y): [Vec3, Vec3][] => [[[x, y, pz0 + 30], [0, 0, 1]], [[x, y, zf + T - 30], [0, 0, -1]]]), { ...D, on: "PO" })),
+      from: { PO: [0, 0, 500] },
+    },
     { title: "Screw in its cam pins and lock it", detail: "Nine cam pins and nine small cam locks.", fix: [n("camScrew", 9, ["PO"], PIN), n("cam", 9, ["PO"], { dia: 12, name: "Small cam lock" })] },
     { title: "Screw the slides under the pull-out board", detail: "Three screws each side, then push it in on its runners.", fix: fx("screw", [-1, 1].flatMap((g) => [0.2, 0.5, 0.8].map((t): [Vec3, Vec3] => [[g < 0 ? px0 + 10 : px1 - 10, 603, pz0 + t * (zf - pz0)], [0, 1, 0]])), SCR), tools: ["screwdriver"] },
-    { title: "Fit cam pins into the drawer fronts", detail: "Build both drawers the same way. Lay each front face down, four cam pins in it.", add: drawerIds("DF"), fix: [n("camScrew", 8, drawerIds("DF").concat(sides), PIN)], repeat: 2, warnings: ["floor"] },
-    { title: "Tap dowels into the drawer sides and stand them on", detail: "Three dowels into the front end of each side, then press the sides onto the front.", add: sides, fix: [n("dowel", 12, sides, D)], repeat: 2 },
+    {
+      title: "Fit cam pins into the drawer fronts",
+      detail: "Build both drawers the same way. Lay each front face down, four cam pins in it.",
+      add: drawerIds("DF"),
+      fix: dr.flatMap((d, i) => fx("camScrew", [d.bx0 + 8, d.bx1 - 8].flatMap((x) => [d.by0 + 70, d.by1 - 70].map((y): [Vec3, Vec3] => [[x, y, zf], [0, 0, 1]])), { ...PIN, on: `DF${i}` })),
+      from: { DF0: [0, 0, 300], DF1: [0, 0, 300] },
+      repeat: 2,
+      warnings: ["floor"],
+    },
+    {
+      title: "Tap dowels into the drawer sides and stand them on",
+      detail: "Three dowels into the front end of each side, then press the sides onto the front.",
+      add: sides,
+      fix: dr.flatMap((d, i) => [d.bx0 + 8, d.bx1 - 8].flatMap((x, j) => fx("dowel", [d.by0 + 30, (d.by0 + d.by1) / 2, d.by1 - 30].map((y): [Vec3, Vec3] => [[x, y, zf], [0, 0, -1]]), { ...D, on: `DS${i}${j}` }))),
+      from: Object.fromEntries(sides.map((id) => [id, [0, 0, -300] as Vec3])),
+      repeat: 2,
+    },
     { title: "Lock the sides to the fronts", detail: "Four small cam locks in each drawer.", fix: [n("cam", 8, sides, { dia: 12, name: "Small cam lock" })], repeat: 2 },
     { title: "Slide the bottoms in", detail: "Into the grooves, smooth side up.", add: drawerIds("DB"), repeat: 2 },
     { title: "Fit the backs with their connectors", detail: "Press each back on, then push four connectors through the sides into it and lock it with four small cam locks.", add: drawerIds("DK"), fix: [n("dowel", 8, drawerIds("DK"), { name: "Back connector", len: 40, dia: 8 }), n("cam", 8, drawerIds("DK"), { dia: 12, name: "Small cam lock" })], repeat: 2 },
@@ -378,8 +407,17 @@ function changingTable(): CustomParams {
     { title: "Screw on the knobs", detail: "One screw from the back of each front.", fix: fx("knob", dr.map((d): [Vec3, Vec3] => [[40, (d.y0 + d.y1) / 2, zf + T], [0, 0, -1]]), { dia: 45 }), tools: ["screwdriver"] },
     { title: "Screw the drawer stops to the backs", detail: "Two small screws in each drawer back.", fix: [n("screw", 4, drawerIds("DK"), { len: 12, dia: 4 })], tools: ["screwdriver"] },
     { title: "Hang the drawers on their runners", detail: "Pull the runners out, set each drawer on, push it home. Use the adjusters to even the gaps." },
-    { title: "Screw cam pins into the guards", detail: "Six cam pins along the back guard and the end guard.", fix: [n("camScrew", 6, ["RB", "RL"], PIN)] },
-    { title: "Fit the guards round the changing top", detail: "Back guard first, then the end guard and the front guard slid on from the side.", add: ["RB", "RL", "RF"] },
+    {
+      title: "Screw cam pins into the guards",
+      detail: "Six cam pins along the bottom edges of the back guard and the end guard.",
+      // the guards wait beside the cot until they go on
+      wait: ["RB", "RL"],
+      fix: [
+        ...fx("camScrew", spread(xt + 100, xr - T - 100, 4).map((x): [Vec3, Vec3] => [[x, rimY, zb + T / 2], [0, 1, 0]]), { ...PIN, on: "RB" }),
+        ...fx("camScrew", spread(zb + T + 100, zt - T - 100, 2).map((z): [Vec3, Vec3] => [[xt + T / 2, rimY, z], [0, 1, 0]]), { ...PIN, on: "RL" }),
+      ],
+    },
+    { title: "Fit the guards round the changing top", detail: "Back guard first, then the end guard and the front guard slid on from the side.", add: ["RB", "RL", "RF"], from: { RB: [0, 300, 0], RL: [0, 300, 0], RF: [-300, 0, 0] } },
     { title: "Lock the guards", detail: "Two cam locks and four double cam locks from inside.", fix: [n("cam", 2, ["RF"], CAM), n("cam", 4, ["RB", "RL"], { ...CAM, name: "Double cam lock" })] },
     {
       title: "Screw the connecting plates on",

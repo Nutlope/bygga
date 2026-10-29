@@ -28,16 +28,22 @@ function recipe(s: ProductSpec): CustomParams {
     return { shape: "box", size: [t, len, t], pos: [0, (y0 + y1) / 2 - c[1], sz * zAt((y0 + y1) / 2) - c[2]], rot: [-sz * lean, 0, 0] };
   };
   const frame = (sx: number): CustomPart => {
-    const c: Vec3 = [sx * afx, (yUp0 + cbY + 15) / 2, 0];
+    const c: Vec3 = [sx * afx, (yUp0 + yTop + 10) / 2, 0];
     const yS = 300;
     return {
       id: sx < 0 ? "AL" : "AR",
       name: "A-frame",
-      size: [40, cbY + 15 - yUp0, 2 * zAt(yUp0) + 40],
+      size: [40, yTop + 10 - yUp0, Math.max(2 * zAt(yUp0) + 40, D - 100)],
       pos: c,
       material: "metal",
       pieces: [
-        { shape: "box", size: [40, 30, 2 * zAt(cbY) + 120], pos: [0, cbY - c[1], 0] },
+        { shape: "box", size: [40, 30, D - 100], pos: [0, cbY - c[1], 0] },
+        // raised brackets on the crossbar, up to the top's underside, where it bolts to the top and the mesh strip
+        // (the mesh strip sits 10 higher than the top's underside)
+        ...[
+          [D / 2 - 250, rH],
+          [-D / 2 + 75, rH + 10],
+        ].map(([z, h]): PartPiece => ({ shape: "box", size: [40, h, 40], pos: [0, cbY + 15 + h / 2 - c[1], z] })),
         ...[-1, 1].map((sz) => leg(yUp0, cbY - 15, sz, c, 40)),
         { shape: "box", size: [30, 30, 2 * zAt(yS)], pos: [0, yS - c[1], 0] },
       ],
@@ -115,7 +121,7 @@ function recipe(s: ProductSpec): CustomParams {
       detail: "Five bolts through each rail and two through each crossbar, the back ones into the mesh strip.",
       fix: [
         ...[-1, 1].map((sz) => fx("bolt", [-700, -350, 0, 350, 700].map((x): Vec3 => [x, yTop - rH, sz * zTR]), [0, 1, 0], sz < 0 ? "TRB" : "TRF", "TOP", { len: 30, dia: 6 })),
-        ...[-1, 1].map((sx) => fx("bolt", [D / 2 - 250, zMesh].map((z): Vec3 => [sx * afx, cbY - 15, z]), [0, 1, 0], sx < 0 ? "AL" : "AR", undefined, { len: 40, dia: 6 })),
+        ...[-1, 1].map((sx) => fx("bolt", [[sx * afx, cbY + 13, D / 2 - 250], [sx * afx, cbY + 22, zMesh]], [0, 1, 0], sx < 0 ? "AL" : "AR", undefined, { len: 40, dia: 6 })),
       ],
       tools: ["allen"],
     },

@@ -33,30 +33,36 @@ function recipe(s: ProductSpec) {
   const zl = -60;
   const footY = 12, footH = 26;
   const legY0 = footY + footH, legY1 = yU - 30;
-  const xb = xl - LW / 2; // beam ends
+  const xb = xl; // beam ends: they slide into the heads on top of the legs
 
   const parts: CustomPart[] = [];
   parts.push({ id: "TOP", name: "Table top", size: [TW, T, TD], pos: [0, H - T / 2, 0] });
   // the beam: two steel channels, open at the top, the second sliding inside the first
   const half = xb + 120;
-  const channel = (len: number, d: number, h: number): PartPiece[] => [
+  // each half has a tab across its top, halfway along, for a screw up into the top
+  const channel = (len: number, d: number, h: number, tab: number): PartPiece[] => [
     { shape: "box", size: [len, 3, d], pos: [0, -h / 2 + 1.5, 0] },
     ...[-1, 1].map((sz): PartPiece => ({ shape: "box", size: [len, h, 3], pos: [0, 0, sz * (d / 2 - 1.5)] })),
+    { shape: "box", size: [30, 3, d], pos: [tab, h / 2 - 1.5, 0] },
   ];
-  parts.push({ id: "BA", name: "Beam half", size: [half, 50, 60], pos: [-xb + half / 2, yU - 25, zl], material: "metal", pieces: channel(half, 60, 50) });
-  parts.push({ id: "BB", name: "Beam half, inner", size: [half, 46, 53], pos: [xb - half / 2, yU - 27, zl], material: "metal", pieces: channel(half, 53, 46) });
+  parts.push({ id: "BA", name: "Beam half", size: [half, 50, 60], pos: [-xb + half / 2, yU - 25, zl], material: "metal", pieces: channel(half, 60, 50, -xb * 0.5 - (-xb + half / 2)) });
+  parts.push({ id: "BB", name: "Beam half, inner", size: [half, 46, 53], pos: [xb - half / 2, yU - 27, zl], material: "metal", pieces: channel(half, 53, 46, xb * 0.5 - (xb - half / 2)) });
 
-  const legPieces = (len: number): PartPiece[] =>
-    sit
+  // the head on top of each leg takes the beam's end (on the sit/stand legs it holds the gearbox)
+  const headY = yU - 45, headH = 30; // the head's middle, relative to the floor
+  const legPieces = (len: number): PartPiece[] => {
+    const head: PartPiece = { shape: "box", size: [LW + 16, headH, 70], pos: [0, headY - (legY0 + legY1) / 2, 0] };
+    return sit
       ? [
           { shape: "box", size: [LW + 10, len * 0.5, LD + 10], pos: [0, -len * 0.25, 0] },
           { shape: "box", size: [LW, len * 0.5, LD], pos: [0, len * 0.25, 0] },
-          { shape: "box", size: [LW + 16, 70, LD + 30], pos: [0, len / 2 - 35, 0] },
+          head,
         ]
-      : [{ shape: "box", size: [LW, len, LD], pos: [0, 0, 0] }];
+      : [{ shape: "box", size: [LW, len, LD], pos: [0, 0, 0] }, head];
+  };
   const legLen = legY1 - legY0;
   for (const sx of [-1, 1]) {
-    parts.push({ id: `L${sx}`, name: "Leg", size: [sit ? LW + 16 : LW, legLen, sit ? LD + 30 : LD], pos: [sx * xl, (legY0 + legY1) / 2, zl], material: "metal", pieces: legPieces(legLen) });
+    parts.push({ id: `L${sx}`, name: "Leg", size: [LW + 16, legLen, 70], pos: [sx * xl, (legY0 + legY1) / 2, zl], material: "metal", pieces: legPieces(legLen) });
     parts.push({ id: `S${sx}`, name: "Top support", size: [50, 30, TD - 120], pos: [sx * xl, yU - 15, 0], material: "metal" });
     parts.push({ id: `F${sx}`, name: "Foot bar", size: [70, footH, TD - 40], pos: [sx * xl, footY + footH / 2, 0], material: "metal" });
   }
@@ -64,12 +70,14 @@ function recipe(s: ProductSpec) {
     parts.push({ id: "SH", name: "Drive shaft", size: [2 * xl - 40, 14, 14], pos: [0, yU - 30, zl], shape: "cyl", material: "metal" });
     // the crank folds against the right end, its handle out past the top
     const reach = Math.max(80, W - TW);
-    const x0 = xl + 40, x1 = TW / 2 + reach - 20;
+    // its bracket plate sits on the outer face of the right leg's head
+    const x0 = xl + (LW + 16) / 2, x1 = TW / 2 + reach - 20;
     const crank: PartPiece[] = [
-      { shape: "box", size: [x1 - x0, 20, 30], pos: [0, 0, 0] },
-      { shape: "cyl", size: [22, 90, 22], pos: [(x1 - x0) / 2, -45, 0] },
+      { shape: "box", size: [6, 30, 50], pos: [-(x1 - x0) / 2 + 3, 0, 0] },
+      { shape: "box", size: [x1 - x0 - 6, 20, 30], pos: [3, -20, 0] },
+      { shape: "cyl", size: [22, 90, 22], pos: [(x1 - x0) / 2, -65, 0] },
     ];
-    parts.push({ id: "CR", name: "Crank", size: [x1 - x0, 110, 30], pos: [(x0 + x1) / 2, yU - 90, zl + 50], material: "metal", pieces: crank });
+    parts.push({ id: "CR", name: "Crank", size: [x1 - x0, 130, 50], pos: [(x0 + x1) / 2, headY, zl + 20], material: "metal", pieces: crank });
   }
   // the cable tray hangs from the back of the beam
   const trW = Math.round(TW * 0.45), trH = 90, trD = 90;
@@ -95,9 +103,10 @@ function recipe(s: ProductSpec) {
   const beamNuts: CustomFix = { kind: "nut", count: 4, len: 6, dia: 6, at: sides.flatMap((sz) => [-40, 40].map((x): Vec3 => [x, yU - 25, zl - sz * 27])), dir: [0, 0, 1], on: "BB" };
   const SHOULDER = { kind: "bolt" as const, name: "Shoulder bolt", len: 20, dia: 8 };
   const legBolts: CustomFix[] = [
-    { ...SHOULDER, count: 2, at: sides.map((sx): Vec3 => [sx * (xb - 25), yU - 50, zl]), dir: [0, 1, 0] },
+    // down through the beam's floor into the head, and two through each face of the head into the beam's sides
+    { ...SHOULDER, count: 2, at: sides.map((sx): Vec3 => [sx * xb, yU - 47, zl]), dir: [0, -1, 0] },
     ...sides.flatMap((sx) =>
-      sides.map((sz): CustomFix => ({ ...SHOULDER, count: 2, at: [yU - 40, yU - 14].map((y): Vec3 => [sx * (xb - 25), y, zl + sz * 30]), dir: [0, 0, -sz] as Vec3, on: `L${sx}` })),
+      sides.map((sz): CustomFix => ({ ...SHOULDER, count: 2, at: [-15, 15].map((dx): Vec3 => [sx * xb + dx, headY, zl + sz * 35]), dir: [0, 0, -sz] as Vec3, on: `L${sx}` })),
     ),
   ];
   const supportBolts: CustomFix[] = sides.map((sx) => ({ kind: "bolt", count: 2, len: 12, dia: 8, at: [-40, 40].map((dz): Vec3 => [sx * (xl - 25), yU - 15, zl + dz]), dir: [sx, 0, 0] as Vec3, on: `S${sx}`, mate: `L${sx}` }));
@@ -118,8 +127,8 @@ function recipe(s: ProductSpec) {
     { kind: "hook", count: 1, at: [hookAt], dir: [0, 0, -1], on: `S${hookSide}` },
     { kind: "screw", count: 2, len: 10, dia: 5, at: [-1, 1].map((d): Vec3 => [hookAt[0], hookAt[1] + 2, hookAt[2] + d * 24]), dir: [0, 1, 0], on: `S${hookSide}` },
   ];
-  const topScrews: CustomFix = { kind: "screw", count: 4, len: 16, dia: 6, at: sides.flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xl, yU - 30, sz * (TD / 2 - 100)])), dir: [0, 1, 0], mate: "TOP" };
-  const beamScrews: CustomFix = { kind: "screw", count: 2, len: 12, dia: 4, at: [-1, 1].map((sx): Vec3 => [sx * xb * 0.5, yU - 50, zl]), dir: [0, 1, 0], mate: "TOP" };
+  const topScrews: CustomFix = { kind: "screw", count: 4, len: 16, dia: 6, at: sides.flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xl, yU - 30, sz * (TD / 2 - 150)])), dir: [0, 1, 0], mate: "TOP" };
+  const beamScrews: CustomFix = { kind: "screw", count: 2, len: 12, dia: 4, at: [-1, 1].map((sx): Vec3 => [sx * xb * 0.5, yU - 3, zl]), dir: [0, 1, 0], mate: "TOP" };
   const pads: CustomFix = { kind: "glide", name: "Adhesive pad", count: 2, len: 2, dia: 30, at: [-1, 1].map((sx): Vec3 => [(sx * trW) / 3, yU - 40, zTray + trD / 2]), dir: [0, 0, -1], on: "TR" };
   const nPlugs = TW >= 1100 ? 4 : 3;
   const plugs: CustomFix = {
@@ -171,7 +180,7 @@ function recipe(s: ProductSpec) {
         title: "Screw the crank onto one gearbox",
         detail: "Choose the side you want it on. Four screws hold its bracket on the gearbox.",
         add: ["CR"],
-        fix: [{ kind: "screw", count: 4, len: 12, dia: 5, at: [-1, 1].flatMap((dy) => [-1, 1].map((dz): Vec3 => [xl + 40, yU - 60 + dy * 14, zl + 50 + dz * 10])), dir: [-1, 0, 0], on: "CR", mate: "L1" }],
+        fix: [{ kind: "screw", count: 4, len: 12, dia: 5, at: [-1, 1].flatMap((dy) => [-1, 1].map((dz): Vec3 => [xl + (LW + 16) / 2 + 6, headY + dy * 12, zl + 20 + dz * 12])), dir: [-1, 0, 0], on: "CR", mate: "L1" }],
         tools: ["screwdriver"],
         from: { CR: [250, 0, 0] },
       },

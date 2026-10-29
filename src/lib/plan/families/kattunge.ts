@@ -60,7 +60,9 @@ function cot(s: ProductSpec): CustomParams {
   ];
   const ends = [-1, 1] as const;
   const studs = ends.flatMap((g) => [-1, 1].flatMap((h) => [yLow, yTop].map((y): Vec3 => [g * (L / 2), y, h * ze])));
-  const brackets = ends.flatMap((g) => [-1, 1].map((h): Vec3 => [g * xi, yBase - 30, h * 250]));
+  // on the second and eighth bars, which run up to the top rail
+  const brackets = ends.flatMap((g) => [-1, 1].map((h): Vec3 => [g * xi, yBase - 20, h * 212]));
+  const bracketBolts = brackets.map(([x, y, z]): Vec3 => [Math.sign(x) * (xe - 14), y - 26, z]);
   return {
     parts,
     steps: [
@@ -76,7 +78,7 @@ function cot(s: ProductSpec): CustomParams {
         detail: "Use the top holes for a newborn. The two kinds of bracket each go where the manual's numbers show, with one bolt each.",
         fix: ends.flatMap((g) => [
           fix("angle", brackets.filter((p) => Math.sign(p[0]) === g), [-g, 0, 0], { name: "Base bracket", len: 40, dia: 30, on: g < 0 ? "E0" : "E1" }),
-          fix("bolt", brackets.filter((p) => Math.sign(p[0]) === g), [-g, 0, 0], { len: 12, dia: 6, on: g < 0 ? "E0" : "E1" }),
+          fix("bolt", bracketBolts.filter((p) => Math.sign(p[0]) === g), [g, 0, 0], { len: 12, dia: 6, on: g < 0 ? "E0" : "E1" }),
         ]),
         tools: ["allen"],
       },

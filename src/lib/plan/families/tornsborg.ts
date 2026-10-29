@@ -31,7 +31,7 @@ function recipe(s: ProductSpec): CustomParams | null {
   const xin = xb - 10; // inner face of the side boards
   const yRail = 400, yBar = 200;
   const zBars = [zb + 150, zf - 140];
-  const bw = 2 * xin - 20; // the bed unit
+  const bw = 2 * (xin - 40) - 6; // the bed unit, between the blocks
   const zBed0 = zb + 40, zBed1 = D / 2 - 30;
 
   const parts: CustomPart[] = [];
@@ -59,8 +59,9 @@ function recipe(s: ProductSpec): CustomParams | null {
   const legsOf = (sx: number) => SIDES.map((sz) => leg(sx, sz));
   const tops = legs((sx, z) => [sx * xs, legH, z]);
   const plates = legs((sx, z) => [sx * (xs - 25), legH - 30, z]);
+  const plateScrews = plates.map((p): Vec3 => [p[0], p[1] - 25, p[2]]); // through the plate's lower hole
   const boardBolts = SIDES.flatMap((sx) => [zf, zb].flatMap((z) => [110, 230].map((y): Vec3 => [sx * (xin), y, z])));
-  const blockBolts = SIDES.flatMap((sx) => [-25, 25].map((dz): Vec3 => [sx * (xin - 40), 280, zBlock + dz]));
+  const blockBolts = (sx: number) => [-25, 25].map((dz): Vec3 => [sx * (xin - 40), 250, zBlock + dz]);
   const camPins = (sx: number): Vec3[] => [yRail - 35, yRail + 35].map((y): Vec3 => [sx * (xs - 25), y, zb]);
   const camLocks = (sx: number): Vec3[] => [yRail - 35, yRail + 35].map((y): Vec3 => [sx * (xs - 55), y, zb - 10]);
   const barBolts = SIDES.flatMap((sx) => zBars.flatMap((z) => [-18, 18].map((dz): Vec3 => [sx * xin, yBar, z + dz])));
@@ -83,7 +84,7 @@ function recipe(s: ProductSpec): CustomParams | null {
       detail: "Flat side against the leg, next to the dowel. One screw in each.",
       fix: SIDES.flatMap((sx) => {
         const pts = plates.filter((p) => Math.sign(p[0]) === sx);
-        return [fx("plate", pts, { name: "Joining plate", len: 3, dia: 40, dir: [sx, 0, 0] }), fx("screw", pts, { len: 40, dia: 5, dir: [sx, 0, 0] })];
+        return [fx("plate", pts, { name: "Joining plate", len: 3, dia: 40, dir: [sx, 0, 0] }), fx("screw", plateScrews.filter((p) => Math.sign(p[0]) === sx), { len: 40, dia: 5, dir: [sx, 0, 0] })];
       }),
       tools: ["allen"],
     },
@@ -91,9 +92,9 @@ function recipe(s: ProductSpec): CustomParams | null {
       title: "Fix a block onto each side board",
       detail: "A short dowel goes under each block. The two boards are mirror images, so check which side the block goes.",
       add: ["Bl", "Kl", "Br", "Kr"],
-      fix: SIDES.map((sx) => fx("dowel", [[sx * (xin - 40), 250, zBlock]], { len: 30, dia: 8, dir: [sx, 0, 0], on: `K${side(sx)}`, mate: `B${side(sx)}` })),
+      fix: SIDES.map((sx) => fx("dowel", [[sx * xin, 250, zBlock]], { len: 30, dia: 8, dir: [-sx, 0, 0], on: `K${side(sx)}`, mate: `B${side(sx)}` })),
     },
-    { title: "Bolt the blocks down", detail: "Two long bolts through each block, with the small Allen key.", fix: [fx("bolt", blockBolts, { len: 70, dia: 6, dir: [1, 0, 0] })], tools: ["allen"] },
+    { title: "Bolt the blocks down", detail: "Two long bolts through each block, with the small Allen key.", fix: SIDES.map((sx) => fx("bolt", blockBolts(sx), { len: 70, dia: 6, dir: [sx, 0, 0], on: `K${side(sx)}`, mate: `B${side(sx)}` })), tools: ["allen"] },
     {
       title: "Bolt the side boards across the legs",
       detail: "Two bolts at each leg. Tighten them with the T-handle until the head sits flat, not sunk in.",
@@ -135,11 +136,12 @@ function recipe(s: ProductSpec): CustomParams | null {
     {
       title: "Screw the two hooks under the bed unit",
       detail: "Lay the bed unit upside down on the rug first. One screw through each hook, with the T-handle.",
-      add: ["BED"],
+      wait: ["BED"],
+      from: { BED: [0, 150, 600] },
       fix: [fx("hook", hooks, { name: "Hook bracket", len: 40, dia: 30, dir: UP, on: "BED" }), fx("screw", hooks, { len: 40, dia: 6, dir: UP, on: "BED" })],
       tools: ["allen"],
     },
-    { title: "Hang the bed unit on the back crossbar", detail: "Lower it into the frame so both hooks drop over the bar.", people: 2, warnings: ["two"] },
+    { title: "Hang the bed unit on the back crossbar", detail: "Turn it the right way up and lower it into the frame so both hooks drop over the bar.", add: ["BED"], from: { BED: [0, 150, 600] }, people: 2, warnings: ["two"] },
     { title: "Lock the hooks with clips", detail: "Push a clip up under each hook until it clicks.", fix: [fx("clip", hooks, { name: "Locking clip", len: 30, dia: 30, dir: UP })] },
     { title: "Stick felt pads on the fold-out legs", detail: "Use the round pads on the tops where the legs fold against the frame.", fix: [fx("glide", feet.map((p): Vec3 => [p[0], p[1] + 40, p[2]]), { name: "Felt pad", dir: UP })] },
     {

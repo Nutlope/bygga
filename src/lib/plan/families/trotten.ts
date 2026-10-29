@@ -268,7 +268,8 @@ function sitStand(b: PlanBuilder, s: ProductSpec) {
   kit.part({ id: "B0", name: "Beam, left half", size: [hl, 50, 70], pos: [-(xl + 30) + hl / 2, yU - 55, 0] });
   kit.part({ id: "B1", name: "Beam, right half", size: [hl, 42, 60], pos: [xl + 30 - hl / 2, yU - 55, 0] });
   kit.part({ id: "M", name: "Motor", size: [140, 60, 70], pos: [0, yU - 110, 0] });
-  if (long) kit.part({ id: "P", name: "Joining plate", size: [200, 4, 70], pos: [0, yU - 28, 0] });
+  // the joining plate is a bent bracket: its foot screwed to the beam halves, its upper face under the top
+  if (long) kit.part({ id: "P", name: "Joining plate", size: [200, 30, 70], pos: [0, yU - 15, 0] });
   kit.part({ id: "X", name: "Control box", size: [100, 40, 45], pos: [xl, yU - 50, D / 2 - 90] });
   kit.part({ id: "T", name: "Tabletop", size: [W, TT, D], pos: [0, H - TT / 2, 0], material: "board" });
   const tw = 2 * xl - 300, zt = -D / 2 + 120;
@@ -311,10 +312,10 @@ function sitStand(b: PlanBuilder, s: ProductSpec) {
   kit.step({ title: "Unplug it again", detail: "Keep it unplugged until the top is on." });
   kit.step({ title: "Press four rubber pads onto the beam", detail: "They sit between the beam and the top.", fix: [{ def: PAD, at: [-(xl - 120), -xl / 3, xl / 3, xl - 120].map((x) => [x, yU - 30, 0] as Vec3), dir: [0, -1, 0], on: (p) => half(p[0]), flat: true }] });
   kit.step({ title: "Lay the top on together", detail: "Face up. The pins under it drop into the holes in the arms.", people: 2, add: [["T", [0, 500, 0]]] });
-  kit.step({ title: "Screw the top on from below", detail: `${long ? "Nine" : "Six"} washer screws up through the arms${long ? " and the joining plate" : ""}.`, tools: ["allen"], fix: [{ def: WS, at: [...armPts, ...(long ? [[0, yU - 26, 25] as Vec3] : [])], dir: [0, 1, 0], on: (p) => (Math.abs(p[0]) < 50 ? "P" : `A${idx(p[0])}`), mate: "T" }] });
+  kit.step({ title: "Screw the top on from below", detail: `${long ? "Nine" : "Six"} washer screws up through the arms${long ? " and the joining plate" : ""}.`, tools: ["allen"], fix: [{ def: WS, at: [...armPts, ...(long ? [[0, yU - 4, 25] as Vec3] : [])], dir: [0, 1, 0], on: (p) => (Math.abs(p[0]) < 50 ? "P" : `A${idx(p[0])}`), mate: "T" }] });
   kit.step({ title: "Hook the cable tray on and screw one edge", detail: "Four washer screws along its front edge.", tools: ["allen"], add: [["R", [0, -250, 150]]], fix: [{ def: WS, at: trayPts(zt + 60), dir: [0, 1, 0], on: "R", mate: "T" }] });
   kit.step({ title: "Swing the tray up and screw the other edge", detail: "Four more washer screws along the back.", tools: ["allen"], fix: [{ def: WS, at: trayPts(zt - 60), dir: [0, 1, 0], on: "R", mate: "T" }] });
-  kit.step({ title: "Screw in the four long bolts", detail: "Up through the beam into the top, with the medium Allen key.", kind: "bolts", tools: ["allen"], fix: [{ def: LBOLT, at: sides.flatMap((sx) => sides.map((sz) => [sx * xl * 0.55, yU - 80, sz * 20] as Vec3)), dir: [0, 1, 0], on: (p) => half(p[0]), mate: "T" }] });
+  kit.step({ title: "Screw in the four long bolts", detail: "Up through the beam into the top, with the medium Allen key.", kind: "bolts", tools: ["allen"], fix: [{ def: LBOLT, at: sides.flatMap((sx) => sides.map((sz) => [sx * xl * 0.55, yU - 45, sz * 20] as Vec3)), dir: [0, 1, 0], on: (p) => half(p[0]), mate: "T" }] });
   kit.step({ title: "Press the two cable clips in under the top", detail: "Into the slots at the back, for the power cable.", fix: [{ def: CLIP, at: sides.map((sx) => [sx * (xl - 250), yU, -D / 2 + 60] as Vec3), dir: [0, 1, 0], on: "T", flat: true }] });
   for (const sx of [-1, 1])
     kit.step({
@@ -489,7 +490,7 @@ function doorCab(b: PlanBuilder, s: ProductSpec) {
     const c: Vec3 = [0, (yT + H) / 2, 0];
     const rel = (id: string) => kit.pos(id).map((v, i) => v - c[i]) as Vec3;
     kit.step({ title: "Click the side frames onto the top", detail: "Lay the top face down on a rug. Each frame's corners hook into the slots at its ends.", scene: "top", pose: "-y", warnings: ["floor"], stage: ["TP", "UF0", "UF1"].map((id) => ({ id, at: rel(id) })) });
-    kit.step({ title: "Bolt the frames to the top", detail: "Four bolts, one in each corner, with the Allen key.", scene: "top", pose: "-y", kind: "bolts", tools: ["allen"], fix: [{ def: ALLEN, at: sides.flatMap((sx) => sides.map((sz) => [sx * (W / 2), H - TT - 35, sz * (D / 2 - 40)] as Vec3)), dir: (p) => [-Math.sign(p[0]), 0, 0], on: (p) => `UF${idx(p[0])}`, mate: "TP" }] });
+    kit.step({ title: "Bolt the frames to the top", detail: "Four bolts, one in each corner, with the Allen key.", scene: "top", pose: "-y", kind: "bolts", tools: ["allen"], fix: [{ def: ALLEN, at: sides.flatMap((sx) => sides.map((sz) => [sx * (W / 2), H - TT - 12.5, sz * (D / 2 - 40)] as Vec3)), dir: (p) => [-Math.sign(p[0]), 0, 0], on: (p) => `UF${idx(p[0])}`, mate: "TP" }] }); // through the top's folded end into the frame's top rail
     kit.step({ title: "Lift the top section onto the cabinet", detail: "Its posts drop into the tops of the side panels. Press until they sit flush.", add: ["TP", "UF0", "UF1"] });
   } else {
     const c: Vec3 = [0, yO - 10, 0];

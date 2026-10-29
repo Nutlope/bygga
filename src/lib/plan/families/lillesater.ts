@@ -9,7 +9,7 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Produc
  * The 4, 5 and 6-seat sofas are the 3-seat sofa with one, two or three 1-seat sections in the middle, and the 1-seat
  * section's manual builds them differently: every section gets its own back nutted on first, then the sections lie
  * upside down in a row and are joined with two studs and one guide pin at each join.
- * The swivel easy chair has no manual we could read and keeps its old guide.
+ * The swivel easy chair comes ready assembled (IKEA has only a care sheet for it), so its guide unpacks it.
  */
 
 type Kind = CustomFix["kind"];
@@ -210,16 +210,16 @@ function sofa(s: ProductSpec): CustomParams | null {
       title: `Screw ${backStuds.length} studs into the bottoms of the backs`,
       detail: "Two in each back, by hand until they stop.",
       pose: "+y",
-      add: secs.map((c) => c.back),
-      from: Object.fromEntries(secs.map((c) => [c.back, [0, 450, 0] as Vec3])),
+      wait: secs.map((c) => c.back),
       fix: secs.map((c) => fx("stud", backStudsOf(c), [0, 1, 0], { ...STUD, on: c.back, mate: c.base })),
     },
     {
-      title: "Lower each back onto its seat base, then turn each section upside down",
-      detail: "The studs go down through the holes at the back of the base. Each section on its own for now.",
-      pose: "-y",
-      warnings: ["floor"],
+      title: "Lower each back onto its seat base",
+      detail: "The studs go down through the holes at the back of the base.",
+      add: secs.map((c) => c.back),
+      from: Object.fromEntries(secs.map((c) => [c.back, [0, 450, 0] as Vec3])),
     },
+    { title: "Turn each section upside down", detail: "Each section on its own for now, onto the rug.", pose: "-y", warnings: ["floor"] },
     {
       title: "Nut each back on from underneath",
       detail: `A washer and a nut on all ${backStuds.length} studs, tightened with the box spanner.`,
@@ -253,12 +253,40 @@ function sofa(s: ProductSpec): CustomParams | null {
   return { parts, steps };
 }
 
+/** An oval ring's back part, as [x, z] corners: the outer edge one way, the inner edge back. */
+function crescent(rx: number, rz: number, t: number, a0: number, a1: number, n = 16): [number, number][] {
+  const pt = (a: number, d: number): [number, number] => [Math.round((rx - d) * Math.cos(a)), Math.round((rz - d) * Math.sin(a))];
+  const as = Array.from({ length: n + 1 }, (_, i) => a0 + ((a1 - a0) * i) / n);
+  return [...as.map((a) => pt(a, 0)), ...as.reverse().map((a) => pt(a, t))];
+}
+
+function swivel(s: ProductSpec): CustomParams {
+  // IKEA: 70 wide, 71 high, 79 deep; a round padded body on a low black swivel disc
+  const W = s.size.w * 10, H = s.size.h * 10, Dp = s.size.d * 10;
+  const disc = 30, seat = 420;
+  const c: Vec3 = [0, H / 2, 0];
+  const at = (p: PartPiece): PartPiece => ({ ...p, pos: [p.pos[0] - c[0], p.pos[1] - c[1], p.pos[2] - c[2]] });
+  const raw: PartPiece[] = [
+    { shape: "cyl", size: [W - 140, disc, W - 140], pos: [0, disc / 2, 20], material: "metal" },
+    { shape: "slab", size: [W, seat - disc, Dp], pos: [0, disc + (seat - disc) / 2, 0], outline: [[-W / 2, -Dp / 2], [W / 2, -Dp / 2], [W / 2, Dp / 2], [-W / 2, Dp / 2]], round: W * 0.42 },
+    { shape: "slab", size: [W, H - seat, Dp / 2], pos: [0, seat + (H - seat) / 2, 0], outline: crescent(W / 2 - 10, Dp / 2 - 10, 200, Math.PI + 0.25, 2 * Math.PI - 0.25), round: 20 },
+  ];
+  const pieces = raw.map(at);
+  return {
+    parts: [{ id: "CH", name: "Swivel easy chair", size: [W, H, Dp], pos: c, pieces, material: "soft" }],
+    steps: [
+      { title: "Unpack the chair", detail: "It comes ready assembled, so there is nothing to put together. Cut the wrapping open carefully so the knife can't catch the fabric.", add: ["CH"] },
+      { title: "Set it on a flat floor", detail: "Turn the seat once all the way round to check it swivels freely." },
+    ],
+  };
+}
 
 const family: Family = {
   names: ["LILLESÄTER", "LILLESATER"],
   recipe(s) {
     if (/seat-sofa/.test(s.slug ?? "")) return sofa(s);
-    return null; // the swivel easy chair: no manual
+    if (/swivel/.test(s.slug ?? "")) return swivel(s);
+    return null;
   },
 };
 export default family;

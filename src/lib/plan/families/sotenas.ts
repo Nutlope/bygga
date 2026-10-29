@@ -35,7 +35,7 @@ function armchair(): CustomParams {
   const y0 = TUBE / 2, yT = 230 - TUBE / 2; // floor tubes, hoops' top bars under the seat
   const HX = 260, ZF = 200, ZB = -120, ZJ = -200; // hoops, their front and back, where they meet the floor bar
   const hoop = (id: string, g: number) =>
-    tube(id, "Side hoop", [[g * HX, y0, ZJ], [g * HX, y0, ZF], [g * HX, yT, ZF], [g * HX, yT, ZB], [g * HX, y0, ZB]]);
+    tube(id, "Side hoop", [[g * HX, y0, ZJ - 40], [g * HX, y0, ZF], [g * HX, yT, ZF], [g * HX, yT, ZB], [g * HX, y0, ZB]]);
   const sc: Vec3 = [0, 455, -5];
   const seat: CustomPart = {
     id: "S",
@@ -49,7 +49,7 @@ function armchair(): CustomParams {
       { shape: "box", size: [800, 420, 130], pos: [0, 470 - sc[1], -290 - sc[2]], rot: [-0.35, 0, 0] },
     ],
   };
-  const joint = (g: number): Vec3 => [g * HX, y0, ZJ - 30];
+  const joint = (g: number): Vec3 => [g * HX, y0 + TUBE / 2, ZJ - 20]; // down through the bar into the hoop's end inside it
   const top = (g: number): Vec3[] => [ZF - 60, ZB + 60].map((z): Vec3 => [g * HX, yT - TUBE / 2, z]);
   return {
     parts: [

@@ -77,7 +77,8 @@ function recipe(s: ProductSpec): CustomParams {
     const y = d.id === "DS" ? d.pos[1] : d.pos[1] + d.size[1] / 2 - 50;
     return [
       fx({ kind: "knob", at: [[d.pos[0], y, zF]], dir: [0, 0, -1], on: d.id, dia: 24 }),
-      fx({ kind: "screw", len: 30, dia: 4, at: [[d.pos[0], y, zF - t]], dir: [0, 0, 1], on: d.id }),
+      // just off the inside face: closer and the builder would nudge it away from the knob
+      fx({ kind: "screw", len: 30, dia: 4, at: [[d.pos[0], y, zF - t - 5]], dir: [0, 0, 1], on: d.id }),
     ];
   };
 

@@ -116,8 +116,9 @@ function frame(s: ProductSpec) {
       title: "Screw the low spacers onto the sides",
       detail: "One on the back edge of each side, just above the plinth. They keep the bottom clear of the skirting board.",
       fix: [
-        fixAt(LOW_SPACER, [-1, 1].map((sx): Vec3 => [sx * (W / 2 - t / 2), lowY, z0]), [0, 0, 1]),
-        fixAt(SMALL_SCREW, [-1, 1].map((sx): Vec3 => [sx * (W / 2 - t / 2), lowY, z0 - 4]), [0, 0, 1]),
+        // the spacer sits on the back edge; its screw goes through it, the head down in its hole
+        fixAt(LOW_SPACER, [-1, 1].map((sx): Vec3 => [sx * (W / 2 - t / 2), lowY, z0 - 22]), [0, 0, 1]),
+        fixAt(SMALL_SCREW, [-1, 1].map((sx): Vec3 => [sx * (W / 2 - t / 2), lowY, z0 + 1]), [0, 0, 1]),
       ],
       tools: ["screwdriver"],
     },

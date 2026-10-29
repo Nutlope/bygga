@@ -112,6 +112,15 @@ export const FIXES: Record<string, Fix> = {
   "grillskar-kitchen-island-shelf-unit-86-x-61": { size: [86, 92, 61] },
   "kallso-hat-rack-80": { size: [80, 24, 32] },
 
+  // small pieces measured on their pages
+  "fjaderharv-mini-chest-2-drawers-32-x-25": { size: [32, 16, 25] },
+  "alseda-stool": { size: [60, 18, 60] },
+  "forsiktig-children-s-stool": { size: [37, 13, 24] },
+  "sundvik-changing-table-chest-drawers-78-x-79-x-9": { size: [78, 99, 79] },
+  "bolmen-step-stool": { size: [44, 25, 35] },
+  "sigfinn-monitor-stand-fixed-height": { size: [53, 10, 24] },
+  "smagora-changing-table-bookshelf-60-x-81-x-103": { size: [60, 103, 81] },
+
   // beds
   "mellgrund-bed-frame-queen-152-x-203": { variant: "Bed frame, Full/Double, 137 × 191 cm", size: [142, 146, 198], x: { m: 137, l: 191, f: 93 } }, // its article is the Full
 };
@@ -124,4 +133,18 @@ export const SAME: Record<string, string> = {
   "malm-bedside-table-1-drawer": "malm-2-drawers",
   "tonstad-sideboard-121-x-81": "tonstad-sideboard-121-x-47-x-90",
   "gursken-chest-3-drawers-69-x-67": "gursken-chest-3-drawers",
+  "idanas-sideboard-160-x-87": "idanas-sideboard-124-x-50-x-95",
+  "idanas-bookcase-81-x-225": "idanas-bookcase-81-x-39-x-211",
+  "vihals-chest-6-drawers": "vihals-chest-6-drawers-140-x-47-x-75",
+  "sundso-table-65": "sundso-table-65-x-65",
+  "milsbo-glass-door-cabinet-101-x-186": "milsbo-glass-door-cabinet-101-x-100",
+  "lagkapten-desk-120-x-60": "lagkapten-adils-desk-120-x-60",
+  "rudsta-glass-door-cabinet-80-x-170": "rudsta-glass-door-cabinet-80-x-37-x-120",
+  "hemnes-bench": "hemnes-bench-83",
+  "brimnes-nightstand": "brimnes-bedside-table-39-x-41-x-53",
+  "tarva-chest-6-drawers": "tarva-6-drawer-dresser-151-x-92",
+  "tarva-nightstand": "tarva-nightstand-48-x-39-x-62",
+  "havsta-sideboard-100-x-89": "havsta-sideboard-basic-unit-121-x-47-x-89",
+  "brimnes-cabinet-doors-39-x-95": "brimnes-cabinet-doors-78-x-95",
+  "hemnes-glass-door-cabinet-90-x-197": "hemnes-glass-door-cabinet-3-drawers-90-x-197",
 };

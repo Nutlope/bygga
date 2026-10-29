@@ -198,7 +198,7 @@ function recipe(s: ProductSpec): CustomParams {
       title: "Hang the ladder and bolt it on",
       detail: "Hook it over the front bed rail in the opening, then one bolt and cap nut through each hook into the rail.",
       add: ladderParts,
-      fix: ladder.map((id, i): CustomFix => ({ kind: "bolt", name: "Bolt with cap nut", len: 60, dia: 6, count: 1, at: [[lx + (i ? 1 : -1) * (lw / 2 - 40), yc("bed"), zp + RT / 2]], dir: [0, 0, -1], on: id, mate: "FB" })),
+      fix: ladder.map((id, i): CustomFix => ({ kind: "bolt", name: "Bolt with cap nut", len: 60, dia: 6, count: 1, at: [[lx + (i ? 1 : -1) * (lw / 2), yc("bed"), zL0 - 10]], dir: [0, 0, -1], on: id, mate: "FB" })), // through the hook into the rail
       tools: ["allen"],
     },
     { title: "Click in the slat ledges", detail: "Three along the inside of each bed rail, hooked into the holes.", add: parts.filter((p) => p.name === "Slat ledge").map((p) => p.id) },

@@ -16,21 +16,14 @@ function fx(kind: CustomFix["kind"], at: Vec3[], dir: Vec3, on?: string, o: Part
   return { kind, count: at.length, at, dir, on, ...o };
 }
 
-/** A board with rounded corners. The corner discs are a hair thinner, so their circles hide inside the board. */
+/** A board with rounded corners, drawn as one flat slab. */
 function rounded(w: number, t: number, d: number, r: number): PartPiece[] {
-  return [
-    { shape: "box", size: [w - 2 * r, t, d], pos: [0, 0, 0] },
-    ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [r, t, d - 2 * r], pos: [sx * (w / 2 - r / 2), 0, 0] })),
-    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz): PartPiece => ({ shape: "cyl", size: [2 * r, t - 3, 2 * r], pos: [sx * (w / 2 - r), 0, sz * (d / 2 - r)] }))),
-  ];
+  return [{ shape: "slab", size: [w, t, d], pos: [0, 0, 0], outline: [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]], round: r }];
 }
 
-/** A board with round ends: a box and a half disc at each end. */
+/** A board with round ends: a slab whose corner radius is half its depth. */
 function stadium(w: number, t: number, d: number): PartPiece[] {
-  return [
-    { shape: "box", size: [w - d, t, d], pos: [0, 0, 0] },
-    ...[-1, 1].map((sx): PartPiece => ({ shape: "halfcyl", size: [d, t, d / 2], pos: [sx * (w / 2 - d / 4), 0, 0], rot: [0, (sx * Math.PI) / 2, 0] })),
-  ];
+  return rounded(w, t, d, d / 2 - 1);
 }
 
 interface Stage {
@@ -144,7 +137,8 @@ function coffee(s: ProductSpec): { recipe: CustomParams; stages: Stage[] } {
       title: "Turn the frame over onto the top",
       detail: "Lay the top face down on a rug and lower the frame onto it, so every dowel finds its hole.",
       add: ["T"],
-      from: { T: [0, 0, 700] },
+      // the top lies still on the rug and the frame, turned over, comes down onto it along the dowels
+      from: { T: [0, 0, 0] },
       pose: "-y",
       warnings: ["floor"],
     },

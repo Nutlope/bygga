@@ -90,7 +90,7 @@ function chair(s: ProductSpec): CustomParams {
 
   const tips = angles.map((a): Vec3 => [Math.sin(a) * (R - 20), 60, zc + Math.cos(a) * (R - 20)]);
   const foot: Vec3[] = [-15, 15].map((x): Vec3 => [x, 60, zc]);
-  const armBolts = (g: number, on: string) => fix("bolt", [160, 185, 210].map((z, k): Vec3 => [g * (k === 1 ? 200 : 150), SY - 90, zc + z]), [0, 1, 0], { len: 30, dia: 6, on, mate: "S" });
+  const armBolts = (g: number, on: string) => fix("bolt", [160, 185, 210].map((z, k): Vec3 => [g * (k === 1 ? 180 : 140), SY - 110, zc + z]), [0, 1, 0], { len: 30, dia: 6, on, mate: "S" });
   return {
     parts,
     steps: [
@@ -119,6 +119,8 @@ function chair(s: ProductSpec): CustomParams {
         detail: "Lay the seat upside down on a table. Three of the long bolts through each armrest into the seat.",
         fix: [armBolts(-1, "A0"), armBolts(1, "A1")],
         wait: ["S", "A0", "A1"],
+        // all three wait together, the armrests against the seat they bolt into
+        from: { S: [800, 0, 0], A0: [800, 0, 0], A1: [800, 0, 0] },
         tools: ["allen"],
       },
       {

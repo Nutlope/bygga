@@ -82,8 +82,9 @@ function table(s: ProductSpec): CustomParams {
         detail: "Lay the top face down on the rug and set the frame on it upside down. A washer goes under each short bolt.",
         add: ["T"],
         fix: [
-          at("washer", [...under(-xu, yTop - r), ...under(xu, yTop - r)], [0, 1, 0], "U1", undefined, { len: 1.5, dia: 16 }),
+          // bolts listed first: a washer may share its bolt's point, not the other way round
           at("bolt", [...under(-xu, yTop - r), ...under(xu, yTop - r)], [0, 1, 0], "U1", "T", { len: 20, dia: 6 }),
+          at("washer", [...under(-xu, yTop - r), ...under(xu, yTop - r)], [0, 1, 0], "U1", undefined, { len: 1.5, dia: 16 }),
         ],
         tools: ["allen"],
         pose: "-y",

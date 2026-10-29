@@ -12,6 +12,7 @@ import type { CustomFix, CustomParams, CustomPart, PartPiece, ProductSpec, Vec3 
  */
 
 const LEG = 45;
+const r = (n: number) => Math.round(n);
 
 function trolley(s: ProductSpec): CustomParams {
   const W = Math.round(s.size.w * 10) || 1000, D = Math.round(s.size.d * 10) || 430, H = Math.round(s.size.h * 10) || 900;
@@ -58,13 +59,14 @@ function trolley(s: ProductSpec): CustomParams {
     pieces: [
       { shape: "box", size: [W, T, D], pos: [0, 12.5, 0] },
       // two battens across the underside, just inside the end rails
-      { shape: "box", size: [40, 25, D - 60], pos: [-inX + 20, -T / 2, 0] },
-      { shape: "box", size: [40, 25, D - 60], pos: [inX - 20, -T / 2, 0] },
+      { shape: "box", size: [40, 25, 2 * rz - 20], pos: [-inX + 20, -T / 2, 0] },
+      { shape: "box", size: [40, 25, 2 * rz - 20], pos: [inX - 20, -T / 2, 0] },
     ],
   });
-  const dw = inX - 30, dh = 75;
+  // on the runners, under the top's battens, from the back rail's face to just past the front rail
+  const dw = inX - 30, dh = 55;
   for (const [id, sx] of [["DR1", -1], ["DR2", 1]] as const)
-    parts.push({ id, name: "Drawer", size: [dw, dh, 2 * rz + 10], pos: [(sx * (inX + 10)) / 2, yD + 30 + dh / 2, 0], material: "wood" });
+    parts.push({ id, name: "Drawer", size: [dw, dh, 2 * rz], pos: [(sx * (inX + 10)) / 2, yD + 30 + dh / 2, 10], material: "wood" });
 
   const shelfIds = (k: number) => [`R${k}b`, ...Array.from({ length: 10 }, (_, i) => `S${k}_${i}`)];
   const rails = shelfY.flatMap((_, k) => [`R${k}b`, `R${k}f`]);
@@ -77,7 +79,7 @@ function trolley(s: ProductSpec): CustomParams {
     });
   const frameDowels = (sx: number): CustomFix[] => [
     { kind: "dowel", count: 2, at: endPts(sx, [yT - 70, yT - 25], [-rz]), dir: [sx, 0, 0], on: "DB", mate: sx < 0 ? "EL" : "ER" },
-    { kind: "dowel", count: 2, at: [[sx * inX, yD + 15, rz - 5], [sx * inX, yD + 15, rz + 5]], dir: [sx, 0, 0], on: "DF", mate: sx < 0 ? "EL" : "ER" },
+    { kind: "dowel", count: 2, at: [[sx * inX, yD + 3.5, rz], [sx * inX, yD + 26.5, rz]], dir: [sx, 0, 0], on: "DF", mate: sx < 0 ? "EL" : "ER" },
   ];
   const longScrews = (sx: number): CustomFix => ({
     kind: "bolt",
@@ -108,7 +110,7 @@ function trolley(s: ProductSpec): CustomParams {
       {
         title: "Screw the rails to the middle slat",
         detail: "Lay each shelf flat. One small screw through each rail into the middle slat.",
-        fix: shelfY.flatMap((y, k) => [-1, 1].map((sz): CustomFix => ({ kind: "screw", count: 1, len: 35, dia: 4, at: [[0, y + 5, sz * (rz + 11)]], dir: [0, 0, -sz], on: `R${k}${sz < 0 ? "b" : "f"}`, mate: `S${k}_5` }))),
+        fix: shelfY.flatMap((y, k) => [-1, 1].map((sz): CustomFix => ({ kind: "screw", count: 1, len: 35, dia: 4, at: [[r(-railL / 2 + railL * 0.55), y + 5, sz * (rz + 11)]], dir: [0, 0, -sz], on: `R${k}${sz < 0 ? "b" : "f"}`, mate: `S${k}_5` }))),
         tools: ["screwdriver"],
         pose: "+y",
       },

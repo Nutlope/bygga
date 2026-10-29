@@ -200,7 +200,8 @@ class Knox {
     }
     this.prep(
       { title: "Screw the cam bolts into the sides", detail: "Eight in all, into the holes nearest the ends, by hand until they stop.", kind: "cams", tools: ["screwdriver"] },
-      wall ? sideLay() : [],
+      // the top and bottom are laid out here too, so they lie still while their dowels go in
+      [...(wall ? sideLay() : []), ...tbLay()],
       () => b.fits(BOLT, ends.flatMap((e) => [...this.joint(u, -1, e).bolts, ...this.joint(u, 1, e).bolts]), 0.06),
     );
     this.prep(
@@ -230,7 +231,7 @@ class Knox {
         : [];
     this.prep(
       { title: u.divider ? "Tap the dowels into the top, bottom and divider" : "Tap the dowels into the top and bottom", detail: "Two into each end, half their length. A light tap with the hammer.", kind: "dowels", tools: ["hammer"] },
-      tbLay(),
+      [],
       () => b.fits(DOWEL, [...ends.flatMap((e) => [...this.joint(u, -1, e).dowels, ...this.joint(u, 1, e).dowels]), ...divDowels()], 0.06),
     );
 
@@ -594,12 +595,12 @@ function cornerBase(k: Knox) {
     b.fits(BOLT, [-1, 1].flatMap((sx) => k.joint(u, sx as -1 | 1, false).bolts), 0.08);
   });
   const sideFeet = [sideL, sideR].flatMap((key, i) => [-1, 1].map((sz): FitOpts => ({ on: key, at: [(i ? 1 : -1) * (W / 2 - T / 2), y0, r(zc + sz * (Dc / 2 - 50))], dir: [0, 1, 0] })));
-  k.prep({ title: "Fit the feet into the sides", detail: "Tap a socket into each hole in the bottom ends, then screw a foot into each.", kind: "legs", tools: ["hammer"] }, [], () => {
+  k.prep({ title: "Fit the feet into the sides", detail: "Tap a socket into each hole in the bottom ends, then screw a foot into each.", kind: "legs", tools: ["hammer"] }, [[bottom, [0, T / 2, -(1.5 * Dc + 80)], [0, 0, 0]]], () => {
     b.fits(SOCKET, sideFeet, 0.08);
     b.then(0.1);
     b.fits(FOOT, sideFeet.map((p) => ({ ...p, hole: false })), 0.08);
   });
-  k.prep({ title: "Tap the dowels into the bottom", detail: "Two into each end, half their length.", kind: "dowels", tools: ["hammer"] }, [[bottom, [0, T / 2, -(1.5 * Dc + 80)], [0, 0, 0]]], () => {
+  k.prep({ title: "Tap the dowels into the bottom", detail: "Two into each end, half their length.", kind: "dowels", tools: ["hammer"] }, [], () => {
     b.fits(DOWEL, [-1, 1].flatMap((sx) => k.joint(u, sx as -1 | 1, false).dowels), 0.06);
   });
   k.step({ title: "Join the bottom to the left side", detail: "Lay it on its front on the rug. The bottom slides in with the groove for the back at the back.", kind: "join", pose: "-z", warnings: ["floor"] }, () => {
@@ -612,7 +613,8 @@ function cornerBase(k: Knox) {
   });
 
   const plinthFoot: FitOpts = { on: plinth, at: [0, y0, pz], dir: [0, 1, 0] };
-  k.prep({ title: "Fit the foot into the plinth", detail: "A socket in the middle hole of its bottom edge, then the foot.", kind: "legs", tools: ["hammer"] }, [[plinth, [0, T / 2, 1.5 * Dc + 80], [-Math.PI / 2, 0, 0]]], () => {
+  const railLay = rails.map((rk, i): [string, Vec3, Vec3] => [rk, [0, T / 2, (i ? 1 : -1) * (Dc + 120)], [0, 0, 0]]);
+  k.prep({ title: "Fit the foot into the plinth", detail: "A socket in the middle hole of its bottom edge, then the foot.", kind: "legs", tools: ["hammer"] }, [[plinth, [0, T / 2, 1.5 * Dc + 80], [-Math.PI / 2, 0, 0]], ...railLay], () => {
     b.fit(SOCKET, plinthFoot);
     b.then(0.1);
     b.fit(FOOT, { ...plinthFoot, hole: false });
@@ -627,7 +629,7 @@ function cornerBase(k: Knox) {
     b.then(0.05);
     b.fit(BRACKET_SCREW, { on: plinth, at: [angleAt[0], angleAt[1] - 20, angleAt[2] - 2], dir: [0, 0, 1] });
   });
-  k.prep({ title: "Tap the dowels into the two rails", detail: "One into each end. Check the holes face the way the drawing shows.", kind: "dowels", tools: ["hammer"] }, rails.map((rk, i): [string, Vec3, Vec3] => [rk, [0, T / 2, (i ? 1 : -1) * (Dc + 120)], [0, 0, 0]]), () => {
+  k.prep({ title: "Tap the dowels into the two rails", detail: "One into each end. Check the holes face the way the drawing shows.", kind: "dowels", tools: ["hammer"] }, [], () => {
     b.fits(DOWEL, rails.flatMap((rk) => [-1, 1].map((sx): FitOpts => ({ on: rk, at: [sx * (W / 2 - T), top - T / 2, k.pos(rk)[2]], dir: [-sx, 0, 0], mate: sx < 0 ? sideL : sideR }))), 0.08);
   });
   const railScrews = (sx: -1 | 1) => rails.map((rk): FitOpts => ({ on: sx < 0 ? sideL : sideR, at: [sx * (W / 2), top - T / 2, k.pos(rk)[2]], dir: [-sx, 0, 0], mate: rk }));
@@ -757,9 +759,10 @@ function cornerBase(k: Knox) {
   });
   k.step({ title: "Screw the worktop down at the front", detail: "Three long frame screws up through the top of the cover panel, the filler strip and the front rail. Use the Allen key.", kind: "screws", tools: ["allen"] }, () => {
     b.fits(LONG_SCREW, [
-      { on: cover, at: [-W / 2 + 60, fy1, fz], dir: [0, 1, 0], mate: worktop },
-      { on: filler, at: [xs, fy1, fz], dir: [0, 1, 0], mate: worktop },
-      { on: rails[0], at: [W / 4, top - T, railZ[0] + 30], dir: [0, 1, 0], mate: worktop },
+      // 50 mm: 20 of it in the panel or rail, the rest in the 30 mm worktop
+      { on: cover, at: [-W / 2 + 60, top - 22, fz], dir: [0, 1, 0], mate: worktop },
+      { on: filler, at: [xs, top - 22, fz], dir: [0, 1, 0], mate: worktop },
+      { on: rails[0], at: [W / 4, top - T - 3, railZ[0] + 30], dir: [0, 1, 0], mate: worktop },
     ], 0.12);
   });
   k.step({ title: "Tilt the shelf in and lay it on the pins", detail: "In at an angle through the door opening, then lower it flat.", kind: "shelves" }, () => k.put(shelf, [200, 120, 360]));

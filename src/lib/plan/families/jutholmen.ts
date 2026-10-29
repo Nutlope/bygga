@@ -64,12 +64,12 @@ function tube(p: Vec3, q: Vec3, dia: number, c: Vec3): PartPiece {
 }
 
 /** Two bent tubes that cross under the seat: each has a leg at two opposite corners, joined by a rising arch. */
-function underframe(m: Mod, cx: number, cz: number): { part: Omit<CustomPart, "id">; tabs: Vec3[]; mid: Vec3; yA: number } {
+function underframe(m: Mod, cx: number, cz: number): { parts: Omit<CustomPart, "id">[]; tabs: Vec3[]; mid: Vec3; yA: number } {
   const a = m.w / 2 - 35, b = m.d / 2 - 35;
   const c: Vec3 = [cx, Y0 / 2, cz];
   const yA = 196, yB = 168, dia = 22;
-  const pieces: PartPiece[] = [];
   const hoop = (sx: number, yc: number) => {
+    const pieces: PartPiece[] = [];
     for (const s of [-1, 1]) {
       const foot: Vec3 = [cx + s * sx * a, 0, cz + s * b];
       const top: Vec3 = [foot[0], Y0, foot[2]];
@@ -80,11 +80,12 @@ function underframe(m: Mod, cx: number, cz: number): { part: Omit<CustomPart, "i
       for (let k = 0; k < fs.length - 1; k++) pieces.push(tube(at(fs[k]), at(fs[k + 1]), dia, c));
       pieces.push({ shape: "box", size: [44, 4, 44], pos: [top[0] - c[0], Y0 - 2 - c[1], top[2] - c[2]], material: "metal" });
     }
+    return pieces;
   };
-  hoop(1, yA);
-  hoop(-1, yB);
+  // two separate leg frames, the high arch crossing over the low one
+  const frames = [hoop(1, yA), hoop(-1, yB)].map((pieces) => ({ name: "Leg frame", size: [m.w - 48, Y0, m.d - 48] as Vec3, pos: c, material: "metal" as const, pieces }));
   const tabs: Vec3[] = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [cx + sx * a, Y0, cz + sz * b] as Vec3));
-  return { part: { name: "Underframe", size: [m.w - 48, Y0, m.d - 48], pos: c, material: "metal", pieces }, tabs, mid: [cx, yA + dia / 2, cz], yA };
+  return { parts: frames, tabs, mid: [cx, yA + dia / 2, cz], yA };
 }
 
 function recipeOf(s: ProductSpec): CustomParams | null {
@@ -101,8 +102,10 @@ function recipeOf(s: ProductSpec): CustomParams | null {
     const x0 = m.x0 - X / 2, z0 = m.z0 - Z / 2, x1 = x0 + m.w, z1 = z0 + m.d;
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     const u = underframe(m, cx, cz);
-    parts.push({ id: `U${i}`, ...u.part });
-    ids.frames.push(`U${i}`);
+    u.parts.forEach((pt, k) => {
+      parts.push({ id: `U${i}${k}`, ...pt });
+      ids.frames.push(`U${i}${k}`);
+    });
     fix.mid.push(u.mid);
     fix.tabs.push(...u.tabs);
     parts.push({ id: `S${i}`, name: m.kind === "corner" ? "Corner seat" : "Seat", size: [m.w, Y1 - Y0, m.d], pos: [cx, (Y0 + Y1) / 2, cz], material: "board" });
@@ -172,7 +175,7 @@ function recipeOf(s: ProductSpec): CustomParams | null {
       title: "Bolt the leg frames together in the middle",
       detail: "Push the spacer sleeve in between the tubes where they cross, then the long bolt from above with the spring washer and a washer under its head. Tighten it fully.",
       fix: [
-        pts("spacer", fix.mid.map((p) => [p[0], p[1] - 22, p[2]] as Vec3), [0, -1, 0], { name: "Spacer sleeve", len: 16, dia: 20 }),
+        pts("washer", fix.mid.map((p) => [p[0], p[1] - 22, p[2]] as Vec3), [0, -1, 0], { name: "Spacer sleeve", len: 16, dia: 20 }),
         pts("washer", fix.mid, [0, -1, 0], { name: "Spring washer", len: 2, dia: 12 }),
         pts("washer", fix.mid, [0, -1, 0], { len: 1.5, dia: 16 }),
         pts("bolt", fix.mid, [0, -1, 0], BOLT_MID),

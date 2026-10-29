@@ -9,7 +9,9 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Produc
  * on, the woven basket slid in, and the castors pushed in two at a time with it upside down.
  * The desk is built on its side too: the two halves of the back screen joined, stood on one side frame with the
  * desk top, the other side frame laid on, bolted, then stood up and the top bolted to both sides.
- * The cabinet and the TV bench are chipboard builds with their own long manuals and keep their old guides.
+ * The cabinet is built lying on one woven side frame: shelves, back panels and back rails stood on it, the other
+ * side laid on, then the bottom with its plinth slid onto the end and the top lowered on once it stands. The TV bench
+ * is built upright from the plinth: bottom, dividers, woven end frames, shelves, back and top, then the doors.
  */
 
 type Kind = CustomFix["kind"];
@@ -260,7 +262,9 @@ function desk(s: ProductSpec): CustomParams {
     const xm = (x0 + x1) / 2, len = Math.abs(x1 - x0);
     const z = -zs;
     const xe = sx * (T / 2);
-    const p: PartPiece[] = [tubeX(T, len, [xm, yHi, z]), tubeX(T - 5, len, [xm, yBack, z]), tubeY(T, yHi - yBack, [xe, (yHi + yBack) / 2, z])];
+    // a post at each end: the one by the join, and the one the side frame is bolted into
+    const xo = sx * (W / 2 - 1.5 * T);
+    const p: PartPiece[] = [tubeX(T, len, [xm, yHi, z]), tubeX(T - 5, len, [xm, yBack, z]), tubeY(T, yHi - yBack, [xe, (yHi + yBack) / 2, z]), tubeY(T, yHi - yBack, [xo, (yHi + yBack) / 2, z])];
     for (let i = 1; i <= 9; i++) p.push(tubeY(8, yHi - yBack, [x0 + ((x1 - x0) * i) / 10, (yHi + yBack) / 2, z]));
     for (const y of [yBack + 150, yHi - 160]) p.push(tubeX(8, len, [xm, y, z]));
     return built(id, sx < 0 ? "Back screen, left" : "Back screen, right", p, "wood", [Math.min(0, x1), yBack - T / 2, -D / 2], [Math.max(0, x1), H, -D / 2 + T]);
@@ -342,6 +346,338 @@ function desk(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+
+/* ---------- cabinet and TV bench: chipboard boxes with woven rattan ends and doors ---------- */
+
+const CAM_A = { name: "Cam lock", dia: 15, len: 12 }; // the low one
+const CAM_B = { name: "Cam lock, tall", dia: 15, len: 16 };
+const box = (lo: Vec3, hi: Vec3): { size: Vec3; pos: Vec3 } => ({ size: lo.map((v, i) => r1(hi[i] - v)) as Vec3, pos: lo.map((v, i) => r1((v + hi[i]) / 2)) as Vec3 });
+const board = (id: string, name: string, lo: Vec3, hi: Vec3, material: CustomPart["material"] = "board"): CustomPart => ({ id, name, ...box(lo, hi), material });
+
+/** A woven panel in a wooden frame (an end or a door): four bars round a thinner sheet of rattan. n is the axis it faces. */
+function woven(id: string, name: string, lo: Vec3, hi: Vec3, n: 0 | 2): CustomPart {
+  const { size, pos } = box(lo, hi);
+  const u = n === 0 ? 2 : 0; // across
+  const bar = 36;
+  const pc = (sz: Vec3, at: Vec3): PartPiece => ({ shape: "box", size: sz, pos: at });
+  const S = (a: number, b: number, c: number): Vec3 => (n === 0 ? [c, b, a] : [a, b, c]); // (across, up, thickness)
+  const P = (a: number, b: number, c: number): Vec3 => (n === 0 ? [c, b, a] : [a, b, c]);
+  const wU = size[u], h = size[1], t = size[n];
+  const pieces: PartPiece[] = [
+    pc(S(bar, h, t), P(-wU / 2 + bar / 2, 0, 0)),
+    pc(S(bar, h, t), P(wU / 2 - bar / 2, 0, 0)),
+    pc(S(wU - 2 * bar, bar, t), P(0, h / 2 - bar / 2, 0)),
+    pc(S(wU - 2 * bar, bar, t), P(0, -h / 2 + bar / 2, 0)),
+    pc(S(wU - 2 * bar, h - 2 * bar, t * 0.4), P(0, 0, 0)),
+  ];
+  return { id, name, size, pos, material: "wood", pieces };
+}
+
+const pts = (xs: number[], ys: number[], zs: number[]): Vec3[] => xs.flatMap((x) => ys.flatMap((y) => zs.map((z) => [x, y, z] as Vec3)));
+const on = (kind: Kind, host: string, mate: string | undefined, dir: Vec3, at: Vec3[], o: Partial<CustomFix> = {}): CustomFix => fx(kind, at, dir, { on: host, ...(mate ? { mate } : {}), ...o });
+
+function cabinet(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const T = 40, tb = 25, yP = 90; // end frames, top and bottom, plinth height
+  const yB = yP + tb, yT = H - tb;
+  const zB = -D / 2, zF = D / 2 - 20; // the carcass, doors in front of it
+  const xi = W / 2 - T;
+  const ts = 18;
+  const room = (yT - yB - 2 * ts) / 3;
+  const yS = [yB + room + ts / 2, yB + 2 * room + 1.5 * ts].map(Math.round);
+  const zr = zB + 18, zp = zr + 3; // back rails, back panels in front of them
+  const parts: CustomPart[] = [
+    woven("L", "Side frame", [-W / 2, yB, zB], [-xi, yT, zF], 0),
+    woven("R", "Side frame", [xi, yB, zB], [W / 2, yT, zF], 0),
+    board("S1", "Shelf", [-xi, yS[0] - ts / 2, zp], [xi, yS[0] + ts / 2, zF]),
+    board("S2", "Shelf", [-xi, yS[1] - ts / 2, zp], [xi, yS[1] + ts / 2, zF]),
+    board("P2", "Back panel", [-xi, yS[0] + ts / 2, zr], [xi, yS[1] - ts / 2, zp], "fiber"),
+    board("RB", "Back rail", [-xi, yB, zB], [xi, yB + 60, zr]),
+    board("RT", "Back rail", [-xi, yT - 60, zB], [xi, yT, zr]),
+    board("P1", "Back panel", [-xi, yB + 60, zr], [xi, yS[0] - ts / 2, zp], "fiber"),
+    board("K1", "Leg block", [-W / 2 + 50, 10, -D / 2 + 30], [-W / 2 + 100, yP, D / 2 - 30], "wood"),
+    board("K2", "Leg block", [W / 2 - 100, 10, -D / 2 + 30], [W / 2 - 50, yP, D / 2 - 30], "wood"),
+    board("KR", "Plinth rail", [-W / 2 + 100, 30, -9], [W / 2 - 100, yP, 9], "wood"),
+    board("B", "Bottom", [-W / 2, yP, -D / 2], [W / 2, yB, D / 2]),
+    board("P3", "Back panel", [-xi, yS[1] + ts / 2, zr], [xi, yT - 60, zp], "fiber"),
+    board("T", "Top", [-W / 2, yT, -D / 2], [W / 2, H, D / 2]),
+    woven("G1", "Door", [-W / 2, yB + 2, zF], [-1.5, yT - 2, D / 2], 2),
+    woven("G2", "Door", [1.5, yB + 2, zF], [W / 2, yT - 2, D / 2], 2),
+  ];
+  const zc = [zp + 70, zF - 60]; // two fittings across a joint, back and front
+  const sides: [string, number][] = [["L", -1], ["R", 1]];
+  // the shelves and rails meet the end frames: dowels in their ends, a cam bolt in the frame, a cam lock in the board
+  const shelfDowels = sides.flatMap(([, sx]) => [0, 1].map((i) => on("dowel", `S${i + 1}`, undefined, [-sx, 0, 0], pts([sx * xi], [yS[i]], [zp + 40, zF - 30]))));
+  const railDowels = sides.flatMap(([, sx]) => [["RB", yB + 30], ["RT", yT - 30]].map(([id, y]) => on("dowel", id as string, undefined, [-sx, 0, 0], pts([sx * xi], [(y as number) - 15, (y as number) + 15], [zB + 9]))));
+  const frameBolts = (side: string, sx: number) => [
+    ...[0, 1].map((i) => on("camScrew", side, `S${i + 1}`, [sx, 0, 0], pts([sx * xi], [yS[i]], zc), { len: 34 })),
+    ...[["RB", yB + 30], ["RT", yT - 30]].map(([id, y]) => on("camScrew", side, id as string, [sx, 0, 0], [[sx * xi, y as number, zB + 9]], { len: 34 })),
+  ];
+  const endDowels = sides.flatMap(([id, sx]) => [on("dowel", id, undefined, [0, 1, 0], pts([sx * (W / 2 - T / 2)], [yB], [zB + 60, zF - 60])), on("dowel", id, undefined, [0, -1, 0], pts([sx * (W / 2 - T / 2)], [yT], [zB + 60, zF - 60]))]);
+  const shelfCams = [0, 1].map((i) => on("cam", `S${i + 1}`, undefined, [0, -1, 0], pts([-xi + 30, xi - 30], [yS[i] + ts / 2], zc), CAM_B));
+  const railCams = ["RB", "RT"].map((id) => on("cam", id, undefined, [0, 0, 1], pts([-xi + 30, xi - 30], [id === "RB" ? yB + 30 : yT - 30], [zB]), CAM_A));
+  // the plinth: feet, then the rail between the leg blocks, then all of it under the bottom
+  const xk = W / 2 - 75;
+  const feet = [on("foot", "K1", undefined, [0, 1, 0], pts([-xk], [10], [-D / 2 + 60, D / 2 - 60]), { name: "Adjustable foot" }), on("foot", "K2", undefined, [0, 1, 0], pts([xk], [10], [-D / 2 + 60, D / 2 - 60]), { name: "Adjustable foot" })];
+  const kBolts = [on("camScrew", "K1", "KR", [-1, 0, 0], [[-W / 2 + 100, 60, 0]], { len: 34 }), on("camScrew", "K2", "KR", [1, 0, 0], [[W / 2 - 100, 60, 0]], { len: 34 })];
+  const kDowels = [on("dowel", "K1", undefined, [-1, 0, 0], [[-W / 2 + 100, 60, 0]].map(([x, y, z]) => [x, y - 25, z] as Vec3)), on("dowel", "K2", undefined, [1, 0, 0], [[W / 2 - 100, 35, 0]])];
+  const kCams = on("cam", "KR", undefined, [0, 1, 0], [[-W / 2 + 130, yP, 0], [W / 2 - 130, yP, 0]], CAM_B);
+  const bBolts = on("camScrew", "B", undefined, [0, 1, 0], [...pts([-xk, xk], [yP], [-D / 2 + 70, D / 2 - 70]), [0, yP, 0]], { len: 34 });
+  const bDowels = on("dowel", "B", undefined, [0, 1, 0], pts([-xk, xk], [yP], [-D / 2 + 130, D / 2 - 130]));
+  const plinthCams = [on("cam", "K1", undefined, [1, 0, 0], pts([-W / 2 + 50], [yP - 30], [-D / 2 + 70, D / 2 - 70]), CAM_B), on("cam", "K2", undefined, [-1, 0, 0], pts([W / 2 - 50], [yP - 30], [-D / 2 + 70, D / 2 - 70]), CAM_B), on("cam", "KR", undefined, [0, 0, -1], [[0, yP - 30, 9]], CAM_B)];
+  // the bottom and the top take cam bolts that go into the end frames and the back rails
+  const capBolts = (id: string, y: number, dir: number) => on("camScrew", id, undefined, [0, dir, 0], [...pts([-W / 2 + T / 2, W / 2 - T / 2], [y], [zB + 120, zF - 120]), [0, y, zB + 9]], { len: 34 });
+  const capCams = (y: number) => sides.map(([id, sx]) => on("cam", id, undefined, [sx, 0, 0], pts([sx * xi], [y], [zB + 120, zF - 120]), CAM_A));
+  const capRailCam = (id: string, y: number) => on("cam", id, undefined, [0, 0, 1], [[0, y, zB]], CAM_A);
+  const hingeAt = (sx: number) => pts([sx * (W / 2 - T / 2)], [yB + 120, (yB + yT) / 2, yT - 120], [zF]);
+  const steps: CustomStep[] = [
+    {
+      title: "Screw the cam bolts into both side frames",
+      detail: "Lay both frames flat on a rug, inner side up. Six in each, by hand or with a screwdriver until they stop.",
+      fix: [...frameBolts("L", -1), ...frameBolts("R", 1)],
+      wait: ["R"],
+      pose: "+x",
+      warnings: ["floor"],
+    },
+    { title: "Tap dowels into the ends of the side frames", detail: "Two in each end. Not in the holes by the cam bolts.", fix: endDowels, tools: ["hammer"] },
+    { title: "Tap dowels into the shelves", detail: "Two in each end of both shelves. The edge with the groove goes to the back.", fix: shelfDowels, wait: ["S1", "S2"], tools: ["hammer"] },
+    { title: "Stand the shelves on a side frame", detail: "The side frame lies on the rug. Each shelf goes onto two dowels and two cam bolts, grooves to the back.", add: ["S1", "S2"] },
+    { title: "Slide a back panel in between the shelves", detail: "Smooth side in. Push it down the grooves until it meets the side frame.", add: ["P2"] },
+    { title: "Tap dowels into the back rails", detail: "Two in each end of both rails.", fix: railDowels, wait: ["RB", "RT"], tools: ["hammer"] },
+    { title: "Stand a back rail at each end", detail: "Onto the dowels and the cam bolt at each end of the side frame, the groove facing in.", add: ["RB", "RT"] },
+    { title: "Lay the other side frame on", detail: "Lower it so every dowel and cam bolt finds its hole.", add: ["R"] },
+    { title: "Lock the shelves with cam locks", detail: "Eight tall cam locks, two in each shelf end. Turn each one clockwise until it pulls tight.", fix: shelfCams, tools: ["screwdriver"] },
+    { title: "Lock the back rails with cam locks", detail: "Four low cam locks, one in each rail end.", fix: railCams, tools: ["screwdriver"] },
+    { title: "Slide in a back panel at one end", detail: "Smooth side in, along the grooves until it stops against the shelf.", add: ["P1"] },
+    { title: "Screw the feet into the leg blocks", detail: "Two in each, from underneath. Turn them all the way in for now.", fix: feet, wait: ["K1", "K2", "KR", "B"], from: { K1: [0, 0, 500], K2: [0, 0, 500], KR: [0, 0, 500], B: [0, 0, 500] } },
+    { title: "Screw cam bolts into the leg blocks", detail: "One in the inner face of each.", fix: kBolts },
+    { title: "Tap a dowel into each leg block", detail: "Next to the cam bolt.", fix: kDowels, tools: ["hammer"] },
+    { title: "Push the plinth rail between the leg blocks", detail: "Its cam lock holes face up. Press it onto the dowel and cam bolt at each end." },
+    { title: "Lock the plinth rail", detail: "Two tall cam locks, one at each end of the rail.", fix: [kCams], tools: ["screwdriver"] },
+    { title: "Screw cam bolts into the underside of the bottom", detail: "Lay the bottom with the right side down. Five bolts.", fix: [bBolts] },
+    { title: "Tap dowels into the underside of the bottom", detail: "Four, beside the cam bolts.", fix: [bDowels], tools: ["hammer"] },
+    { title: "Lower the plinth onto the bottom", detail: "Upside down, onto the five cam bolts and four dowels." },
+    { title: "Lock the plinth to the bottom", detail: "Five tall cam locks: two in each leg block and one in the rail.", fix: plinthCams, tools: ["screwdriver"] },
+    { title: "Turn the bottom over and screw in its cam bolts", detail: "Five in the top face, along the edges and at the back.", fix: [capBolts("B", yB, 1)] },
+    {
+      title: "Slide the bottom onto the end of the frame",
+      detail: "The plinth faces out. Push it straight onto the dowels in the side frames and the cam bolts into their holes.",
+      add: ["K1", "K2", "KR", "B"],
+      from: { K1: [0, -500, 0], K2: [0, -500, 0], KR: [0, -500, 0], B: [0, -500, 0] },
+    },
+    { title: "Lock the bottom to the side frames", detail: "Four low cam locks, two in each side frame.", fix: capCams(yB + 30), tools: ["screwdriver"] },
+    { title: "Lock the bottom to the back rail", detail: "Turn the frame so the back faces you. One more low cam lock in the rail.", fix: [capRailCam("RB", yB + 30)], tools: ["screwdriver"] },
+    { title: "Slide in the last back panel", detail: "At the open end, smooth side in, down to the shelf.", add: ["P3"] },
+    { title: "Stand the cabinet up", detail: "Two of you, lifting it onto its feet. Don't rest it on the plinth's corners.", pose: "+y", people: 2 },
+    { title: "Screw cam bolts into the underside of the top", detail: "Lay the top right side down on a rug. Five bolts.", fix: [capBolts("T", yT, -1)], wait: ["T"] },
+    {
+      title: "Screw the push opener holders under the top",
+      detail: "Two holders, 22 mm in from the front edge, two short screws each.",
+      fix: [on("screw", "T", undefined, [0, 1, 0], pts([-60, -30, 30, 60], [yT], [zF - 22]), { len: 12, dia: 3.5 })],
+      tools: ["screwdriver"],
+    },
+    { title: "Click the push openers into the holders", detail: "Push each one in until it clicks. Don't press on the plunger.", fix: [on("connector", "T", undefined, [0, 1, 0], pts([-45, 45], [yT], [zF - 22]), { name: "Push opener", len: 60, dia: 16 })] },
+    { title: "Lower the top on", detail: "Onto the dowels and cam bolts in the side frames.", add: ["T"] },
+    { title: "Lock the top to the side frames", detail: "Four low cam locks.", fix: capCams(yT - 30), tools: ["screwdriver"] },
+    { title: "Lock the top to the back rail", detail: "Turn the cabinet round. One low cam lock in the top rail.", fix: [capRailCam("RT", yT - 30)], tools: ["screwdriver"] },
+    {
+      title: "Clip the back panels to the side frames",
+      detail: "Eight clips round the edges of the back. Push the base in, then click the clip into it.",
+      fix: [on("clip", "L", undefined, [1, 0, 0], pts([-xi], [yB + 200, yS[0] + 150, yS[1] + 150, yT - 200], [zp]), { name: "Back panel clip" }), on("clip", "R", undefined, [-1, 0, 0], pts([xi], [yB + 200, yS[0] + 150, yS[1] + 150, yT - 200], [zp]), { name: "Back panel clip" })],
+    },
+    {
+      title: "Hang the doors",
+      detail: "The hinges are on the doors. Push each one onto its plate in the side frame until it clicks.",
+      add: ["G1", "G2"],
+      fix: [on("hinge", "G1", "L", [0, 0, -1], hingeAt(-1)), on("hinge", "G2", "R", [0, 0, -1], hingeAt(1))],
+    },
+    {
+      title: "Screw the hinges to the side frames",
+      detail: "Open the doors. Two screws through each hinge plate into the inside of the frame.",
+      fix: sides.map(([id, sx]) => on("screw", id, undefined, [sx, 0, 0], hingeAt(sx).flatMap(([, y]) => [[sx * xi, y - 16, zF - 40], [sx * xi, y + 16, zF - 40]] as Vec3[]), { len: 16, dia: 3.5 })),
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Fit the door stop screws",
+      detail: "A screw with a washer into the front edge of each side frame, near the top, for the push openers to meet the doors evenly.",
+      fix: [on("washer", "L", undefined, [0, 0, -1], [[-W / 2 + T / 2, yT - 40, zF]]), on("washer", "R", undefined, [0, 0, -1], [[W / 2 - T / 2, yT - 40, zF]]), ...sides.map(([id, sx]) => on("screw", id, undefined, [0, 0, -1], [[sx * (W / 2 - T / 2), yT - 40, zF]], { len: 12, dia: 3.5 }))],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Fix the wall brackets to the top rail",
+      detail: "Two, at the back, then level the cabinet with the feet.",
+      fix: [on("bracket", "RT", undefined, [0, 0, 1], pts([-W / 4, W / 4], [yT - 30], [zB]), { name: "Wall fitting", included: true })],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Screw it to the wall",
+      detail: "Use the plugs and screws that suit your wall. Turn the knobs to pull the cabinet snug to the wall.",
+      fix: [
+        on("plug", "RT", undefined, [0, 0, 1], pts([-W / 4, W / 4], [yT - 30], [zB - 40]), { included: true }),
+        on("screw", "RT", undefined, [0, 0, -1], pts([-W / 4, W / 4], [yT - 30], [zB]), { len: 70, dia: 5, included: true }),
+        on("knob", "RT", undefined, [0, 0, -1], pts([-W / 4, W / 4], [yT - 30], [zB + 10]), { name: "Adjuster knob" }),
+      ],
+      wall: true,
+      tools: ["drill"],
+    },
+    { title: "Press the covers on", detail: "One over each wall fitting.", fix: [on("cap", "RT", undefined, [0, 0, -1], pts([-W / 4, W / 4], [yT - 30], [zB + 20]), { len: 8, dia: 40 })] },
+  ];
+  return { parts, steps };
+}
+
+
+function tvBench(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const T = 40, tb = 25, yP = 70;
+  const yB = yP + tb, yT = H - tb;
+  const xi = W / 2 - T;
+  const tv = 18;
+  const zk = -D / 2 + 5; // the back panel sits in grooves at the very back
+  const zF = D / 2 - 20; // the doors are set in front of the dividers
+  const room = 520; // the two closed ends; the open middle takes what is left
+  const xv = xi - room - tv / 2;
+  const ySh = Math.round((yB + yT) / 2);
+  const parts: CustomPart[] = [
+    board("KR", "Plinth rail", [-W / 2 + 105, 10, 40], [W / 2 - 105, yP, 58], "wood"),
+    board("K1", "Leg block", [-W / 2 + 55, 10, -D / 2 + 30], [-W / 2 + 105, yP, D / 2 - 30], "wood"),
+    board("K2", "Leg block", [W / 2 - 105, 10, -D / 2 + 30], [W / 2 - 55, yP, D / 2 - 30], "wood"),
+    board("B", "Bottom", [-W / 2, yP, -D / 2], [W / 2, yB, D / 2]),
+    board("V1", "Divider", [-xv - tv / 2, yB, zk], [-xv + tv / 2, yT, zF]),
+    board("V2", "Divider", [xv - tv / 2, yB, zk], [xv + tv / 2, yT, zF]),
+    woven("L", "End frame", [-W / 2, yB, -D / 2], [-xi, yT, D / 2], 0),
+    woven("R", "End frame", [xi, yB, -D / 2], [W / 2, yT, D / 2], 0),
+    board("S1", "Shelf", [-xi, ySh - tv / 2, zk], [-xv - tv / 2, ySh + tv / 2, zF - 20]),
+    board("S2", "Shelf", [-xv + tv / 2, ySh - tv / 2, zk], [xv - tv / 2, ySh + tv / 2, zF - 20]),
+    board("S3", "Shelf", [xv + tv / 2, ySh - tv / 2, zk], [xi, ySh + tv / 2, zF - 20]),
+    board("P", "Back panel", [-xi, yB, -D / 2], [xi, yT, zk], "fiber"),
+    board("T", "Top", [-W / 2, yT, -D / 2], [W / 2, H, D / 2]),
+    woven("G1", "Door", [-xi, yB + 2, zF], [-xv - tv / 2 - 2, yT - 2, D / 2], 2),
+    woven("G2", "Door", [xv + tv / 2 + 2, yB + 2, zF], [xi, yT - 2, D / 2], 2),
+  ];
+  const xk = W / 2 - 80;
+  const zz = [-D / 2 + 70, D / 2 - 70];
+  const ym = (yB + yT) / 2;
+  const sideX = (sx: number) => sx * (W / 2 - T / 2);
+  // the top and bottom meet the end frames and the dividers at these points
+  const xsEnds = [-1, 1].map(sideX);
+  const hingeAt = (sx: number) => pts([sx * xi], [yB + 60, ym, yT - 60], [zF - 30]);
+  const steps: CustomStep[] = [
+    { title: "Screw a foot into the plinth rail", detail: "In the middle, from underneath. All the way in for now.", add: ["KR"], fix: [on("foot", "KR", undefined, [0, 1, 0], [[0, 10, 49]], { name: "Adjustable foot" })], pose: "-y", warnings: ["floor"] },
+    { title: "Screw two feet into each leg block", detail: "From underneath, all the way in.", fix: ["K1", "K2"].map((id, i) => on("foot", id, undefined, [0, 1, 0], pts([(i ? 1 : -1) * xk], [10], zz), { name: "Adjustable foot" })), wait: ["K1", "K2"] },
+    { title: "Screw a cam bolt into each leg block", detail: "In the inner face, where the rail goes.", fix: [on("camScrew", "K1", "KR", [-1, 0, 0], [[-W / 2 + 105, 50, 49]], { len: 34 }), on("camScrew", "K2", "KR", [1, 0, 0], [[W / 2 - 105, 50, 49]], { len: 34 })] },
+    { title: "Tap a dowel into each leg block", detail: "Next to the cam bolt.", fix: [on("dowel", "K1", undefined, [-1, 0, 0], [[-W / 2 + 105, 25, 49]]), on("dowel", "K2", undefined, [1, 0, 0], [[W / 2 - 105, 25, 49]])], tools: ["hammer"] },
+    { title: "Push the rail between the leg blocks", detail: "Feet up. Onto the dowel and cam bolt at each end, the cam lock holes facing you.", add: ["K1", "K2"], from: { K1: [-300, 0, 0], K2: [300, 0, 0] } },
+    { title: "Lock the rail to the leg blocks", detail: "Two tall cam locks, one at each end.", fix: [on("cam", "KR", undefined, [0, 1, 0], [[-W / 2 + 135, yP, 49], [W / 2 - 135, yP, 49]], CAM_B)], tools: ["screwdriver"] },
+    { title: "Screw cam bolts into the underside of the bottom", detail: "Lay the bottom right side down on a rug. Six bolts.", fix: [on("camScrew", "B", undefined, [0, 1, 0], [...pts([-xk, xk], [yP], zz), [-W / 4, yP, 49], [W / 4, yP, 49]], { len: 34 })], wait: ["B"] },
+    { title: "Tap dowels into the underside of the bottom", detail: "Four, two at each end.", fix: [on("dowel", "B", undefined, [0, 1, 0], pts([-xk, xk], [yP], [-D / 2 + 130, D / 2 - 130]))], tools: ["hammer"] },
+    { title: "Put the plinth on the bottom", detail: "Both upside down: the plinth goes onto the six cam bolts and four dowels.", add: ["B"], from: { B: [0, -400, 0] } },
+    {
+      title: "Lock the plinth to the bottom",
+      detail: "Six tall cam locks: two in each leg block and two in the rail.",
+      fix: [on("cam", "K1", undefined, [1, 0, 0], pts([-W / 2 + 55], [yP - 25], zz), CAM_B), on("cam", "K2", undefined, [-1, 0, 0], pts([W / 2 - 55], [yP - 25], zz), CAM_B), on("cam", "KR", undefined, [0, 0, -1], [[-W / 4, yP - 25, 58], [W / 4, yP - 25, 58]], CAM_B)],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Tap dowels into both dividers",
+      detail: "Two in the bottom edge and two in the top edge of each.",
+      fix: ["V1", "V2"].flatMap((id, i) => [on("dowel", id, undefined, [0, 1, 0], pts([(i ? 1 : -1) * xv], [yB], [zk + 60, zF - 60])), on("dowel", id, undefined, [0, -1, 0], pts([(i ? 1 : -1) * xv], [yT], [zk + 60, zF - 60]))]),
+      wait: ["V1", "V2"],
+      tools: ["hammer"],
+    },
+    { title: "Turn it over and stand the dividers on the bottom", detail: "The plinth goes down onto its feet. Each divider onto its two dowels, front edges forward.", add: ["V1", "V2"], pose: "+y" },
+    {
+      title: "Lay it on its back and screw the dividers on",
+      detail: "Four screws through the bottom, two into each divider, with the Allen key.",
+      fix: ["V1", "V2"].map((id, i) => on("bolt", "B", id, [0, 1, 0], pts([(i ? 1 : -1) * xv], [yP], [-60, 60]), { name: "Connector screw", len: 50, dia: 7 })),
+      pose: "+z",
+      tools: ["allen"],
+    },
+    { title: "Stand it up and screw cam bolts into the bottom", detail: "Four, at the ends, for the end frames.", fix: [on("camScrew", "B", undefined, [0, 1, 0], pts(xsEnds, [yB], [-D / 2 + 70, D / 2 - 70]), { len: 34 })], pose: "+y" },
+    { title: "Tap dowels into the ends of the bottom", detail: "Two at each end, next to the cam bolts.", fix: [on("dowel", "B", undefined, [0, 1, 0], pts(xsEnds, [yB], [-D / 2 + 140, D / 2 - 140]))], tools: ["hammer"] },
+    { title: "Lower the end frames on", detail: "Each one onto two dowels and two cam bolts, the grooves facing in.", add: ["L", "R"] },
+    { title: "Lock the end frames", detail: "Four low cam locks, two in each frame.", fix: [-1, 1].map((sx) => on("cam", sx < 0 ? "L" : "R", undefined, [sx, 0, 0], pts([sx * xi], [yB + 30], [-D / 2 + 70, D / 2 - 70]), CAM_A)), tools: ["screwdriver"] },
+    {
+      title: "Screw in the shelf supports",
+      detail: "Twelve, four for each shelf, at the same height in every space.",
+      fix: [
+        on("pin", "L", undefined, [-1, 0, 0], pts([-xi], [ySh - tv / 2], [zk + 50, zF - 70]), { name: "Shelf support" }),
+        on("pin", "V1", undefined, [1, 0, 0], pts([-xv - tv / 2], [ySh - tv / 2], [zk + 50, zF - 70]), { name: "Shelf support" }),
+        on("pin", "V1", undefined, [-1, 0, 0], pts([-xv + tv / 2], [ySh - tv / 2], [zk + 50, zF - 70]), { name: "Shelf support" }),
+        on("pin", "V2", undefined, [1, 0, 0], pts([xv - tv / 2], [ySh - tv / 2], [zk + 50, zF - 70]), { name: "Shelf support" }),
+        on("pin", "V2", undefined, [-1, 0, 0], pts([xv + tv / 2], [ySh - tv / 2], [zk + 50, zF - 70]), { name: "Shelf support" }),
+        on("pin", "R", undefined, [1, 0, 0], pts([xi], [ySh - tv / 2], [zk + 50, zF - 70]), { name: "Shelf support" }),
+      ],
+      tools: ["screwdriver"],
+    },
+    { title: "Lay the shelves on the supports", detail: "One in each space, the notches under them over the supports.", add: ["S1", "S2", "S3"], from: { S1: [0, 0, 400], S2: [0, 0, 400], S3: [0, 0, 400] } },
+    { title: "Slide the back panel down the grooves", detail: "Smooth side in, cable holes at the top. Down until it meets the bottom.", add: ["P"], from: { P: [0, 500, 0] } },
+    {
+      title: "Fix the back panel to the dividers",
+      detail: "Two fittings into each divider: push the sleeve through the back, then the pin into it.",
+      fix: [-1, 1].flatMap((sx) => [on("clip", sx < 0 ? "V1" : "V2", undefined, [0, 0, 1], pts([sx * xv], [yB + 90, yT - 90], [-D / 2]), { name: "Back fitting sleeve" }), on("clip", sx < 0 ? "V1" : "V2", undefined, [0, 0, 1], pts([sx * xv], [yB + 90, yT - 90], [-D / 2 - 2]), { name: "Back fitting pin" })]),
+    },
+    { title: "Tap dowels into the tops of the end frames", detail: "Two in each.", fix: [-1, 1].map((sx) => on("dowel", sx < 0 ? "L" : "R", undefined, [0, -1, 0], pts([sideX(sx)], [yT], [-D / 2 + 140, D / 2 - 140]))), tools: ["hammer"] },
+    {
+      title: "Screw cam bolts into the underside of the top",
+      detail: "Lay the top right side down on a rug. Eight bolts.",
+      fix: [on("camScrew", "T", undefined, [0, -1, 0], [...pts(xsEnds, [yT], [-D / 2 + 70, D / 2 - 70]), ...pts([-xv, xv], [yT], [zk + 120, zF - 120])], { len: 34 })],
+      wait: ["T"],
+    },
+    {
+      title: "Screw the push opener holders under the top",
+      detail: "One over each door, 22 mm in from the front edge, two short screws each.",
+      fix: [on("screw", "T", undefined, [0, 1, 0], pts([-(xi + xv) / 2 - 15, -(xi + xv) / 2 + 15, (xi + xv) / 2 - 15, (xi + xv) / 2 + 15], [yT], [zF - 22]), { len: 12, dia: 3.5 })],
+      tools: ["screwdriver"],
+    },
+    { title: "Click the push openers into the holders", detail: "Push each one in until it clicks. Don't press on the plunger.", fix: [on("connector", "T", undefined, [0, 1, 0], pts([-(xi + xv) / 2, (xi + xv) / 2], [yT], [zF - 22]), { name: "Push opener", len: 60, dia: 16 })] },
+    { title: "Lower the top on together", detail: "Two of you, straight down onto the eight dowels. Mind your fingers.", add: ["T"], people: 2 },
+    {
+      title: "Lock the top",
+      detail: "Eight low cam locks: two in each end frame and two in each divider.",
+      fix: [
+        ...[-1, 1].map((sx) => on("cam", sx < 0 ? "L" : "R", undefined, [sx, 0, 0], pts([sx * xi], [yT - 30], [-D / 2 + 70, D / 2 - 70]), CAM_A)),
+        ...[-1, 1].map((sx) => on("cam", sx < 0 ? "V1" : "V2", undefined, [1, 0, 0], pts([sx * xv - tv / 2], [yT - 30], [zk + 120, zF - 120]), CAM_A)),
+      ],
+      tools: ["screwdriver"],
+    },
+    { title: "Lock the shelves on their supports", detail: "Turn each of the twelve supports a quarter turn so it grips the shelf.", tools: ["screwdriver"] },
+    { title: "Hang the doors", detail: "The hinges are on the doors. Push each one onto its plate in the end frame until it clicks.", add: ["G1", "G2"], fix: [on("hinge", "G1", "L", [0, 0, -1], pts([-xi + 30], [yB + 60, ym, yT - 60], [zF])), on("hinge", "G2", "R", [0, 0, -1], pts([xi - 30], [yB + 60, ym, yT - 60], [zF]))] },
+    {
+      title: "Screw the hinges to the end frames",
+      detail: "Open the doors. Two screws through each hinge plate.",
+      fix: [-1, 1].map((sx) => on("screw", sx < 0 ? "L" : "R", undefined, [sx, 0, 0], hingeAt(sx).flatMap(([x, y, z]) => [[x, y - 16, z], [x, y + 16, z]] as Vec3[]), { len: 16, dia: 3.5 })),
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Fit the door stop screws",
+      detail: "A screw with a washer into the front edge of each divider, for the doors to rest on.",
+      fix: [on("washer", "V1", undefined, [0, 0, -1], [[-xv, yT - 40, zF]]), on("washer", "V2", undefined, [0, 0, -1], [[xv, yT - 40, zF]]), on("screw", "V1", undefined, [0, 0, -1], [[-xv, yT - 40, zF]], { len: 12, dia: 3.5 }), on("screw", "V2", undefined, [0, 0, -1], [[xv, yT - 40, zF]], { len: 12, dia: 3.5 })],
+      tools: ["screwdriver"],
+    },
+    { title: "Level it with the feet", detail: "Turn the five feet until the doors line up and the bench stands firm.", tools: [] },
+    {
+      title: "Fix the wall fittings to the back",
+      detail: "Two, on the end frames near the top.",
+      fix: [-1, 1].map((sx) => on("bracket", sx < 0 ? "L" : "R", undefined, [0, 0, 1], [[sx * (xi + T / 2), yT - 60, -D / 2]], { name: "Wall fitting", included: true })),
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Screw it to the wall",
+      detail: "Use the plugs and screws that suit your wall, then turn the knobs to pull it snug.",
+      fix: [
+        on("plug", "L", undefined, [0, 0, 1], [[-(xi + T / 2), yT - 60, -D / 2 - 40], [xi + T / 2, yT - 60, -D / 2 - 40]], { included: true }),
+        on("screw", "L", undefined, [0, 0, -1], [[-(xi + T / 2), yT - 60, -D / 2]], { len: 70, dia: 5, included: true }),
+        on("screw", "R", undefined, [0, 0, -1], [[xi + T / 2, yT - 60, -D / 2]], { len: 70, dia: 5, included: true }),
+        on("knob", "L", undefined, [0, 0, -1], [[-(xi + T / 2), yT - 60, -D / 2 + 10], [xi + T / 2, yT - 60, -D / 2 + 10]], { name: "Adjuster knob" }),
+      ],
+      wall: true,
+      tools: ["drill"],
+    },
+    { title: "Press the covers on", detail: "One over each wall fitting.", fix: [on("cap", "L", undefined, [0, 0, -1], [[-(xi + T / 2), yT - 60, -D / 2 + 20], [xi + T / 2, yT - 60, -D / 2 + 20]], { len: 8, dia: 40 })] },
+  ];
+  return { parts, steps };
+}
+
 const family: Family = {
   names: ["FRYKSÅS", "FRYKSAS"],
   recipe(s) {
@@ -349,6 +685,8 @@ const family: Family = {
     if (/armchair|footstool/.test(slug)) return armchair(s);
     if (/storage-unit-on-castors/.test(slug)) return storage(s);
     if (/desk/.test(slug)) return desk(s);
+    if (/cabinet/.test(slug)) return cabinet(s);
+    if (/tv-bench/.test(slug)) return tvBench(s);
     return null;
   },
 };

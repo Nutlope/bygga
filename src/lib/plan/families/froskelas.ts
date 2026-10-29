@@ -32,7 +32,7 @@ function storage(s: ProductSpec): CustomParams {
   // IKEA: 63 wide, 35 deep, 141 high; shelves 56 wide
   const W = Math.round(s.size.w * 10) || 630, D = Math.round(s.size.d * 10) || 350, H = Math.round(s.size.h * 10) || 1410;
   const xp = W / 2 - 13, zp = D / 2 - 13;
-  const sw = 560, sd = D - 20;
+  const sw = 2 * (xp - 12.5), sd = D - 20; // the shelf's end flanges meet the posts
   const ys = [90, 470, 840, H - 30]; // shelf tops, bottom first
   const parts: CustomPart[] = [];
   const postId = (sx: number, sz: number) => `P${sx < 0 ? "l" : "r"}${sz < 0 ? "b" : "f"}`;
@@ -58,7 +58,8 @@ function storage(s: ProductSpec): CustomParams {
   });
   parts.push(brace("X0", 1), brace("X1", -1));
 
-  const shelfScrews = (k: number) => sides.flatMap((sx) => sides.map((sz) => [sx * (sw / 2), ys[k] - 10, sz * (zp - 20)] as Vec3));
+  // through the post into the shelf's end flange
+  const shelfScrews = (k: number) => sides.flatMap((sx) => sides.map((sz) => [sx * (xp + 12.5), ys[k] - 10, sz * zp] as Vec3));
   const screwFix = (ks: number[]) => sides.map((sx) => at("screw", ks.flatMap((k) => shelfScrews(k).filter((p) => Math.sign(p[0]) === sx)), [-sx, 0, 0], undefined, undefined, SCREW));
   const steps: CustomStep[] = [
     {
@@ -92,9 +93,10 @@ function storage(s: ProductSpec): CustomParams {
       title: "Screw the wall strips to the back posts",
       detail: "One strip on each back post near the top, with a screw and washer.",
       fix: [
-        at("strap", sides.map((sx) => [sx * xp, H - 120, -zp - 12] as Vec3), [0, 0, 1], undefined, undefined, { name: "Wall strip", len: 200, dia: 20 }),
-        at("washer", sides.map((sx) => [sx * xp, H - 120, -zp - 14] as Vec3), [0, 0, 1], undefined, undefined, { len: 1.5, dia: 14 }),
+        at("strap", sides.map((sx) => [sx * xp, H - 80, -zp - 12] as Vec3), [0, 0, 1], undefined, undefined, { name: "Wall strip", len: 200, dia: 20 }),
+        // the screw first so the washer stacks on it rather than pushing it off the post
         at("screw", sides.map((sx) => [sx * xp, H - 120, -zp - 14] as Vec3), [0, 0, 1], undefined, undefined, { len: 10, dia: 5, included: true }),
+        at("washer", sides.map((sx) => [sx * xp, H - 120, -zp - 14] as Vec3), [0, 0, 1], undefined, undefined, { len: 1.5, dia: 14 }),
       ],
       tools: ["screwdriver"],
       wall: false,
@@ -166,10 +168,10 @@ function desk(s: ProductSpec): CustomParams {
     },
     {
       title: "Lower the tray bottom in",
-      detail: "Stand the frame up. Lower the tray bottom in together, then two bolts through the frames into it and two dowels where it meets the tray.",
+      detail: "Stand the frame up. Lower the tray bottom in together, then two bolts through the back legs into the tray and two dowels where it meets the tray.",
       add: ["CB"],
       pose: "+y",
-      fix: [...sides.map((sx) => at("bolt", [[sx * (xf + 15), yTop - 160, zb + 80]], [-sx, 0, 0], `F${sx < 0 ? 0 : 1}`, "CB", BOLT)), at("dowel", [-200, 200].map((x) => [x, yTop - 150, zb + 8] as Vec3), [0, 0, -1], "CB", "CT", { len: 30, dia: 8 })],
+      fix: [...sides.map((sx) => at("bolt", [[sx * (xf + 15), yTop - 120, zb]], [-sx, 0, 0], `F${sx < 0 ? 0 : 1}`, "CT", BOLT)), at("dowel", [-200, 200].map((x) => [x, yTop - 150, zb + 8] as Vec3), [0, 0, -1], "CB", "CT", { len: 30, dia: 8 })],
       people: 2,
       warnings: ["two"],
       tools: ["allen", "hammer"],
@@ -192,7 +194,8 @@ function desk(s: ProductSpec): CustomParams {
       fix: [
         at("cam", [-300, -100, 100, 300].map((x) => [x, yTop - 30, zb + 8] as Vec3), [0, 0, -1], "CT", undefined, { dia: 15 }),
         at("bolt", sides.map((sx) => [sx * xf, yTop - 15, (zf + zb) / 2] as Vec3), [0, 1, 0], undefined, "DT", BOLT),
-        at("screw", [-500, -300, -100, 100, 300, 500].map((x) => [x, yTop - 10, zb + 4] as Vec3), [0, 1, 0], "CT", "DT", { len: 16, dia: 4 }),
+        // clear of the cable opening in the desktop and of the cam pins
+        at("screw", [-560, -450, -360, 360, 450, 560].map((x) => [x, yTop - 10, zb + 4] as Vec3), [0, 1, 0], "CT", "DT", { len: 16, dia: 4 }),
       ],
       tools: ["allen", "screwdriver"],
     },

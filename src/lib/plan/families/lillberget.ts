@@ -621,7 +621,7 @@ function chest(b: PlanBuilder, s: ProductSpec, n: number, cols: 1 | 2) {
     );
     b.step(
       { title: "Put in the two long back screws", detail: "Through the bottom board at each corner, a few turns only for now.", tools: ["allen"], pose: lieOn, kind: "screws" },
-      () => b.fits(BACK_SCREW, [-1, 1].map((g): FitOpts => ({ on: backs[backs.length - 1], at: [g * (xi - 2), 40, zBk - 4], dir: [0, 0, 1], mate: sides[g < 0 ? 0 : 1] })), 0.2),
+      () => b.fits(BACK_SCREW, [-1, 1].map((g): FitOpts => ({ on: backs[backs.length - 1], at: [g * (xi + 9), 40, zBk - 4], dir: [0, 0, 1], mate: sides[g < 0 ? 0 : 1] })), 0.2),
     );
   } else {
     b.step(

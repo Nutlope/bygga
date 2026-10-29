@@ -134,16 +134,17 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
     const fr = Math.ceil(per.dowel / 2), bk = per.dowel - fr;
     const dowels = [...spread(Y0 + 60, yT - 60, fr).map((y): Vec3 => [sx * xL, y, zL - LEG / 2]), ...spread(Y0 + 100, yT - 100, bk).map((y): Vec3 => [sx * xL, y, -(zL - LEG / 2)])];
     const nb = per.bolt;
-    const boltYs = nb === 1 ? [yT - 40] : spread(Y0 + 40, yT - 40, nb);
+    const boltYs = nb === 1 ? [yT - 90] : spread(Y0 + 40, yT - 90, nb); // clear of the dowels and the top rail's cam bolt
     const bolts = boltYs.map((y, k): Vec3 => [sx * xL, y, (k % 2 ? -1 : 1) * (zL - LEG / 2)]);
     const cams = bolts.map((p): Vec3 => [sx * xi, p[1], p[2] - Math.sign(p[2]) * 30]);
     const screws = range(per.screw).map((k): Vec3 => [sx * xL, k === 2 ? (Y0 + yT) / 2 : k % 2 ? Y0 + 40 : yT - 60, (k % 2 ? -1 : 1) * (zL + LEG / 2)]);
     return { dowels, bolts, cams, screws };
   };
   const runnerRows = rows.map((r) => r.y0 + 40);
-  const runnerFits = (x: number, inward: number) => ({
+  const runnerFits = (x: number, inward: number, ts = [-0.4, 0.1, 0.4]) => ({
     runners: runnerRows.map((y): Vec3 => [x, y, zb1 - (ddp - 20) / 2]),
-    screws: runnerRows.flatMap((y) => [-0.4, 0, 0.4].map((t): Vec3 => [x, y, zb1 - (ddp - 20) / 2 + t * (ddp - 20)])),
+    // through the runner into the panel, beside the runner's middle
+    screws: runnerRows.flatMap((y) => ts.map((t): Vec3 => [x + inward * 2, y, zb1 - (ddp - 20) / 2 + t * (ddp - 20)])),
     dir: [inward, 0, 0] as Vec3,
   });
   const runnerLen = Math.round((ddp - 20) / 10) * 10;
@@ -174,7 +175,9 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
       plugs: sideX.flatMap((x) => ys.map((y): Vec3 => [x + Math.sign(x - bxc) * 6, y, zb1 - ddp + 6])),
       camsB: sideX.flatMap((x) => ys.map((y): Vec3 => [x - Math.sign(x - bxc) * 6, y, zb1 - ddp + 40])),
       wire: [[bxc, yb + 10, zb1 - ddp + 14]] as Vec3[],
-      runner: sideX.flatMap((x) => [-0.35, 0, 0.35].map((t): Vec3 => [x + Math.sign(x - bxc) * 6, yb + 22, zb1 - ddp / 2 + t * ddp])),
+      // low on the outside of each side, going in
+      runnerL: [-0.35, 0, 0.35].map((t): Vec3 => [sideX[0] - 6, yb + 8, zb1 - ddp / 2 + t * ddp]),
+      runnerR: [-0.35, 0, 0.35].map((t): Vec3 => [sideX[1] + 6, yb + 8, zb1 - ddp / 2 + t * ddp]),
       knobs: knobPts(d),
     };
   };
@@ -185,7 +188,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
   const R0 = runnerFits(-xi, 1), R1 = runnerFits(xi, -1);
   const runner = (r: ReturnType<typeof runnerFits>): CustomFix[] => [
     fx("runner", r.runners, r.dir, { len: runnerLen, dia: 20 }),
-    fx("screw", r.screws, r.dir, { len: 12, dia: 4 }),
+    fx("screw", r.screws, [-r.dir[0], 0, 0], { len: 12, dia: 4 }),
   ];
   const glides = (ids: string[]) => ids.map((id) => {
     const p = parts.find((q) => q.id === id)!.pos;
@@ -208,7 +211,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
       tools: ["screwdriver"],
     },
     { title: `Push the legs onto ${sideTitle}`, detail: "A front and a back leg on each panel, the holes lined up. Mind which way round the legs go.", add: [...legsOf(0), "S0", ...legsOf(1), "S1"] },
-    { title: "Lock the legs with cam locks", detail: "Arrow towards the bolt, then turn clockwise until it pulls tight.", fix: [fx("cam", S0.cams, [1, 0, 0], { on: "S0" }), fx("cam", S1.cams, [-1, 0, 0], { on: "S1" }), ...(six ? [fx("cam", [-1, 1].flatMap((sx) => [yT - 25, Y0 + 20, yT - 25].map((y, k): Vec3 => [sx * xL, y, k === 2 ? -zL : zL])), [0, 0, 1])] : [])], tools: ["screwdriver"] },
+    { title: "Lock the legs with cam locks", detail: "Arrow towards the bolt, then turn clockwise until it pulls tight.", fix: [fx("cam", S0.cams, [1, 0, 0], { on: "S0" }), fx("cam", S1.cams, [-1, 0, 0], { on: "S1" }), ...(six ? [fx("cam", [-1, 1].flatMap((sx) => byId(["TF", "BF", "TK"]).map((p): Vec3 => [sx * (Wc / 2 + 24), p.y - p.h / 2 + 6, p.z])), [0, 0, 1])] : [])], tools: ["screwdriver"] },
   );
   if (per.screw)
     steps.push({
@@ -224,7 +227,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
     tools: ["screwdriver"],
   });
   if (six)
-    steps.push({ title: "Screw the cam bolts into the rails", detail: "Into the ends of the long rails that meet the legs.", fix: [fx("camScrew", [-1, 1].flatMap((sx) => byId(["TF", "BF", "TK"]).map((p): Vec3 => [sx * (Wc / 2), p.y, p.z])).slice(0, 6), [1, 0, 0], { to: ["TF", "BF", "TK", "BK"] })], tools: ["screwdriver"] });
+    steps.push({ title: "Screw the cam bolts into the rails", detail: "Into the ends of the long rails that meet the legs.", fix: [-1, 1].flatMap((sx) => byId(["TF", "BF", "TK"]).map((p) => fx("camScrew", [[sx * (Wc / 2), p.y - p.h / 2 + 6, p.z]], [-sx, 0, 0], { on: p.id }))), tools: ["screwdriver"] });
   const crossBolts = six ? 2 : pieces.length;
   steps.push(
     {
@@ -292,7 +295,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
       },
     );
   } else {
-    const mpR0 = runnerFits(-PT / 2, -1), mpR1 = runnerFits(PT / 2, 1);
+    const mpR0 = runnerFits(-PT / 2, -1), mpR1 = runnerFits(PT / 2, 1, [-0.3, 0.2, 0.3]); // clear of the screws on the other face
     steps.push(
       { title: "Tap the dowels into the middle panel", detail: "Two in each end, for the rails.", fix: [fx("dowel", [-1, 1].flatMap((sz) => [Y0 + 70, yT - 70].map((y): Vec3 => [0, y, sz * (zL - LEG / 2)])), [0, 0, 1], { on: "MP" })], tools: ["hammer"] },
       { title: "Screw the runners onto the middle panel", detail: "Both faces, one for each drawer, three screws each.", fix: [...runner(mpR0), ...runner(mpR1)], tools: ["screwdriver"] },
@@ -300,7 +303,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
         title: "Push the middle panel onto the front rails",
         detail: "Lay the two front rails on the rug, dowels in their ends, and push the middle panel onto them. The chest is built lying on its front.",
         add: ["TF", "BF", "MP"],
-        fix: [fx("dowel", [-1, 1].flatMap((sx) => byId(["TF", "BF"]).map((p): Vec3 => [sx * (Wc / 2), p.y, p.z])), [1, 0, 0], { len: 30, dia: 8 })],
+        fix: [-1, 1].flatMap((sx) => byId(["TF", "BF"]).map((p) => fx("dowel", [[sx * (Wc / 2), p.y + p.h / 2 - 6, p.z]], [-sx, 0, 0], { on: p.id, len: 30, dia: 8 }))),
         pose: "-z",
         warnings: ["floor"],
       },
@@ -308,7 +311,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
         title: "Push the back rails onto the middle panel",
         detail: "Dowels in their ends too.",
         add: ["TK", "BK"],
-        fix: [fx("dowel", [-1, 1].flatMap((sx) => byId(["TK", "BK"]).map((p): Vec3 => [sx * (Wc / 2), p.y, p.z])), [1, 0, 0], { len: 30, dia: 8 })],
+        fix: [-1, 1].flatMap((sx) => byId(["TK", "BK"]).map((p) => fx("dowel", [[sx * (Wc / 2), p.y + p.h / 2 - 6, p.z]], [-sx, 0, 0], { on: p.id, len: 30, dia: 8 }))),
       },
       {
         title: "Screw the middle legs in",
@@ -382,7 +385,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
   steps.push(
     { title: "Screw the cam bolts into a drawer front", detail: "Lay it face down on the rug. Into the holes along its ends.", fix: [fx("camScrew", f0.bolts, [0, 0, 1], { on: `DF${d0.k}` })], tools: ["screwdriver"] },
     { title: "Tap two dowels in", detail: "One near the bottom of each end.", fix: [fx("dowel", f0.dowels, [0, 0, 1], { on: `DF${d0.k}`, len: 30, dia: 8 })], tools: ["hammer"] },
-    { title: "Push the sides onto the front", detail: "Grooves facing in and down.", add: [`DF${d0.k}`, `DS${d0.k}0`, `DS${d0.k}1`] },
+    { title: "Push the sides onto the front", detail: "Grooves facing in and down.", add: [`DF${d0.k}`, `DS${d0.k}0`, `DS${d0.k}1`], from: { [`DS${d0.k}0`]: [0, 0, -260], [`DS${d0.k}1`]: [0, 0, -260] } },
     { title: "Lock the sides with cam locks", fix: [fx("cam", f0.camsF, [0, 1, 0])], tools: ["screwdriver"] },
     { title: "Slide the bottom in", detail: "Along the grooves, smooth side up.", add: [`DT${d0.k}`] },
     { title: "Knock the stiffening wire in", detail: "Into the slot in the bottom edge of the back, hooked end first. Tap it with the hammer until it sits flush.", fix: [fx("nail", f0.wire, [0, 1, 0], { name: "Stiffening wire", len: 40, dia: 3, on: `DB${d0.k}` })], tools: ["hammer"] },
@@ -393,26 +396,29 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
       fix: [fx("pin", f0.plugs, [1, 0, 0], { name: "Plastic dowel", len: 30, dia: 8 }), fx("cam", f0.camsB, [0, 1, 0])],
       tools: ["screwdriver"],
     },
-    { title: "Screw the runners onto the drawer", detail: "Three screws each side, the wheel end at the back.", fix: [fx("screw", f0.runner, [1, 0, 0], { len: 12, dia: 4 })], tools: ["screwdriver"] },
+    { title: "Screw the runners onto the drawer", detail: "Three screws each side, the wheel end at the back.", fix: [fx("screw", f0.runnerL, [1, 0, 0], { len: 12, dia: 4 }), fx("screw", f0.runnerR, [-1, 0, 0], { len: 12, dia: 4 })], tools: ["screwdriver"] },
     {
       title: knobsPer === 1 ? "Screw the knob on" : "Screw the knobs on",
       detail: "The screw goes through the front from inside. Snug is enough.",
-      fix: [fx("knob", f0.knobs, [0, 0, -1], { on: `DF${d0.k}` }), fx("screw", f0.knobs.map((p): Vec3 => [p[0], p[1], zb1]), [0, 0, 1], { len: 30, dia: 4 })],
+      fix: [fx("knob", f0.knobs, [0, 0, -1], { on: `DF${d0.k}` }), fx("screw", f0.knobs.map((p): Vec3 => [p[0], p[1], zb1 - 5]), [0, 0, 1], { len: 30, dia: 4 })],
       tools: ["screwdriver"],
     },
     {
       title: `Build the other ${rest.length} drawers the same way`,
       detail: "Bolts and dowels in the front, sides and cams, the bottom, the wire, the back, runners and knobs.",
       add: rest.flatMap(drawerParts),
+      // each front and its sides meet along the bolts and dowels, front to back
+      from: Object.fromEntries(rest.flatMap((d) => [[`DF${d.k}`, [0, 0, 300] as Vec3], [`DS${d.k}0`, [0, 0, -300] as Vec3], [`DS${d.k}1`, [0, 0, -300] as Vec3]])),
       fix: [
         fx("camScrew", cat("bolts"), [0, 0, 1]),
         fx("dowel", cat("dowels"), [0, 0, 1], { len: 30, dia: 8 }),
         fx("cam", [...cat("camsF"), ...cat("camsB")], [0, 1, 0]),
         fx("nail", cat("wire"), [0, 1, 0], { name: "Stiffening wire", len: 40, dia: 3 }),
         fx("pin", cat("plugs"), [1, 0, 0], { name: "Plastic dowel", len: 30, dia: 8 }),
-        fx("screw", cat("runner"), [1, 0, 0], { len: 12, dia: 4 }),
+        fx("screw", cat("runnerL"), [1, 0, 0], { len: 12, dia: 4 }),
+        fx("screw", cat("runnerR"), [-1, 0, 0], { len: 12, dia: 4 }),
         fx("knob", cat("knobs"), [0, 0, -1]),
-        fx("screw", cat("knobs").map((p): Vec3 => [p[0], p[1], zb1]), [0, 0, 1], { len: 30, dia: 4 }),
+        fx("screw", cat("knobs").map((p): Vec3 => [p[0], p[1], zb1 - 5]), [0, 0, 1], { len: 30, dia: 4 }),
       ],
       tools: ["screwdriver", "hammer"],
     },

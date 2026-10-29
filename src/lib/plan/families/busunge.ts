@@ -77,6 +77,15 @@ function bed(s: ProductSpec): CustomParams {
     return assemble(id, "Slatted base", bits, "wood");
   };
   parts.push(half("S0", zH, zH + railLen, 0), half("S1", zF, zF - railLen, 65));
+  // the plate joins the two slats, one from each half, that lie side by side nearest the middle
+  const slatsOf = (z0: number, z1: number, off: number) => {
+    const dir = Math.sign(z1 - z0), out: number[] = [];
+    for (let z = z0 + dir * (20 + off); dir > 0 ? z < z1 - 30 : z > z1 + 30; z += dir * 130) out.push(z);
+    return out;
+  };
+  const near = (zs: number[]) => zs.reduce((a, z) => (Math.abs(z) < Math.abs(a) ? z : a));
+  const z1J = near(slatsOf(zF, zF - railLen, 65));
+  const zJ = [near(slatsOf(zH, zH + railLen, 0).filter((z) => Math.abs(z - z1J) > 40)), z1J];
   parts.push(box("B", "Centre beam", [-sx, sy - 50, -30], [sx, sy, 30], "wood"));
   const lx = sx - 30;
   parts.push(...[-1, 1].map((g, i) => box(`G${i}`, "Middle leg", [g * lx - 25, 0, -25], [g * lx + 25, sy - 50, 25], "wood")));
@@ -187,8 +196,8 @@ function bed(s: ProductSpec): CustomParams {
       pose: "+y",
       people: 2,
       fix: [
-        fix("plate", [[0, sy + st, 0]], [0, -1, 0], { name: "Joining plate", len: 3, dia: 60, on: "S0" }),
-        fix("screw", [[0, sy + st, -50], [0, sy + st, 50]], [0, -1, 0], { len: 40, dia: 4 }),
+        fix("plate", [[0, sy + st, (zJ[0] + zJ[1]) / 2]], [0, -1, 0], { name: "Joining plate", len: 3, dia: 60, on: "S0" }),
+        ...zJ.map((z, i) => fix("screw", [[0, sy + st, z]], [0, -1, 0], { len: 16, dia: 4, on: `S${i}` })),
       ],
       tools: ["screwdriver"],
     },

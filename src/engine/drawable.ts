@@ -103,7 +103,8 @@ export function partDrawable(p: PartType, holes: Hole[]) {
       const mat = q.material ?? p.material;
       const c = MAT_COLOR[mat] ?? FACE.board;
       const at = { position: q.pos, rotation: q.rot };
-      if (q.shape === "halfcyl") addSolid(d, `hcyl:${qx}:${qy}`, () => halfDisc(qx, qy), c, { hull: "radial", ...at });
+      if (q.shape === "slab" && q.outline?.length) addSolid(d, `slab:${qy}:${q.round ?? 0}:${q.outline.flat().map(Math.round).join(",")}`, () => slab(q.outline!, qy, q.round ?? 0), c, { hull: "radial", ...at });
+      else if (q.shape === "halfcyl") addSolid(d, `hcyl:${qx}:${qy}`, () => halfDisc(qx, qy), c, { hull: "radial", ...at });
       else if (q.shape === "cyl") addSolid(d, `cyl:${qx}:${qy}`, () => new THREE.CylinderGeometry(qx / 2, qx / 2, qy, 32), c, { hull: "cyl", ...at });
       else if (mat === "soft") addSolid(d, `soft:${qx}:${qy}:${qz}`, () => roundedBox(qx, qy, qz, Math.min(42, qy / 2.4, qx / 3, qz / 3)), c, { hull: "box", half: [qx / 2, qy / 2, qz / 2], edges: false, ...at });
       else addSolid(d, `box:${qx}:${qy}:${qz}`, () => new THREE.BoxGeometry(qx, qy, qz), c, at);
@@ -115,6 +116,9 @@ export function partDrawable(p: PartType, holes: Hole[]) {
   } else {
     addSolid(d, `box:${sx}:${sy}:${sz}`, () => new THREE.BoxGeometry(sx, sy, sz), color);
   }
+  // a hole is drawn only where it sits on the part: one recorded off it would float in the air
+  const near = (h: Hole) => h.p.every((v, i) => Math.abs(v) <= p.size[i] / 2 + 3);
+  holes = holes.filter(near);
   if (holes.length) {
     const pts: number[] = [];
     const seg = 14;
@@ -146,6 +150,29 @@ export function partDrawable(p: PartType, holes: Hole[]) {
     d.thin.push(lm);
   }
   return d;
+}
+
+/** A flat board cut to an outline of [x, z] corners, each corner rounded, centred on its thickness. */
+function slab(pts: [number, number][], h: number, r: number) {
+  const s = new THREE.Shape();
+  const n = pts.length;
+  pts.forEach((c, i) => {
+    const prev = pts[(i + n - 1) % n], next = pts[(i + 1) % n];
+    const toward = (o: [number, number], k: number): [number, number] => {
+      const dx = o[0] - c[0], dz = o[1] - c[1], l = Math.hypot(dx, dz) || 1;
+      return [c[0] + (dx / l) * k, c[1] + (dz / l) * k];
+    };
+    const k = Math.min(r, Math.hypot(prev[0] - c[0], prev[1] - c[1]) / 2, Math.hypot(next[0] - c[0], next[1] - c[1]) / 2);
+    const a = toward(prev, k), b = toward(next, k);
+    if (i === 0) s.moveTo(a[0], a[1]);
+    else s.lineTo(a[0], a[1]);
+    s.quadraticCurveTo(c[0], c[1], b[0], b[1]);
+  });
+  s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, { depth: h, bevelEnabled: false, curveSegments: 14 });
+  g.rotateX(Math.PI / 2);
+  g.translate(0, h / 2, 0);
+  return g;
 }
 
 /** Half a disc (one half of a round table top): flat edge along x at the back, curve towards the front, centred on its box. */

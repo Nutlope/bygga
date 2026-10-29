@@ -79,7 +79,8 @@ function recipe(s: ProductSpec): CustomParams {
     { id: "SC", name: "Seat cushion", size: [seatW, cushT, 500], pos: [0, seatTop - cushT / 2, zs + 15], material: "soft" },
     { id: "BC", name: "Back cushion", size: [W - 60, 260, 40], pos: [0, yTop - 30 - 130, zb - 40], rot: [-0.08, 0, 0], material: "soft" },
   ];
-  const sideBolts = [-1, 1].map((sx) => fx("bolt", [[sx * (W / 2), yRail, zb + 30], [sx * (W / 2), y0 + 20, zb + 30]], [-sx, 0, 0], sx < 0 ? "SL" : "SR", { name: "Allen bolt", len: 16, dia: 6, mate: "BF" }));
+  // where the side frame tubes end against the back frame uprights
+  const sideBolts = [-1, 1].map((sx) => fx("bolt", [[sx * (W / 2), yRail, zb - 10], [sx * (W / 2), y0, zb - 10]], [-sx, 0, 0], sx < 0 ? "SL" : "SR", { name: "Allen bolt", len: 16, dia: 6, mate: "BF" }));
   const barBolts = [-1, 1].map((sx) => fx("bolt", [[sx * (W / 2), ySling, zf - 15]], [-sx, 0, 0], sx < 0 ? "SL" : "SR", { name: "Allen bolt", len: 30, dia: 8, mate: "SS" }));
   const steps: CustomStep[] = [
     {

@@ -4,7 +4,7 @@ import type { CustomParams, CustomPart, PartPiece, ProductSpec, Vec3 } from "../
 /**
  * GUNDE, read from the folding stool's manual. The stool comes assembled: the manual only shows opening it, legs
  * apart, then pressing the seat down at both ends until its two catches click, with fingers kept clear of the
- * hinges. The folding chair has no manual (it is assembled too), so it keeps its old guide.
+ * hinges. The folding chair has no manual: it is sold assembled, so its guide only unfolds it.
  */
 
 const TUBE = 18;
@@ -51,10 +51,48 @@ function stool(s: ProductSpec): CustomParams {
   };
 }
 
+
+/**
+ * The folding chair: a long frame from a loop on the floor at the front up into the backrest, a shorter frame from
+ * a loop at the back up under the front of the seat, crossing it at the pivots, and the seat hinged between them.
+ */
+function chair(s: ProductSpec): CustomParams {
+  // IKEA: 41 wide, 45 deep, 78 high, seat 45 high
+  const W = Math.round(s.size.w * 10) || 410, D = Math.round(s.size.d * 10) || 450, H = Math.round(s.size.h * 10) || 780;
+  const ys = 450, st = 30;
+  const xo = W / 2 - TUBE / 2 - 20, xi = xo - TUBE - 4;
+  const zf = D / 2 - TUBE / 2, zb = -D / 2 + TUBE / 2;
+  const cB: Vec3 = [0, H / 2, 0], cI: Vec3 = [0, (ys - 20) / 2, 0];
+  const main: PartPiece[] = [
+    // each side: up from the front loop to the back of the seat, then straight up into the backrest
+    ...[-1, 1].flatMap((g) => [tubeYZ([g * xo, TUBE / 2, zf], [g * xo, ys - 10, zb + 30], cB), tubeYZ([g * xo, ys - 10, zb + 30], [g * xo, H - 40, zb + 20], cB)]),
+    { shape: "cyl", size: [TUBE, 2 * xo, TUBE], pos: [0, TUBE / 2 - cB[1], zf], rot: [0, 0, Math.PI / 2] },
+  ];
+  const inner: PartPiece[] = [
+    ...[-1, 1].map((g) => tubeYZ([g * xi, TUBE / 2, zb], [g * xi, ys - 30, zf - 40], cI)),
+    { shape: "cyl", size: [TUBE, 2 * xi, TUBE], pos: [0, TUBE / 2 - cI[1], zb], rot: [0, 0, Math.PI / 2] },
+  ];
+  const parts: CustomPart[] = [
+    { id: "F", name: "Chair frame", size: [W - 40, H, D], pos: cB, pieces: main, material: "metal" },
+    { id: "B", name: "Backrest", size: [W, 190, 24], pos: [0, H - 95, zb + 26], material: "board" },
+    { id: "I", name: "Front leg frame", size: [2 * xi + TUBE, ys - 20, D], pos: cI, pieces: inner, material: "metal" },
+    { id: "S", name: "Seat", size: [W - 40, st, D - 90], pos: [0, ys - st / 2, 10], material: "board" },
+  ];
+  return {
+    parts,
+    steps: [
+      { title: "Take the folded chair out of the box", detail: "It comes assembled, with nothing to screw together. Stand it on the front loop of its frame.", add: ["F", "B"] },
+      { title: "Swing the other legs out", detail: "Pull the bottom of the inner frame towards the back until both loops stand on the floor.", add: ["I"], from: { I: [0, 60, 300] }, warnings: ["hand"] },
+      { title: "Press the seat down", detail: "Push it down flat until it rests on the frame. To fold the chair, lift the front edge of the seat; keep your fingers clear of the joints.", add: ["S"], from: { S: [0, 300, -150] }, warnings: ["hand"] },
+    ],
+  };
+}
+
 const family: Family = {
   names: ["GUNDE"],
   recipe(s) {
     if (/gunde-folding-stool/.test(s.slug ?? "")) return stool(s);
+    if (/gunde-folding-chair/.test(s.slug ?? "")) return chair(s);
     return null;
   },
 };

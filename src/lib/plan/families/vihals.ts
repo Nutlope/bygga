@@ -16,22 +16,6 @@ import { buildCustom } from "../custom";
 type Fix = CustomFix;
 const pt = (x: number, y: number, z: number): Vec3 => [Math.round(x), Math.round(y), Math.round(z)];
 const at = (kind: HwKind, pts: Vec3[], dir: Vec3, o: { on?: string; mate?: string; len?: number; dia?: number } = {}): Fix => ({ kind, count: pts.length, at: pts, dir, ...o });
-// fittings the recipe builder has no kind for go in as screws of a size no real screw has, and are renamed after
-const CASTOR = { len: 58, dia: 50 };
-const RETYPE: Record<string, { kind: HwKind; name: string }> = { "screw-58-50": { kind: "castor", name: "Castor" }, "screw-44-26": { kind: "roller", name: "Door roller" } };
-function retype(b: PlanBuilder) {
-  for (const [id, to] of Object.entries(RETYPE)) {
-    const h = b.hw.get(id);
-    if (!h) continue;
-    h.kind = to.kind;
-    h.name = to.name;
-    h.spec = "";
-    for (const it of b.items) if (it.kind === "hw" && it.ref === id) {
-      it.spin = 0;
-      it.travel = 50;
-    }
-  }
-}
 const spread = (a: number, c: number, n: number) => Array.from({ length: n }, (_, i) => (n === 1 ? (a + c) / 2 : a + ((c - a) * i) / (n - 1)));
 
 /* ---------------- tables ---------------- */
@@ -150,7 +134,7 @@ function tableRecipe(s: ProductSpec, kind: TableKind): CustomParams {
     steps.push({
       title: "Bolt the long bar to the end bars",
       detail: "One short bolt through each end bar.",
-      fix: [at("bolt", [pt(-ex - fb / 2, yf, 0), pt(ex + fb / 2, yf, 0)], [1, 0, 0], { mate: "F2", len: 30, dia: 6 })],
+      fix: [at("bolt", [pt(-ex - fb / 2, yf, 0)], [1, 0, 0], { on: "F0", mate: "F2", len: 40, dia: 6 }), at("bolt", [pt(ex + fb / 2, yf, 0)], [-1, 0, 0], { on: "F1", mate: "F2", len: 40, dia: 6 })],
     });
   }
   steps.push({
@@ -213,7 +197,7 @@ function extendableRecipe(s: ProductSpec): CustomParams {
     { title: "Clip the sliders into the long rails", detail: "Two in each rail. Push each one in and turn it until it locks.", add: ["L0", "L1"], fix: [at("clip", [-FW / 2 + 150, -100].flatMap((x) => [pt(x, yr, -(FD / 2 - rt)), pt(x, yr, FD / 2 - rt)]), [0, 0, 1], { dia: 20, len: 30 })], pose: "-y" },
     { title: "Lay the rails on one half of the top", detail: "Both halves lie upside down on a rug. The rails go on the half with the holes for them.", add: ["topA", "topB"], warnings: ["floor"] },
     { title: "Screw the long rails to the top", detail: "Turn the screws in with the Allen key through the holes in the rails.", fix: [railScrews("L0", -(FD / 2 - rt / 2)), railScrews("L1", FD / 2 - rt / 2)] },
-    { title: "Screw in the end stop", detail: "One screw near the middle, so the rails can't slide off.", fix: [at("bolt", [pt(-40, H - tt - rh, 0)], [0, 1, 0], { len: 60, dia: 6 })] },
+    { title: "Screw in the end stop", detail: "One screw near the middle, so the rails can't slide off.", fix: [at("bolt", [pt(-40, H - tt - 10, 0)], [0, 1, 0], { on: "topA", len: 20, dia: 6 })] },
     { title: "Click the corner brackets into the rail ends", detail: "Two at this end.", fix: [at("clamp", [brk[0], brk[1]], [0, -1, 0], { len: 50, dia: 40 })], add: ["SA"] },
     { title: "Bolt on the first two legs", detail: "Washer, then spring washer, on each bolt. Hand tight for now.", add: ["G0", "G1"], fix: legEnd(0, 1), tools: ["wrench"] },
     { title: "Tighten them with the spanner", detail: "Check the spring washers are pressed flat.", tools: ["wrench"], kind: "bolts" },
@@ -230,7 +214,7 @@ function extendableRecipe(s: ProductSpec): CustomParams {
     {
       title: "Screw the locating plates onto the leaf",
       detail: "Two on each long edge, on the underside. Two screws each.",
-      fix: [at("plate", [-1, 1].flatMap((sx) => [-1, 1].map((sz) => pt(sx * (leafW / 2 - 30), H - tt - rh + 4, sz * (D / 2 - 120)))), [0, 1, 0], { len: 40, dia: 30 }), at("screw", [-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => [-12, 12].map((d) => pt(sx * (leafW / 2 - 30) + d, H - tt - rh + 4, sz * (D / 2 - 120))))), [0, 1, 0], { len: 14, dia: 4 })],
+      fix: [at("plate", [-1, 1].flatMap((sx) => [-1, 1].map((sz) => pt(sx * (leafW / 2 - 60), H - tt - rh + 4, sz * (D / 2 - 120)))), [0, 1, 0], { on: "leaf", len: 40, dia: 30 }), at("screw", [-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => [-25, 25].map((d) => pt(sx * (leafW / 2 - 60) + d, H - tt - rh + 4, sz * (D / 2 - 120))))), [0, 1, 0], { on: "leaf", len: 14, dia: 4 })],
       add: ["leaf"],
     },
     { title: "Pull the ends apart and lay the leaf in", detail: "Unfold it onto the rails, push the halves together until the plates lock. Store it under the top when you close the table." },
@@ -267,8 +251,9 @@ function gatelegRecipe(s: ProductSpec): CustomParams {
   });
   parts.push(endFrame(-1, 0), endFrame(1, 1));
   for (const [i, sz] of [-1, 1].entries()) parts.push({ id: `R${i}`, name: "Long rail", size: [2 * fx - lg, 40, lg], pos: [0, hL - 20, sz * fz], material: "metal" });
-  const shY = [120, 360, 600];
-  shY.forEach((y, i) => parts.push({ id: `S${i}`, name: "Shelf", size: [2 * fx - lg, 18, 2 * fz - lg], pos: [0, y, 0], material: "board" }));
+  // the shelves reach the middle of the legs, so their bolts go through the legs into the shelf edges
+  const shY = [150, Math.round(hL / 2), hL - 200];
+  shY.forEach((y, i) => parts.push({ id: `S${i}`, name: "Shelf", size: [2 * fx, 18, 2 * fz - lg], pos: [0, y, 0], material: "board" }));
   const gx = mid / 2 + leaf * 0.55;
   const gate = (sx: number, i: number): CustomPart => {
     const len = gx - fx - lg / 2;
@@ -276,29 +261,39 @@ function gatelegRecipe(s: ProductSpec): CustomParams {
       id: `Gt${i}`,
       name: "Gate",
       size: [len + lg, hL, lg],
-      pos: [sx * (fx + lg / 2 + len / 2), hL / 2, fz - lg],
+      pos: [sx * (fx + lg / 2 + len / 2), hL / 2, fz],
       material: "metal",
       pieces: [
         { shape: "box", size: [lg, hL, lg], pos: [sx * (len / 2), 0, 0] },
         { shape: "box", size: [len, 30, lg], pos: [0, hL / 2 - 60, 0] },
-        { shape: "box", size: [len, 30, lg], pos: [0, -hL / 2 + 140, 0] },
+        { shape: "box", size: [len, 30, lg], pos: [0, -hL / 2 + 260, 0] },
       ],
     };
   };
   parts.push(gate(-1, 0), gate(1, 1));
   const hingesTop = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => pt(sx * mid / 2, H - tt, sz * (D / 2 - 150))));
-  const hingesGate = [-1, 1].flatMap((sx) => [hL - 100, 200].map((y) => pt(sx * (fx + lg / 2), y, fz - lg)));
+  // a gate's two rails sit level with these heights; a hinge on each rail end, swinging on the end frame's leg
+  const gateY = [hL - 60, 260];
+  const hingesGate = [-1, 1].flatMap((sx) => gateY.map((y) => pt(sx * (fx + lg / 2), y, fz + lg / 2)));
   const steps: CustomStep[] = [
     { title: "Screw the guide bolts into the middle top", detail: "Lay the three top pieces upside down on a rug. A washer goes under each bolt.", add: ["topM", "leafL", "leafR"], fix: [at("bolt", [pt(-mid / 2 + 60, H - tt, fz), pt(mid / 2 - 60, H - tt, fz)], [0, 1, 0], { len: 20, dia: 8 }), at("washer", [pt(-mid / 2 + 60, H - tt - 3, fz), pt(mid / 2 - 60, H - tt - 3, fz)], [0, 1, 0], { dia: 16 })], pose: "-y", warnings: ["floor"] },
     { title: "Screw the bumpers onto the leaves", detail: "Two on each leaf, near the outer edge.", fix: [at("glide", [-1, 1].flatMap((sx) => [-1, 1].map((sz) => pt(sx * (W / 2 - 150), H - tt, sz * (D / 2 - 120)))), [0, 1, 0], { dia: 20, len: 12 }), at("screw", [-1, 1].flatMap((sx) => [-1, 1].map((sz) => pt(sx * (W / 2 - 150), H - tt - 6, sz * (D / 2 - 120)))), [0, 1, 0], { len: 16, dia: 4 })] },
     { title: "Hinge the leaves to the middle top", detail: "Two hinges on each joint, eight screws each. Line the pieces up edge to edge first.", fix: [at("hinge", hingesTop, [0, 1, 0], { len: 60, dia: 40 }), at("screw", hingesTop.flatMap((h) => [-24, -8, 8, 24].flatMap((dz) => [-14, 14].map((dx) => pt(h[0] + dx, h[1], h[2] + dz)))), [0, 1, 0], { len: 14, dia: 4 })] },
-    { title: "Bolt the end frames to the long rails", detail: "Two bolts at each joint, with the Allen key.", add: ["E0", "E1", "R0", "R1"], fix: [at("bolt", [-1, 1].flatMap((sz) => [-1, 1].map((sx) => pt(sx * (fx - lg / 2), hL - 20, sz * fz))), [-1, 0, 0], { len: 50, dia: 6 })] },
+    { title: "Bolt the end frames to the long rails", detail: "Two bolts at each joint, with the Allen key.", add: ["E0", "E1", "R0", "R1"], fix: [-1, 1].map((sx) => at("bolt", [-1, 1].map((sz) => pt(sx * (fx + lg / 2), hL - 20, sz * fz)), [-sx, 0, 0], { on: `E${sx < 0 ? 0 : 1}`, len: 50, dia: 6 })) },
     { title: "Lay the frame on the middle top", detail: "Centred on it, the open side of the rails up." },
-    { title: "Bolt the frame to the top", detail: "Ten long bolts through the rails into the top.", fix: [at("bolt", [...[-1, 1].flatMap((sz) => spread(-fx + 40, fx - 40, 3).map((x) => pt(x, hL - 40, sz * fz))), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => pt(sx * fx, hL - 40, sz * (fz - 150))))], [0, 1, 0], { len: 80, dia: 6 })] },
-    { title: "Bolt in the shelves", detail: "Four bolts through the end frames into each shelf.", add: ["S0", "S1", "S2"], fix: [at("bolt", shY.flatMap((y) => [-1, 1].map((sz) => pt(-fx - lg / 2, y, sz * (fz - 100)))), [1, 0, 0], { len: 30, dia: 6 }), at("bolt", shY.flatMap((y) => [-1, 1].map((sz) => pt(fx + lg / 2, y, sz * (fz - 100)))), [-1, 0, 0], { len: 30, dia: 6 })] },
-    { title: "Bolt each gate together", detail: "The two rails onto the gate leg, one bolt each, and a hinge plate on the free ends.", add: ["Gt0", "Gt1"], fix: [at("bolt", [-1, 1].flatMap((sx) => [hL - 60, 140].map((y) => pt(sx * gx, y, fz - lg))), [0, 0, -1], { len: 40, dia: 6 })] },
-    { title: "Hinge the gates to the frame", detail: "Two hinges for each gate, on the leg of the end frame. Six screws each.", fix: [at("hinge", hingesGate, [0, 0, -1], { len: 50, dia: 35 }), at("screw", hingesGate.flatMap((h) => [-20, 0, 20].flatMap((dy) => [-10, 10].map((dx) => pt(h[0] + dx, h[1] + dy, h[2] + lg / 2)))), [0, 0, -1], { len: 12, dia: 4 })] },
-    { title: "Stick the felt pads under the feet", detail: "One under every leg, the gates' too.", fix: [at("glide", [...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => pt(sx * fx, 0, sz * fz))), ...[-1, 1].map((sx) => pt(sx * gx, 0, fz - lg))].slice(0, 4), [0, 1, 0], { dia: 24, len: 3 })] },
+    { title: "Bolt the frame to the top", detail: "Ten long bolts through the rails into the top.", fix: [at("bolt", [...[-1, 1].flatMap((sz) => spread(-fx + 40, fx - 40, 3).map((x) => pt(x, hL - 40, sz * fz))), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => pt(sx * fx, hL - 40, sz * (fz - 150))))], [0, 1, 0], { len: 55, dia: 6 })] },
+    { title: "Bolt in the shelves", detail: "Four bolts through the legs into each shelf, one at each corner.", add: ["S0", "S1", "S2"], fix: [-1, 1].map((sz) => at("bolt", shY.flatMap((y) => [-1, 1].map((sx) => pt(sx * (fx - 8), y, sz * (fz + lg / 2)))), [0, 0, -sz], { len: 40, dia: 6 })) },
+    { title: "Bolt each gate together", detail: "The two rails onto the gate leg, one bolt each, and a hinge plate on the free ends.", add: ["Gt0", "Gt1"], fix: [-1, 1].map((sx, i) => at("bolt", gateY.map((y) => pt(sx * (gx + lg / 2), y, fz)), [-sx, 0, 0], { on: `Gt${i}`, len: 40, dia: 6 })) },
+    {
+      title: "Hinge the gates to the frame",
+      detail: "Two hinges for each gate: two screws into the rail end, four into the leg of the end frame.",
+      fix: [
+        at("hinge", hingesGate, [0, 0, -1], { len: 50, dia: 35 }),
+        at("screw", hingesGate.flatMap((h) => [25, 50].map((dx) => pt(h[0] + Math.sign(h[0]) * dx, h[1] + 15, fz))), [0, -1, 0], { len: 12, dia: 4 }),
+        at("screw", hingesGate.flatMap((h) => [-48, -24, 24, 48].map((dy) => pt(h[0] - Math.sign(h[0]) * 20, h[1] + dy, h[2]))), [0, 0, -1], { len: 12, dia: 4 }),
+      ],
+    },
+    { title: "Stick the felt pads under the feet", detail: "One under every leg, the gates' too.", fix: [at("glide", [...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => pt(sx * fx, 0, sz * fz))), ...[-1, 1].map((sx) => pt(sx * gx, 0, fz))].slice(0, 4), [0, 1, 0], { dia: 24, len: 3 })] },
     { title: "Fold the gates in and turn it over together", detail: "Lift it by the frame with a helper.", pose: "+y", people: 2 },
     { title: "Swing a gate out and lift a leaf onto it", detail: "Do the same on the other side to open the table fully.", repeat: 2 },
   ];
@@ -582,7 +577,9 @@ function cabRecipe(s: ProductSpec, cfg: CabCfg): CustomParams {
       fix: [
         at("runner", left, [-1, 0, 0], { len: rl, dia: 20 }),
         at("runner", right, [1, 0, 0], { len: rl, dia: 20 }),
-        at("screw", [...left, ...right].flatMap((p) => [-1, 0, 1].map((k) => pt(p[0], p[1], p[2] + k * (rl / 2 - 40)))), [0, 0, 1], { len: 13, dia: 4 }),
+        // through the runner into the panel behind it
+        at("screw", left.flatMap((p) => [-1, 0.5, 1].map((k) => pt(p[0] + 2, p[1], p[2] + k * (rl / 2 - 40)))), [-1, 0, 0], { len: 13, dia: 4 }),
+        at("screw", right.flatMap((p) => [-1, 0.5, 1].map((k) => pt(p[0] - 2, p[1], p[2] + k * (rl / 2 - 40)))), [1, 0, 0], { len: 13, dia: 4 }),
       ],
       warnings: ["floor"],
     });
@@ -664,7 +661,7 @@ function cabRecipe(s: ProductSpec, cfg: CabCfg): CustomParams {
   }
   if (cfg.rail) {
     const c = xs[0];
-    steps.push({ title: "Screw up the clothes rail", detail: "Clip the rail into its holders and screw a holder to each side.", add: ["rail"], fix: [at("clip", [pt(c[0], cfg.rail, -40)], [-1, 0, 0], { dia: 30, len: 20 }), at("clip", [pt(c[1], cfg.rail, -40)], [1, 0, 0], { dia: 30, len: 20 }), at("screw", [pt(c[0], cfg.rail + 12, -52), pt(c[0], cfg.rail - 12, -28), pt(c[1], cfg.rail + 12, -52), pt(c[1], cfg.rail - 12, -28)], [0, 0, 1], { len: 12, dia: 4 })] });
+    steps.push({ title: "Screw up the clothes rail", detail: "Clip the rail into its holders and screw a holder to each side.", add: ["rail"], fix: [at("clip", [pt(c[0], cfg.rail, -40)], [-1, 0, 0], { dia: 30, len: 20 }), at("clip", [pt(c[1], cfg.rail, -40)], [1, 0, 0], { dia: 30, len: 20 }), at("screw", [-1, 1].map((k) => pt(c[0] + 2, cfg.rail!, -40 + k * 25)), [-1, 0, 0], { len: 12, dia: 4 }), at("screw", [-1, 1].map((k) => pt(c[1] - 2, cfg.rail!, -40 + k * 25)), [1, 0, 0], { len: 12, dia: 4 })] });
   }
 
   // sliding doors run in tracks pressed into the top and bottom
@@ -686,7 +683,18 @@ function cabRecipe(s: ProductSpec, cfg: CabCfg): CustomParams {
     const guides = rollers.map((r) => pt(r[0], yT - 8, r[2]));
     steps.push({ title: "Press in the bottom track", detail: "Start at one end and press it into the groove, a section at a time.", add: ["trB"] });
     steps.push({ title: "Press in the top track", detail: "The same way, into the groove under the top.", add: ["trT"] });
-    steps.push({ title: "Screw the rollers and guides onto the doors", detail: "Lay the doors on a rug. Rollers at the bottom edge, guides at the top.", fix: [at("screw", rollers, [0, 1, 0], { len: ROLLER.len, dia: ROLLER.dia }), at("clip", guides, [0, -1, 0], { dia: 26, len: 18 }), at("screw", [...rollers, ...guides].flatMap((r) => [pt(r[0] - 12, r[1], r[2]), pt(r[0] + 12, r[1], r[2])]), [0, 1, 0], { len: 12, dia: 4 })] });
+    const onDoor = (i: number, pts: Vec3[]) => pts.filter((p) => (p[0] < 0) === (i === 0));
+    steps.push({
+      title: "Screw the rollers and guides onto the doors",
+      detail: "Lay the doors on a rug. Rollers at the bottom edge, guides at the top.",
+      wait: ["sd0", "sd1"],
+      fix: [0, 1].flatMap((i) => [
+        at("roller", onDoor(i, rollers), [0, 1, 0], { on: `sd${i}` }),
+        at("clip", onDoor(i, guides), [0, -1, 0], { on: `sd${i}`, dia: 26, len: 18 }),
+        at("screw", onDoor(i, rollers).flatMap((r) => [pt(r[0] - 25, r[1], r[2]), pt(r[0] + 25, r[1], r[2])]), [0, 1, 0], { on: `sd${i}`, len: 12, dia: 4 }),
+        at("screw", onDoor(i, guides).flatMap((r) => [pt(r[0] - 25, r[1], r[2]), pt(r[0] + 25, r[1], r[2])]), [0, -1, 0], { on: `sd${i}`, len: 12, dia: 4 }),
+      ]),
+    });
     steps.push({ title: "Hang the back door, then the front one", detail: "Tilt the top into the top track, then lower the rollers into the bottom track until they lock.", add: ["sd0", "sd1"], from: { sd0: [0, 0, 400], sd1: [0, 0, 400] } });
     steps.push({ title: "Clip on the door stops and bumpers", detail: "They stop the doors at each end and keep them quiet.", fix: [at("clip", [pt(-W / 2 + t, H / 2, D / 2 - 30), pt(W / 2 - t, H / 2, D / 2 - 30)], [0, 0, -1], { dia: 18, len: 12 })] });
   }
@@ -757,15 +765,13 @@ function cabRecipe(s: ProductSpec, cfg: CabCfg): CustomParams {
     steps.push({
       title: "Screw the drawer runners on",
       detail: "Turn each drawer upside down. The runner marked for each side goes under its bottom edge, two screws each.",
-      fix: [at("runner", runL, [1, 0, 0], { len: Math.round((dP - FR - 60) / 10) * 10, dia: 18 }), at("runner", runR, [-1, 0, 0], { len: Math.round((dP - FR - 60) / 10) * 10, dia: 18 }), at("screw", [...runL, ...runR].flatMap((q) => [pt(q[0], q[1] - 12, q[2] - 120), pt(q[0], q[1] - 12, q[2] + 120)]), [0, 1, 0], { len: 10, dia: 4 })],
+      fix: [at("runner", runL, [1, 0, 0], { len: Math.round((dP - FR - 60) / 10) * 10, dia: 18 }), at("runner", runR, [-1, 0, 0], { len: Math.round((dP - FR - 60) / 10) * 10, dia: 18 }), at("screw", [...runL.map((q) => pt(q[0] + 6, q[1] - 10, q[2])), ...runR.map((q) => pt(q[0] - 6, q[1] - 10, q[2]))].flatMap((q) => [pt(q[0], q[1], q[2] - 60), pt(q[0], q[1], q[2] + 60)]), [0, 1, 0], { len: 10, dia: 4 })],
     });
     steps.push({ title: many ? "Screw a grip under each front" : "Screw the grip under the front", detail: "The metal grip goes under the top edge of the front.", fix: [at("handle", dIds.map((d) => pt(d.xc, d.d.y1 - 2, D / 2 - FR / 2)), [0, -1, 0], { len: 128, dia: 12 })] });
     steps.push({ title: many ? "Slide the drawers in" : "Slide the drawer in", detail: "Lift the front a little and push until the runners click together." });
   }
   return { parts, steps };
 }
-
-const ROLLER = { len: 44, dia: 26 };
 
 /** Where each VIHALS cabinet's columns, shelves and fronts go, from the photo and its manual. */
 function cabinetCfg(s: ProductSpec): CabCfg | null {
@@ -870,7 +876,7 @@ function bedsideRecipe(s: ProductSpec): CustomParams {
     {
       title: "Screw on the castors",
       detail: "Turn it upside down. Four screws hold each castor plate to the bottom.",
-      fix: [at("screw", wheels, [0, 1, 0], { on: "bot", len: CASTOR.len, dia: CASTOR.dia }), at("screw", wheels.flatMap((w) => [-1, 1].flatMap((a) => [-1, 1].map((b) => pt(w[0] + a * 18, cH, w[2] + b * 18)))), [0, 1, 0], { on: "bot", len: 16, dia: 4 })],
+      fix: [at("castor", wheels, [0, 1, 0], { on: "bot" }), at("screw", wheels.flatMap((w) => [-1, 1].flatMap((a) => [-1, 1].map((b) => pt(w[0] + a * 18, cH, w[2] + b * 18)))), [0, 1, 0], { on: "bot", len: 16, dia: 4 })],
       pose: "-y",
     },
     { title: "Push in the shelf supports", detail: "Turn it back over. Two in each side, at the same height.", fix: supports([{ x0: -W / 2 + t, x1: W / 2 - t, y: ys }], D), pose: "+y" },
@@ -943,6 +949,40 @@ function chairRecipe(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/* ---------------- folding chair ---------------- */
+
+/*
+ * The folding chair comes assembled and has no manual: it is unfolded and locked, nothing more. Its frame is two
+ * long tubes from the back feet up into the backrest, a front frame from the front feet up under the seat, and the
+ * seat hinged between them.
+ */
+function foldingChairRecipe(s: ProductSpec): CustomParams {
+  const W = Math.round(s.size.w * 10) || 430, H = Math.round(s.size.h * 10) || 800, D = Math.round(s.size.d * 10) || 470;
+  const yS = 450, tube = 20, xs = W / 2 - tube;
+  const tubeBetween = (a: [number, number], c: [number, number], x: number): PartPiece => {
+    const dy = c[0] - a[0], dz = c[1] - a[1];
+    return { shape: "cyl", size: [tube, Math.round(Math.hypot(dy, dz)), tube], pos: [x, (a[0] + c[0]) / 2 - H / 2, (a[1] + c[1]) / 2], rot: [Math.atan2(dz, dy), 0, 0] };
+  };
+  const back: [number, number][] = [[0, -D / 2 + 30], [H - 20, -D / 2 + 90]];
+  const front: [number, number][] = [[0, D / 2 - 20], [yS - 30, -D / 2 + 110]];
+  const pieces: PartPiece[] = [
+    ...[-1, 1].map((sx) => tubeBetween(back[0], back[1], sx * xs)),
+    ...[-1, 1].map((sx) => tubeBetween(front[0], front[1], sx * (xs - tube))),
+    { shape: "cyl", size: [tube, 2 * (xs - tube), tube], pos: [0, 20 - H / 2, D / 2 - 30], rot: [0, 0, Math.PI / 2] },
+  ];
+  const parts: CustomPart[] = [
+    { id: "frame", name: "Chair frame", size: [W, H, D], pos: [0, H / 2, 0], material: "metal", pieces },
+    { id: "back", name: "Backrest", size: [W - 10, 150, 22], pos: [0, H - 90, -D / 2 + 84], material: "board" },
+    { id: "seat", name: "Seat", size: [W - 40, 22, D - 80], pos: [0, yS, 30], material: "board" },
+  ];
+  const steps: CustomStep[] = [
+    { title: "Take the folded chair out of the box", detail: "It comes assembled, with nothing to screw together. Stand it on its feet, still folded.", add: ["frame", "back"], from: { frame: [0, 300, 0], back: [0, 300, 0] } },
+    { title: "Unfold it and press the seat down", detail: "Pull the back and the front legs apart, then push the seat down until it lies flat and the frame locks.", add: ["seat"], from: { seat: [0, 260, -200] } },
+    { title: "Check it stands steady", detail: "All four feet should touch the floor. To fold it, lift the front edge of the seat." },
+  ];
+  return { parts, steps };
+}
+
 /* ---------------- bed frames ---------------- */
 
 /*
@@ -970,10 +1010,11 @@ function bedRecipe(s: ProductSpec): CustomParams {
     { id: "srR", name: "Slat rail", size: [srS, srS, railL], pos: [xs, ySr, 0], material: "metal" },
   ];
   // two cross straps from corner to corner under the slat rails
-  const dx = 2 * (xs - 20), dz = railL - 80, len = Math.hypot(dx, dz), ang = Math.atan2(dx, dz);
+  const dx = 2 * xs, dz = railL - 80, len = Math.hypot(dx, dz), ang = Math.atan2(dx, dz);
   parts.push({ id: "strap0", name: "Cross strap", size: [24, 3, len], pos: [0, ySr - srS / 2 - 2, 0], material: "metal", rot: [0, ang, 0] });
   parts.push({ id: "strap1", name: "Cross strap", size: [24, 3, len], pos: [0, ySr - srS / 2 - 5, 0], material: "metal", rot: [0, -ang, 0] });
-  if (dbl) parts.push({ id: "beam", name: "Centre beam", size: [40, 40, railL], pos: [0, ySr - 5, 0], material: "metal" });
+  // the centre beam sits between the straps and the slats
+  if (dbl) parts.push({ id: "beam", name: "Centre beam", size: [40, 30, railL], pos: [0, ySr, 0], material: "metal" });
   const yS = ySr + srS / 2 + 8;
   parts.push({ id: "slats", name: "Slatted bed base", size: [2 * (xs + srS / 2) - 10, 16, railL - 20], pos: [0, yS, 0], material: "wood" });
 
@@ -985,7 +1026,8 @@ function bedRecipe(s: ProductSpec): CustomParams {
   const cams = (a: number) => [pt(a * (xr - t / 2), yHi, -L / 2 + t + 34), pt(a * (xr - t / 2), yHi, L / 2 - t - 34)];
   const nuts = (a: number) => [pt(a * (xr - t / 2), yLo, -L / 2 + t + 50), pt(a * (xr - t / 2), yLo, L / 2 - t - 50)];
   const srScrews = (a: number) => spread(-railL / 2 + 80, railL / 2 - 80, 8).map((z) => pt(a * (xs - srS / 2), ySr, z));
-  const strapEnds = [pt(-xs, ySr - srS / 2, -dz / 2), pt(xs, ySr - srS / 2, dz / 2), pt(xs, ySr - srS / 2, -dz / 2), pt(-xs, ySr - srS / 2, dz / 2)];
+  // each strap end is screwed up through the strap into its slat rail; strap0 runs from back left to front right
+  const yS0 = ySr - srS / 2 - 3.5, yS1 = ySr - srS / 2 - 6.5;
 
   const steps: CustomStep[] = [
     { title: "Push the glides into the head and foot boards", detail: "Lay both boards flat on a rug. The glides go into the holes in their bottom edges.", add: ["head", "foot"], fix: [at("glide", glides, [0, 1, 0], { dia: 30, len: 10 })], warnings: ["floor"] },
@@ -1011,20 +1053,23 @@ function bedRecipe(s: ProductSpec): CustomParams {
   ];
   if (dbl) {
     const brk = [pt(0, ySr - 30, -L / 2 + t), pt(0, ySr - 30, L / 2 - t)];
-    steps.push({ title: "Screw a beam bracket to each board", detail: "In the middle of the headboard and the footboard, open side up.", fix: [at("angle", [brk[0]], [0, 0, -1], { on: "head", len: 60, dia: 50 }), at("angle", [brk[1]], [0, 0, 1], { on: "foot", len: 60, dia: 50 }), at("screw", brk.flatMap((b) => [pt(-20, b[1], b[2]), pt(20, b[1], b[2])]), [0, 0, 1], { len: 15, dia: 5 })] });
+    steps.push({ title: "Screw a beam bracket to each board", detail: "In the middle of the headboard and the footboard, open side up.", fix: [at("angle", [brk[0]], [0, 0, -1], { on: "head", len: 60, dia: 50 }), at("angle", [brk[1]], [0, 0, 1], { on: "foot", len: 60, dia: 50 }), at("screw", [pt(-25, brk[0][1], brk[0][2] + 1), pt(25, brk[0][1], brk[0][2] + 1)], [0, 0, -1], { on: "head", len: 15, dia: 5 }), at("screw", [pt(-25, brk[1][1], brk[1][2] - 1), pt(25, brk[1][1], brk[1][2] - 1)], [0, 0, 1], { on: "foot", len: 15, dia: 5 })] });
   }
   steps.push({
     title: "Screw the cross straps under the slat rails",
     detail: "From corner to corner, so they cross in the middle. They keep the frame square.",
     add: ["strap0", "strap1"],
-    fix: [at("screw", [...strapEnds, pt(0, ySr - srS / 2 - 6, 0), pt(-30, ySr - srS / 2 - 6, 0), pt(30, ySr - srS / 2 - 6, 0)], [0, 1, 0], { len: 10, dia: 4 })],
+    fix: [
+      at("screw", [pt(-xs, yS0, -dz / 2), pt(xs, yS0, dz / 2)], [0, 1, 0], { on: "strap0", len: 10, dia: 4 }),
+      at("screw", [pt(xs, yS1, -dz / 2), pt(-xs, yS1, dz / 2), pt(0, yS1, 0)], [0, 1, 0], { on: "strap1", len: 10, dia: 4 }),
+    ],
     check: "square",
   });
   if (dbl) steps.push({ title: "Lay the centre beam on the brackets", detail: "Join its two halves first, then drop the ends into the brackets.", add: ["beam"] });
   steps.push({
     title: "Screw on the slat stops",
     detail: "One at each end of both slat rails.",
-    fix: [at("clip", sx.flatMap((a) => [pt(a * xs, ySr + srS / 2, -railL / 2 + 30), pt(a * xs, ySr + srS / 2, railL / 2 - 30)]), [0, -1, 0], { dia: 24, len: 20 }), at("screw", sx.flatMap((a) => [pt(a * (xs + 6), ySr + srS / 2, -railL / 2 + 40), pt(a * (xs + 6), ySr + srS / 2, railL / 2 - 40)]), [0, -1, 0], { len: 10, dia: 6 })],
+    fix: [at("clip", sx.flatMap((a) => [pt(a * xs, ySr + srS / 2, -railL / 2 + 30), pt(a * xs, ySr + srS / 2, railL / 2 - 30)]), [0, -1, 0], { dia: 24, len: 20 }), at("screw", sx.flatMap((a) => [pt(a * xs, ySr + srS / 2, -railL / 2 + 55), pt(a * xs, ySr + srS / 2, railL / 2 - 55)]), [0, -1, 0], { len: 10, dia: 6 })],
   });
   steps.push({ title: "Roll out the slats", detail: "Curved side up. Push each end slat under its stop.", add: ["slats"] });
   return { parts, steps };
@@ -1076,9 +1121,9 @@ function boxParts(sets: { x: number; side: 1 | -1 }[], z0: number, z1: number, b
           { kind: "camScrew", count: 11, len: 44, to: [bottoms[1]] },
         ],
       },
-      { title: "Stand the front, back, ends and divider on the bottoms", detail: "Each one pushes down over its dowels and cam bolts.", add: uprights, from },
+      { title: "Stand the front, back, ends and divider on the bottoms", detail: "Each one pushes down over its dowels and cam bolts.", add: uprights, from: Object.fromEntries(uprights.map((id) => [id, [0, 250, 0] as Vec3])) },
       { title: "Turn the cam locks to pull the boxes tight", detail: "One for every cam bolt.", fix: [{ kind: "cam", count: 22 }], tools: ["screwdriver"] },
-      { title: "Screw on the castors", detail: "Turn each box over. Two screws hold each castor.", fix: [at("screw", castors, [0, 1, 0], { len: CASTOR.len, dia: CASTOR.dia }), at("screw", castors.flatMap((c) => [pt(c[0] - 15, cH, c[2]), pt(c[0] + 15, cH, c[2])]), [0, 1, 0], { len: 14, dia: 4 })] },
+      { title: "Screw on the castors", detail: "Turn each box over. Two screws hold each castor.", fix: [at("castor", castors, [0, 1, 0]), at("screw", castors.flatMap((c) => [pt(c[0] - 25, cH, c[2]), pt(c[0] + 25, cH, c[2])]), [0, 1, 0], { len: 14, dia: 4 })] },
     );
     if (two) steps.push({ title: "Build the second set the same way", detail: "Then push all the boxes under the bed, fronts out." });
     else steps.push({ title: "Push the boxes in under the frame", detail: "Fronts out. They roll in on their castors." });
@@ -1146,7 +1191,7 @@ function dayBedRecipe(s: ProductSpec): CustomParams {
     { id: "srB", name: "Slat rail", size: [inW, srS, srS], pos: [0, ySr, -zs], material: "metal" },
     { id: "srF", name: "Slat rail", size: [inW, srS, srS], pos: [0, ySr, zs], material: "metal" },
   ];
-  const dx = inW - 80, dz = 2 * (zs - 20), len = Math.hypot(dx, dz), ang = Math.atan2(dz, dx);
+  const dx = inW - 80, dz = 2 * zs, len = Math.hypot(dx, dz), ang = Math.atan2(dz, dx);
   parts.push({ id: "strap0", name: "Cross strap", size: [len, 3, 24], pos: [0, ySr - srS / 2 - 2, 0], material: "metal", rot: [0, ang, 0] });
   parts.push({ id: "strap1", name: "Cross strap", size: [len, 3, 24], pos: [0, ySr - srS / 2 - 5, 0], material: "metal", rot: [0, -ang, 0] });
   const yS = ySr + srS / 2 + 8;
@@ -1162,7 +1207,8 @@ function dayBedRecipe(s: ProductSpec): CustomParams {
   const cams = (id: "back" | "front", a: number) => jointY(id).map((y) => pt(a * (W / 2 - t - 34), y - 30, jointZ(id) + (id === "front" ? -t / 2 : t / 2)));
   const feet = xa.flatMap((a) => [pt(a * xe, 0, -D / 2 + 60), pt(a * xe, 0, D / 2 - 60)]);
   const srScrews = (z: number, dir: number) => spread(-inW / 2 + 80, inW / 2 - 80, 8).map((x) => pt(x, ySr, z + dir * (srS / 2)));
-  const strapEnds = [pt(-dx / 2, ySr - srS / 2, -dz / 2), pt(dx / 2, ySr - srS / 2, dz / 2), pt(dx / 2, ySr - srS / 2, -dz / 2)];
+  // up through each strap end into its slat rail: strap0 runs from front left to back right, strap1 the other way
+  const yS0 = ySr - srS / 2 - 3.5, yS1 = ySr - srS / 2 - 6.5;
 
   const steps: CustomStep[] = [
     {
@@ -1192,11 +1238,11 @@ function dayBedRecipe(s: ProductSpec): CustomParams {
       detail: "One at each end of both slat rails.",
       fix: [
         at("clip", [-1, 1].flatMap((sz) => [pt(-inW / 2 + 30, ySr + srS / 2, sz * zs), pt(inW / 2 - 30, ySr + srS / 2, sz * zs)]), [0, -1, 0], { dia: 24, len: 20 }),
-        at("screw", [-1, 1].flatMap((sz) => [pt(-inW / 2 + 40, ySr + srS / 2, sz * (zs + 6)), pt(inW / 2 - 40, ySr + srS / 2, sz * (zs + 6))]), [0, -1, 0], { len: 10, dia: 6 }),
+        at("screw", [-1, 1].flatMap((sz) => [pt(-inW / 2 + 55, ySr + srS / 2, sz * zs), pt(inW / 2 - 55, ySr + srS / 2, sz * zs)]), [0, -1, 0], { len: 10, dia: 6 }),
       ],
     },
-    { title: "Screw the cross straps under the slat rails", detail: "From corner to corner, so they cross in the middle.", add: ["strap0", "strap1"], fix: [at("screw", strapEnds, [0, 1, 0], { len: 10, dia: 4 })], check: "square" },
-    { title: "Screw the last ends of the straps", detail: "Check the frame is square first: the diagonals should match.", fix: [at("screw", [pt(-dx / 2, ySr - srS / 2, dz / 2), pt(0, ySr - srS / 2 - 6, 0)], [0, 1, 0], { len: 10, dia: 4 })] },
+    { title: "Screw the cross straps under the slat rails", detail: "From corner to corner, so they cross in the middle.", add: ["strap0", "strap1"], fix: [at("screw", [pt(-dx / 2, yS1, -dz / 2), pt(dx / 2, yS1, dz / 2)], [0, 1, 0], { on: "strap1", len: 10, dia: 4 }), at("screw", [pt(dx / 2, yS0, -dz / 2)], [0, 1, 0], { on: "strap0", len: 10, dia: 4 })], check: "square" },
+    { title: "Screw the last ends of the straps", detail: "Check the frame is square first: the diagonals should match.", fix: [at("screw", [pt(-dx / 2, yS0, dz / 2)], [0, 1, 0], { on: "strap0", len: 10, dia: 4 }), at("screw", [pt(0, yS1, 0)], [0, 1, 0], { on: "strap1", len: 10, dia: 4 })] },
     { title: "Roll out the slats", detail: "Curved side up. Push each end slat under its stop.", add: ["slats"] },
   ];
 
@@ -1238,17 +1284,21 @@ function trundle(W: number, D: number): { parts: CustomPart[]; steps: CustomStep
   const castors = xb.flatMap((x) => [pt(x, cH, z0 - Wd / 2 + 120), pt(x, cH, z0 + Wd / 2 - 120)]);
   const railScrews = (z: number, d: number) => spread(-L / 2 + 120, L / 2 - 120, 8).map((x) => pt(x, ySr, z + d * (srS / 2)));
   const ends = (z: number) => xb.map((x) => pt(x, cH + 30, z));
+  // at each bar end a dowel high, a cam bolt low and the long bolt beside them, far enough apart to show
+  const dw = (p: Vec3) => pt(p[0] - 12, p[1] + 20, p[2]);
+  const cb = (p: Vec3) => pt(p[0] - 12, p[1] - 20, p[2]);
+  const lb = (p: Vec3) => pt(p[0] + 12, p[1], p[2]);
   const steps: CustomStep[] = [
-    { title: "Tap the dowels into the cross bars", detail: "The trundle is built upside down on a rug. Lay out the four bars; one dowel goes into each end.", add: xb.map((_, i) => `tX${i}`), fix: [at("dowel", ends(zk + t / 2), [0, 0, 1], { mate: "tK" }), at("dowel", ends(zf - t / 2), [0, 0, -1], { mate: "tF" })], warnings: ["floor"] },
-    { title: "Screw two castors onto each cross bar", detail: "The castors with brakes go on the two outer bars.", fix: [at("screw", castors, [0, 1, 0], { len: CASTOR.len, dia: CASTOR.dia }), at("screw", castors.flatMap((c) => [pt(c[0], cH, c[2] - 15), pt(c[0], cH, c[2] + 15)]), [0, 1, 0], { len: 16, dia: 4 })] },
+    { title: "Tap the dowels into the cross bars", detail: "The trundle is built upside down on a rug. Lay out the four bars; one dowel goes into each end.", add: xb.map((_, i) => `tX${i}`), fix: [at("dowel", ends(zk + t / 2).map(dw), [0, 0, 1], { mate: "tK" }), at("dowel", ends(zf - t / 2).map(dw), [0, 0, -1], { mate: "tF" })], warnings: ["floor"] },
+    { title: "Screw two castors onto each cross bar", detail: "The castors with brakes go on the two outer bars.", fix: [at("castor", castors, [0, 1, 0]), at("screw", castors.flatMap((c) => [pt(c[0], cH, c[2] - 25), pt(c[0], cH, c[2] + 25)]), [0, 1, 0], { len: 16, dia: 4 })] },
     { title: "Screw a slat rail to the trundle back", detail: "Eight screws, flat edge toward the top of the bed.", add: ["tK", "tSk"], fix: [at("screw", railScrews(zk + t / 2 + srS / 2, 1), [0, 0, -1], { len: 15, dia: 5 })] },
-    { title: "Stand the cross bars in the back", detail: "Push them onto the cam bolts and turn the cam locks.", fix: [at("camScrew", ends(zk + t / 2).map((p) => pt(p[0], p[1] - 15, p[2])), [0, 0, -1], { on: "tK" }), { kind: "cam", count: 4, to: ["tK"] }], tools: ["screwdriver"] },
+    { title: "Stand the cross bars in the back", detail: "Push them onto the cam bolts and turn the cam locks.", fix: [at("camScrew", ends(zk + t / 2).map(cb), [0, 0, -1], { on: "tK" }), { kind: "cam", count: 4, to: ["tK"] }], tools: ["screwdriver"] },
     { title: "Screw the other slat rail to the trundle front", detail: "Eight screws, the same way as the first.", add: ["tSf"], fix: [at("screw", railScrews(zf - t / 2 - srS / 2, -1), [0, 0, 1], { len: 15, dia: 5 })] },
-    { title: "Lower the front onto the cross bars", detail: "Over the dowels and cam bolts, then turn its cam locks.", add: ["tF"], fix: [at("camScrew", ends(zf - t / 2).map((p) => pt(p[0], p[1] - 15, p[2])), [0, 0, 1], { on: "tF" }), { kind: "cam", count: 4, to: ["tF"] }], tools: ["screwdriver"] },
+    { title: "Lower the front onto the cross bars", detail: "Over the dowels and cam bolts, then turn its cam locks.", add: ["tF"], fix: [at("camScrew", ends(zf - t / 2).map(cb), [0, 0, 1], { on: "tF" }), { kind: "cam", count: 4, to: ["tF"] }], tools: ["screwdriver"] },
     {
-      title: "Bolt the long panels to the cross bars",
-      detail: "Barrel nuts into the bars, long bolts through the panels into them.",
-      fix: [at("nut", xb.flatMap((x) => [pt(x - 20, cH + 60, zk + 80), pt(x - 20, cH + 60, zf - 80)]), [0, -1, 0], { dia: 10 }), at("bolt", ends(zk - t / 2), [0, 0, 1], { len: 80, dia: 7 }), at("bolt", ends(zf + t / 2), [0, 0, -1], { len: 80, dia: 7 })],
+      title: "Bolt the front to the cross bars",
+      detail: "A barrel nut into each bar, then a long bolt through the front into it.",
+      fix: [at("nut", xb.map((x) => pt(x + 12, cH + 60, zf - t / 2 - 70)), [0, -1, 0], { dia: 10 }), at("bolt", ends(zf + t / 2).map(lb), [0, 0, -1], { on: "tF", len: 80, dia: 7 })],
     },
     { title: "Turn the trundle over and roll out its slats", detail: "Curved side up, the end slats under the stops.", add: ["tSl"] },
     { title: "Screw the pull handles onto the front", detail: "One near each end, two screws each.", fix: [at("handle", [pt(-L / 2 + 250, 140, zf + t / 2), pt(L / 2 - 250, 140, zf + t / 2)], [0, 0, -1], { len: 80, dia: 30 })] },
@@ -1268,6 +1318,7 @@ function recipe(s: ProductSpec): CustomParams | null {
   if (s.archetype === "bed" && /^bed frame/i.test(s.variant)) return bedWithBoxes(s);
   if (s.archetype === "bed" && /^day-bed/i.test(s.variant)) return dayBedRecipe(s);
   if (/^chair$/i.test(s.variant)) return chairRecipe(s);
+  if (/^folding chair/i.test(s.variant) || /vihals-folding-chair/.test(s.slug ?? "")) return foldingChairRecipe(s);
   if (s.archetype === "cabinet" || s.archetype === "drawers" || /^storage unit/i.test(s.variant)) {
     const cfg = cabinetCfg(s);
     if (cfg) return cabRecipe(s, cfg);
@@ -1281,7 +1332,6 @@ const family: Family = {
     const r = recipe(s);
     if (!r) return false;
     buildCustom(b, { ...s, custom: r });
-    retype(b);
     return true;
   },
 };

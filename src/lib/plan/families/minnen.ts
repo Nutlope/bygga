@@ -161,7 +161,7 @@ function recipe(s: ProductSpec) {
       title: "Bolt the rail halves to the ends",
       detail: "Screw each threaded pin into a long sleeve, then through the post into the rail. Two at each post, not tight yet.",
       add: ["HB", "RH-1", "RH1", "FB", "RF-1", "RF1"],
-      fix: [...postFix(-1, [RY0 + 10, RY0 + RH - 10], true), ...postFix(1, [RY0 + 10, RY0 + RH - 10], true)],
+      fix: [...postFix(-1, [RY0 + RH / 2 - 12, RY0 + RH / 2 + 12], true), ...postFix(1, [RY0 + RH / 2 - 12, RY0 + RH / 2 + 12], true)],
       tools: ["allen"],
       from: { "RH-1": [0, 0, 400], RH1: [0, 0, 400], "RF-1": [0, 0, -400], RF1: [0, 0, -400] },
     },

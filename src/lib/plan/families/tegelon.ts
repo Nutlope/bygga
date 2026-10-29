@@ -64,7 +64,8 @@ function chair(s: ProductSpec): CustomParams {
     ...SIDES.map((k) => tube([k * xs, postTop - 100, zb - 10], [k * xs, b0[1] + 30, b0[2]], T + 8)),
   ], "metal");
   const seat = compound("S", "Woven seat", [{ shape: "box", size: [W - 60, 40, D - 130], pos: [0, ys + T / 2 + 20, 25] }], "soft");
-  const sideBolts = (y: number): Vec3[] => SIDES.map((k): Vec3 => [k * (xs + T / 2 + 4), y, zb - 10]);
+  // one bolt from the outside of each post, going in towards the middle
+  const sideBolts = (y: number): CustomFix[] => SIDES.map((k) => fx("bolt", [[k * (xs + T / 2 + 4), y, zb - 10]], { len: 16, dia: 6, dir: [-k, 0, 0], mate: "F" }));
   const seatBolts: Vec3[] = SIDES.flatMap((k) => [zs - 40, zb + 40].map((z): Vec3 => [k * xs, ys - T / 2, z]));
   return {
     parts: [frame, back, seat],
@@ -74,7 +75,7 @@ function chair(s: ProductSpec): CustomParams {
       {
         title: "Bolt the back to the posts",
         detail: "One bolt through each side. Tighten them with the Allen key.",
-        fix: [fx("bolt", sideBolts(postTop - 30), { len: 16, dia: 6, dir: [-1, 0, 0], mate: "F" })],
+        fix: sideBolts(postTop - 30),
         tools: ["allen"],
       },
       {
@@ -88,7 +89,7 @@ function chair(s: ProductSpec): CustomParams {
       {
         title: "Tighten the seat bolts and lock the back",
         detail: "Tighten all four seat bolts, then put one more bolt through each back post below the first ones.",
-        fix: [fx("bolt", sideBolts(postTop - 80), { len: 16, dia: 6, dir: [-1, 0, 0], mate: "F" })],
+        fix: sideBolts(postTop - 80),
         tools: ["allen"],
       },
       { title: "Stand the chair up", pose: "+y" },

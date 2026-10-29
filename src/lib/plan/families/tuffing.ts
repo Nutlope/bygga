@@ -176,8 +176,9 @@ function recipe(s: ProductSpec, g: Geo) {
   const caps = (x: -1 | 1): CustomFix => ({ kind: "cap", count: 2, name: "Foot plug", len: 20, dia: D, at: sx.map((z) => [x * X, 0, z * Z] as Vec3), dir: [0, 1, 0], on: post(x, -1) });
   // the top rails: one rod along the rail and one across, through each post top
   const postTop = (x: -1 | 1, z: -1 | 1, mate: string): CustomFix[] => [
-    ...pairs([{ at: [x * (L / 2), yTop, z * Z], dir: [-x, 0, 0], on: post(x, z), mate: z < 0 ? "TB" : `T${x < 0 ? "h" : "f"}` }]),
-    ...pairs([{ at: [x * X, yTop, z * (W / 2)], dir: [0, 0, -z], on: post(x, z), mate }]),
+    // the two rods cross in the post, one a little above the other
+    ...pairs([{ at: [x * (L / 2), yTop + 11.5, z * Z], dir: [-x, 0, 0], on: post(x, z), mate: z < 0 ? "TB" : `T${x < 0 ? "h" : "f"}` }]),
+    ...pairs([{ at: [x * X, yTop - 11.5, z * (W / 2)], dir: [0, 0, -z], on: post(x, z), mate }]),
   ];
   const cs = (at: Vec3[], on: string, mate: string): CustomFix => ({ kind: "bolt", count: at.length, len: 50, dia: 6, name: "Countersunk bolt", at, dir: [0, 1, 0], on, mate });
   const xLeg = (side: -1 | 1) => side * (OPEN / 2 + TD / 2);
@@ -303,7 +304,7 @@ function recipe(s: ProductSpec, g: Geo) {
   steps.push({
     title: "Bolt the back rails to the back posts",
     detail: "Two rods at each end of the top rail and two at each end of the back rail. Hand tight.",
-    fix: [...sx.flatMap((x) => railEnd(x, -1, yUc, "U4")), ...sx.flatMap((x) => pairs([-1, 1].map((d) => ({ at: [x * (L / 2), yTop + d * 6, -Z] as Vec3, dir: [-x, 0, 0] as Vec3, on: post(x, -1), mate: "TB" }))))],
+    fix: [...sx.flatMap((x) => railEnd(x, -1, yUc, "U4")), ...sx.flatMap((x) => pairs([-1, 1].map((d) => ({ at: [x * (L / 2), yTop + d * 11.5, -Z] as Vec3, dir: [-x, 0, 0] as Vec3, on: post(x, -1), mate: "TB" }))))],
     tools: ["allen"],
   });
   for (const x of [1, -1] as const) {

@@ -140,9 +140,9 @@ function bedside(b: PlanBuilder, s: ProductSpec) {
     const legs = [-1, 1].map((sz) => legId(sx, sz));
     return {
       feet: legs.map((id, i) => fx("glide", id, [0, 1, 0], [[sx * xl, 0, (i ? 1 : -1) * zl]], FOOT)),
-      legDowels: legs.map((id, i) => fx("dowel", id, [sx, 0, 0], [-8, 8].map((dz) => [sx * (xl - L / 2), yD, (i ? 1 : -1) * zl + dz] as Vec3), { mate: rd.id })),
+      legDowels: legs.map((id, i) => fx("dowel", id, [sx, 0, 0], [-12, 12].map((dz) => [sx * (xl - L / 2), yD, (i ? 1 : -1) * zl + dz] as Vec3), { mate: rd.id })),
       railDowels: [fx("dowel", rd.id, [-sx, 0, 0], [[sx * (xn - 10), yD, -40]]), fx("dowel", rs.id, [0, -1, 0], [[sx * xo, yS + 20, 0]], { mate: "S" })],
-      drawerScrews: fx("screw", rd.id, [sx, 0, 0], [-1, 1].map((sz) => [sx * (xn - 10), yD, sz * zl] as Vec3), SCREW),
+      drawerScrews: fx("screw", rd.id, [sx, 0, 0], [-1, 1].map((sz) => [sx * (xn - 10), yD + 10, sz * zl] as Vec3), SCREW),
       topScrews: fx("screw", rt.id, [-sx, 0, 0], [-1, 1].map((sz) => [sx * (xo + 10), yT, sz * zl] as Vec3), SCREW),
       shelfScrews: fx("screw", rs.id, [-sx, 0, 0], [-1, 1].map((sz) => [sx * (xo + 10), yS, sz * zl] as Vec3), SCREW),
       long: fx("screw", legId(sx, -1), [-sx, 0, 0], [[sx * (xl + L / 2), yB, -zl]], { ...LONG, mate: "BB" }),
@@ -307,7 +307,7 @@ function chest(b: PlanBuilder, s: ProductSpec) {
     return {
       legs,
       feet: legs.map((id, i) => fx("glide", id, [0, 1, 0], [[sx * xl, 0, z(i)]], FOOT)),
-      legDowels: legs.map((id, i) => fx("dowel", id, [sx, 0, 0], [-10, 10].map((dz) => [sx * (xl - L / 2), yLo, z(i) + dz] as Vec3), { mate: ro.id })),
+      legDowels: legs.map((id, i) => fx("dowel", id, [sx, 0, 0], [-12, 12].map((dz) => [sx * (xl - L / 2), yLo, z(i) + dz] as Vec3), { mate: ro.id })),
       angles: legs.map((id, i) => fx("angle", id, [sx, 0, 0], [[sx * (xl - L / 2), yU - 20, z(i) - (i ? 30 : -30)]], ANGLE)),
       angleScrews: legs.map((id, i) => fx("screw", id, [sx, 0, 0], [[sx * (xl - L / 2), yU - 30, z(i) - (i ? 30 : -30)]], SMALL)),
       railDowels: [fx("dowel", rm.id, [0, -1, 0], [-1, 1].map((sz) => [sx * xn, yMid - 20, sz * (zl - 60)] as Vec3)), fx("dowel", ro.id, [0, -1, 0], [-1, 1].map((sz) => [sx * xn, yLo - 20, sz * (zl - 60)] as Vec3))],
@@ -337,7 +337,7 @@ function chest(b: PlanBuilder, s: ProductSpec) {
       title: "Screw the back rail to one frame",
       detail: "Stand the frame up and push the rail onto its back leg. Two long screws through the leg into it.",
       add: ["BB"],
-      fix: [fx("screw", legId(-1, -1), [1, 0, 0], [-10, 10].map((dy) => [-(xl + L / 2), yMid + dy, -zl] as Vec3), { ...LONG, mate: "BB" })],
+      fix: [fx("screw", legId(-1, -1), [1, 0, 0], [-12, 12].map((dy) => [-(xl + L / 2), yMid + dy, -zl] as Vec3), { ...LONG, mate: "BB" })],
       tools: ["allen"],
     },
     {
@@ -472,9 +472,10 @@ function wardrobe(b: PlanBuilder, s: ProductSpec) {
       feet: legs.map((id, i) => fx("glide", id, [0, 1, 0], [[sx * xl, 0, ld(i ? 1 : -1)]], FOOT)),
       bandDowels: [-1, 1].map((sz) => fx("dowel", band, [0, 0, sz], [-30, 30].map((dy) => [sx * xl, yBand + dy, sz * (zl - L / 2)] as Vec3), { len: 40, dia: 8, mate: legId(sx, sz) })),
       bandScrews: [-1, 1].map((sz) => fx("screw", legId(sx, sz), [0, 0, -sz], (sz > 0 ? [-30, 30] : [0]).map((dy) => [sx * xl, yBand + dy, sz * (zl + L / 2)] as Vec3), { ...LONG, mate: band })),
-      legDowels: legs.map((id, i) => fx("dowel", id, [sx, 0, 0], yRail.map((y) => [sx * xi, y, ld(i ? 1 : -1)] as Vec3), { len: 30, dia: 6, mate: rails[0] })),
+      // a leg's dowel and the screw beside it sit apart across the leg, so neither lands on the other
+      legDowels: legs.map((id, i) => fx("dowel", id, [sx, 0, 0], yRail.map((y) => [sx * xi, y, ld(i ? 1 : -1) - (i ? 9 : -9)] as Vec3), { len: 30, dia: 6, mate: rails[0] })),
       railDowels: rails.map((id, i) => fx("dowel", id, [0, -1, 0], [-1, 1].map((sz) => [sx * xn, yRail[i] - 15, sz * (zl - 70)] as Vec3), { len: 30, dia: 6 })),
-      railScrews: rails.map((id, i) => fx("screw", id, [sx, 0, 0], [-1, 1].map((sz) => [sx * (xn - 10), yRail[i], ld(sz)] as Vec3), SCREW)),
+      railScrews: rails.map((id, i) => fx("screw", id, [sx, 0, 0], [-1, 1].map((sz) => [sx * (xn - 10), yRail[i], ld(sz) + sz * 9] as Vec3), SCREW)),
       topScrews: (["TF", "TB"] as const).map((id) => fx("screw", legId(sx, id === "TF" ? 1 : -1), [-sx, 0, 0], [-20, 20].map((dz) => [sx * (xl + L / 2), H - 9, (id === "TF" ? 1 : -1) * (zl - 50 + L / 2) + dz] as Vec3), { ...LONG, mate: id })),
     };
   };
@@ -526,14 +527,14 @@ function wardrobe(b: PlanBuilder, s: ProductSpec) {
       title: "Screw on the upper shelf",
       detail: "Rest it on the middle rails. Four screws up through each rail into it.",
       add: ["S0"],
-      fix: [-1, 1].map((sx) => fx("screw", `${side(sx)}R1`, [0, 1, 0], [-0.75, -0.25, 0.25, 0.75].map((f) => [sx * xn, yRail[1] - 15, f * (D - 60)] as Vec3), { ...SCREW, mate: "S0" })),
+      fix: [-1, 1].map((sx) => fx("screw", `${side(sx)}R1`, [0, 1, 0], [-0.75, -0.25, 0.25, 0.75].map((f) => [sx * xn, yRail[1] - 15, (f * (D - 60)) / 2] as Vec3), { ...SCREW, mate: "S0" })),
       tools: ["allen"],
     },
     {
       title: "Screw on the lower shelf",
       detail: "The same way, on the bottom rails.",
       add: ["S1"],
-      fix: [-1, 1].map((sx) => fx("screw", `${side(sx)}R2`, [0, 1, 0], [-0.75, -0.25, 0.25, 0.75].map((f) => [sx * xn, yRail[2] - 15, f * (D - 60)] as Vec3), { ...SCREW, mate: "S1" })),
+      fix: [-1, 1].map((sx) => fx("screw", `${side(sx)}R2`, [0, 1, 0], [-0.75, -0.25, 0.25, 0.75].map((f) => [sx * xn, yRail[2] - 15, (f * (D - 60)) / 2] as Vec3), { ...SCREW, mate: "S1" })),
       tools: ["allen"],
     },
   ];

@@ -89,7 +89,7 @@ function sleeper(b: PlanBuilder, s: ProductSpec): boolean {
   const armT = part("Armrest", [aw, BH, D]);
   const arms = [-1, 1].map((e) => b.place(armT, [e * ax, BY, 0]));
   const railT = part("Rail", [iw, 40, 40], { material: "metal" });
-  const rails = [Z0 + BT + 20, front - 20].map((z) => b.place(railT, [0, deck - 20, z]));
+  const rails = [Z0 + BT + 20, front - 40].map((z) => b.place(railT, [0, deck - 20, z]));
   const slats = b.place(part("Slatted seat", [iw, 30, D - BT - 80], { material: "wood" }), [0, deck + 15, Z0 + BT + (D - BT) / 2]);
   const seatC = b.place(part("Seat cushion", [iw - 6, SEAT - deck - 30, D - BT]), [0, (deck + 30 + SEAT) / 2, Z0 + BT + (D - BT) / 2]);
   const legT = part("Leg", [50, LEG, 50], { shape: "cyl", material: "wood" }), slvT = part("Leg sleeve", [56, SLV, 56], { shape: "cyl" });
@@ -149,7 +149,7 @@ function sleeper(b: PlanBuilder, s: ProductSpec): boolean {
     b.then(0.1);
     fit(WSCREW, wp.flatMap((q) => [-15, 15].map((dz) => ({ on: arms[q[0] > 0 ? 1 : 0], at: [q[0] - sg(q) * 10, q[1] - 15, q[2] + dz] as Vec3, dir: [sg(q), 0, 0] as Vec3 }))), 0.06);
   });
-  const fb: Vec3[] = [-1, 1].flatMap((e) => [-30, 30].map((dz) => [e * (iw / 2 - 10), deck - 20, front - 20 + dz] as Vec3));
+  const fb: Vec3[] = [-1, 1].flatMap((e) => [-12, 12].map((dz) => [e * (iw / 2 - 10), deck - 20, front - 40 + dz] as Vec3));
   step({ title: "Hang the front rail on the armrests", detail: "Screw the four bolts part way into the armrests first. Together, hook the rail's slots over them, then tighten them with the Allen key.", pose: "+z", kind: "bolts", people: 2, tools: ["allen"] }, () => {
     fit(RBOLT, fb.map((q) => ({ on: arms[q[0] > 0 ? 1 : 0], mate: rails[1], at: q, dir: [sg(q), 0, 0] as Vec3 })), 0.08);
     b.then(0.15);

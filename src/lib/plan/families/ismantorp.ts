@@ -89,7 +89,9 @@ function armchair(): CustomParams {
   const railBolts = (sx: number): CustomFix[] =>
     (["RF", "RB"] as const).map((r) => at("bolt", [[sx * (xs + TUBE / 2), yRail, r === "RF" ? zFront : zBack]], [-sx, 0, 0], sx < 0 ? "SL" : "SR", r, LONG));
   const hoopPts = (sx: number): Vec3[] => [yh0 + 15, yh1 - 15].map((y) => [sx * (xs + TUBE / 2), y, zAt(y, side[6], side[5])] as Vec3);
-  const padScrews: Vec3[] = [-1, 1].flatMap((sx) => [500, 640].map((y) => [sx * (xh - 70), y - 25, zh - 110 * ((y - yh1) / (H - yh1)) - 30] as Vec3));
+  // through the hoop's plates on the back of the pad, into the pad's frame
+  const padZ = (y: number) => zh - (110 * (y - yh1)) / (H - TUBE / 2 - yh1);
+  const padScrews: Vec3[] = [-1, 1].flatMap((sx) => [475, 615].map((y) => [sx * (xh - 100), y, padZ(y) - 26] as Vec3));
   const ringScrews: Vec3[] = [-1, 1].flatMap((sx) => [zFront, zBack].map((z) => [sx * (rw / 2 - 60), yRing + tRing, z] as Vec3));
   const OFF: Vec3 = [0, 0, -700];
 

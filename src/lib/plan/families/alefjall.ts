@@ -57,7 +57,7 @@ function chair(s: ProductSpec): CustomParams {
     tube([sx * xa, yLow, zSeat - 60], [sx * 40, yLow, zBr]),
   ]);
   frameAbs.push(
-    { shape: "box", size: [80, 12, 140], pos: [0, mechY0 - 6, zBr + 60] },
+    { shape: "box", size: [80, 12, 200], pos: [0, mechY0 - 6, zBr + 100] },
     { shape: "box", size: [70, 300, 26], pos: [0, yLow + 130, zBr] },
   );
   const parts: CustomPart[] = [
@@ -73,10 +73,10 @@ function chair(s: ProductSpec): CustomParams {
     { id: "BACK", name: "Backrest", size: [480, H - 600, 90], pos: [0, (600 + H) / 2, zBr - 13 - 45], material: "soft" },
   ];
   const tips: Vec3[] = angles.map((a) => [dirOf(a)[0] * R, baseY - 35, dirOf(a)[1] * R]);
-  const hub: Vec3[] = angles.map((a) => [dirOf(a)[0] * 45, baseY - 35, dirOf(a)[1] * 45]);
+  const hub: Vec3[] = angles.map((a) => [dirOf(a)[0] * 45, baseY - 20, dirOf(a)[1] * 45]);
   const mz0 = zSeat - 10 - 100, mz1 = zSeat - 10 + 100;
   const mecBolts: Vec3[] = [-1, 1].flatMap((sx) => [mz0, mz1].map((z): Vec3 => [sx * 80, mechY0, z]));
-  const frameBolts: Vec3[] = [-1, 1].flatMap((sx) => [zBr + 20, zBr + 100].map((z): Vec3 => [sx * 25, mechY0 - 12, z]));
+  const frameBolts: Vec3[] = [-1, 1].flatMap((sx) => [zBr + 130, zBr + 180].map((z): Vec3 => [sx * 25, mechY0 - 12, z]));
   const padScrews = (sx: number) => fx("screw", [zSeat - 140, zSeat + 40].map((z): Vec3 => [sx * xa, yArm - T / 2, z]), [0, 1, 0], "FRAME", { name: "Allen screw", len: 20, dia: 6, mate: sx < 0 ? "PAD_L" : "PAD_R" });
   const steps: CustomStep[] = [
     {

@@ -324,7 +324,7 @@ function drawerBench(b: PlanBuilder, s: ProductSpec) {
       y,
       front: k.part("Drawer front", [Wf, Hf, DF], [0, slot(i) + 4 + Hf / 2, zf], { pieces: frontPieces }),
       sides: [-1, 1].map((g) => k.part("Drawer side", [PT, Hs, Ds], [g * xs, y + Hs / 2, zs])),
-      bottom: k.part("Drawer bottom", [2 * xs - PT, PT, Ds - PT], [0, y + PT / 2, zs + PT / 2]),
+      bottom: k.part("Drawer bottom", [2 * xs - PT, PT, Ds], [0, y + PT / 2, zs]),
       back: k.part("Drawer back", [2 * xs - PT, Hs - PT, PT], [0, y + PT + (Hs - PT) / 2, zb]),
     };
   });
@@ -332,13 +332,13 @@ function drawerBench(b: PlanBuilder, s: ProductSpec) {
     const per = (fn: (g: number, side: string) => FitOpts[]) => [-1, 1].flatMap((g) => fn(g, d.sides[g < 0 ? 0 : 1]));
     return {
       bottom: [
-        { on: d.front, at: [0, d.y + 10, D / 2], dir: [0, 0, -1], mate: d.bottom } as FitOpts,
-        ...per((g, sd) => [zs + Ds * 0.3, zs - Ds * 0.3].map((z): FitOpts => ({ on: sd, at: [g * (xs + PT / 2), d.y + 10, z], dir: [-g, 0, 0], mate: d.bottom }))),
+        { on: d.front, at: [0, d.y + PT / 2, D / 2], dir: [0, 0, -1], mate: d.bottom } as FitOpts,
+        ...per((g, sd) => [zs + Ds * 0.3, zs - Ds * 0.3].map((z): FitOpts => ({ on: sd, at: [g * (xs + PT / 2), d.y + PT / 2, z], dir: [-g, 0, 0], mate: d.bottom }))),
       ],
-      back: per((g, sd) => [{ on: sd, at: [g * (xs + PT / 2), d.y + 30, zb + 8], dir: [-g, 0, 0], mate: d.back }]),
-      under: [-1, 0, 1].map((g): FitOpts => ({ on: d.bottom, at: [g * (xs - 80), d.y, zb + 10], dir: [0, 1, 0], mate: d.back })),
-      top: per((g, sd) => [{ on: sd, at: [g * (xs + PT / 2), d.y + Hs - 16, zb + 12], dir: [-g, 0, 0], mate: d.back }]),
-      nuts: per((g, sd) => [{ on: sd, at: [g * (xs - PT / 2), d.y + Hs - 16, zb + 12], dir: [g, 0, 0], hole: false as const }]),
+      back: per((g, sd) => [{ on: sd, at: [g * (xs + PT / 2), d.y + 30, zb], dir: [-g, 0, 0], mate: d.back }]),
+      under: [-1, 0, 1].map((g): FitOpts => ({ on: d.bottom, at: [g * (xs - 80), d.y, zb], dir: [0, 1, 0], mate: d.back })),
+      top: per((g, sd) => [{ on: sd, at: [g * (xs + PT / 2), d.y + Hs - 16, zb], dir: [-g, 0, 0], mate: d.back }]),
+      nuts: per((g, sd) => [{ on: sd, at: [g * (xs - PT / 2), d.y + Hs - 16, zb], dir: [g, 0, 0], hole: false as const }]),
     };
   };
 
@@ -945,7 +945,8 @@ const cabFits = {
   },
   brackets: (c: Cab): FitOpts[] => sx2.map((sx, si): FitOpts => ({ on: c.sides[si], at: [c.xc + sx * (c.W / 2 - ST), c.yt - 40, -c.D / 2 + 40], dir: [sx, 0, 0], hole: false })),
   bracketScrews: (c: Cab): FitOpts[] => sx2.flatMap((sx, si) => [-12, 12].map((dy): FitOpts => ({ on: c.sides[si], at: [c.xc + sx * (c.W / 2 - ST - 2), c.yt - 40 + dy, -c.D / 2 + 30], dir: [sx, 0, 0] }))),
-  topBolts: (c: Cab): FitOpts[] => sx2.flatMap((sx, si) => sx2.map((sz): FitOpts => ({ on: c.sides[si], at: [c.xc + sx * (c.W / 2 - ST / 2), c.yt, sz * (c.D / 2 - 40)], dir: [0, 1, 0], mate: c.top }))),
+  // from inside the side's fold, up into the top
+  topBolts: (c: Cab): FitOpts[] => sx2.flatMap((sx, si) => sx2.map((sz): FitOpts => ({ on: c.sides[si], at: [c.xc + sx * (c.W / 2 - ST / 2), c.yt - 12, sz * (c.D / 2 - 40)], dir: [0, 1, 0], mate: c.top }))),
 };
 
 /** The box, built as its manual does: in the main scene for a cabinet on its own, in a scene of its own when it goes into a shelving unit. */
@@ -1159,7 +1160,7 @@ function cabinetShelving(b: PlanBuilder, s: ProductSpec, widths: number[]) {
           }
         },
       );
-      const bottomBolts = cabs.flatMap((c, i) => sx2.map((sx, si): FitOpts => ({ on: rails[i][si], at: [c.xc + sx * (CW / 2 - 12), yc - PT, D / 2 - 60], dir: [0, 1, 0], mate: c.base[si] })));
+      const bottomBolts = cabs.flatMap((c, i) => sx2.map((sx, si): FitOpts => ({ on: rails[i][si], at: [c.xc + sx * (CW / 2 - 12), yc - PT, D / 2 - 12], dir: [0, 1, 0], mate: c.base[si] })));
       k.step({ title: n > 1 ? "Bolt the cabinets to the rails" : "Bolt the cabinet to the rails", detail: "One bolt up through each rail into the base frame above it, near the front.", kind: "bolts", tools: ["allen"] }, () => k.fits(BOLT, bottomBolts, 0.12));
       const over = cabs.flatMap((c) => sx2.map((sx, si): FitOpts => ({ on: c.top, at: [c.xc + sx * (CW / 2 - 20), c.yt + ST, -D / 2 + 30], dir: [0, -1, 0], hole: false, mate: c.sides[si] })));
       k.step({ title: n > 1 ? "Hook a bracket over each cabinet top corner" : "Hook a bracket over the cabinet top", detail: "One at each back corner, its tab hooked into the back post.", kind: "join" }, () => k.fits(CAB_BRACKET, over, 0.12));

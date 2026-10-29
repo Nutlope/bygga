@@ -114,9 +114,10 @@ function trestle(b: PlanBuilder, s: ProductSpec, g: Trestle): boolean {
   const centre: HwDef = isTable ? legScrew : { kind: "screw", len: 70, dia: 6, name: "Wood screw" };
   const centreFits = (): FitOpts[] =>
     braces.flatMap((br) =>
-      (g.centre > 1 ? [50, 120] : [60]).map((d) => {
-        const q = along(br, d);
-        return { on: br.key, at: [q[0], q[1] - bw / 2, 0] as Vec3, dir: [0, 1, 0] as Vec3, mate: top };
+      // two go side by side near the top end (further down the slope they would stop short of the top)
+      (g.centre > 1 ? [-15, 15] : [0]).map((z) => {
+        const q = along(br, g.centre > 1 ? 55 : 60);
+        return { on: br.key, at: [q[0], q[1] - bw / 2, z] as Vec3, dir: [0, 1, 0] as Vec3, mate: g.halves ? (z < 0 ? tops[0] : tops[1]) : top };
       }),
     );
 

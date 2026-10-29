@@ -72,6 +72,9 @@ function chest(b: PlanBuilder, s: ProductSpec, n: number) {
   const lx = CW / 2 - L / 2;
   const zF = zc + CD / 2 - L / 2, zB = zc - CD / 2 + L / 2;
   const IW = CW - 2 * L; // between the frames
+  const zone0 = FREE + RT, zone1 = legH - RT;
+  const open = (zone1 - zone0 - (n - 1) * RT) / n;
+  const chestRunY = (i: number) => zone0 + i * (open + RT) + 20;
   const xi = CW / 2 - L; // inside face of a side frame
 
   // side frames, with the legs, rails and panel all in one piece
@@ -82,14 +85,14 @@ function chest(b: PlanBuilder, s: ProductSpec, n: number) {
     { shape: "box", size: [L, 60, sideLen], pos: [0, legH / 2 - 30, 0] },
     { shape: "box", size: [L, 60, sideLen], pos: [0, FREE + 30 - legH / 2, 0] },
     { shape: "box", size: [16, legH - FREE - 120, sideLen], pos: [0, (FREE + 60 + legH - 60) / 2 - legH / 2, 0] },
+    // a rung behind each runner, flush with the inside face, that the runner screws go into
+    ...range(n).map((i): PartPiece => ({ shape: "box", size: [L, 40, sideLen], pos: [0, chestRunY(i) - legH / 2, 0] })),
   ];
   const sideT = b.part("Side frame", [L, legH, CD], { material: "wood" });
   b.parts[b.parts.length - 1].pieces = sidePieces;
   const sides = [-1, 1].map((g) => b.place(sideT, [g * lx, sideMid[1], sideMid[2]]));
 
   // front rails: the bottom one and one between each pair of drawers, then the top one
-  const zone0 = FREE + RT, zone1 = legH - RT;
-  const open = (zone1 - zone0 - (n - 1) * RT) / n;
   const railYs = [FREE + RT / 2, ...range(n - 1).map((k) => zone0 + (k + 1) * open + k * RT + RT / 2)];
   const railT = b.part("Front rail", [IW, RT, RT], { material: "wood" });
   const rails = railYs.map((y) => b.place(railT, [0, y, zF]));
@@ -303,7 +306,7 @@ const HINGE: HwDef = { kind: "hinge", len: 50, dia: 35 };
 const HINGE_SCREW: HwDef = { kind: "screw", len: 13, dia: 4 };
 
 /** A made-up side frame: two legs, a rail at the top and one at `low`, and the panel between them. */
-function sideFrame(b: PlanBuilder, legH: number, CD: number, zc: number, low: number) {
+function sideFrame(b: PlanBuilder, legH: number, CD: number, zc: number, low: number, rungs: number[]) {
   const zF = zc + CD / 2 - L / 2, zB = zc - CD / 2 + L / 2;
   const len = CD - 2 * L;
   const t = b.part("Side frame", [L, legH, CD], { material: "wood" });
@@ -312,6 +315,8 @@ function sideFrame(b: PlanBuilder, legH: number, CD: number, zc: number, low: nu
     { shape: "box", size: [L, 60, len], pos: [0, legH / 2 - 30, 0] },
     { shape: "box", size: [L, 60, len], pos: [0, low + 30 - legH / 2, 0] },
     { shape: "box", size: [16, legH - low - 120, len], pos: [0, (low + 60 + legH - 60) / 2 - legH / 2, 0] },
+    // a rung behind each runner, flush with the inside face, that the runner screws go into
+    ...rungs.map((y): PartPiece => ({ shape: "box", size: [L, 40, len], pos: [0, y - legH / 2, 0] })),
   ];
   return t;
 }
@@ -435,12 +440,12 @@ function dresser8(b: PlanBuilder, s: ProductSpec) {
   const zFace = zF + RT / 2;
   const low = FREE + BT; // the frames stand on the bottom panel's level
 
-  const sideT = sideFrame(b, legH, CD, zc, low);
-  const sides = [-1, 1].map((g) => b.place(sideT, [g * lx, legH / 2, zc]));
-  const top = b.place(b.part("Top", [W, TT, D], { material: "wood" }), [0, H - TT / 2, 0]);
   // rows: the bottom front rail, then a rail between each row of drawers
   const open = (legH - (FREE + RT) - 2 * RT) / 3;
   const rowY0 = [0, 1, 2].map((k) => FREE + RT + k * (open + RT)); // bottom row first
+  const sideT = sideFrame(b, legH, CD, zc, low, rowY0.map((y) => y + 20));
+  const sides = [-1, 1].map((g) => b.place(sideT, [g * lx, legH / 2, zc]));
+  const top = b.place(b.part("Top", [W, TT, D], { material: "wood" }), [0, H - TT / 2, 0]);
   const railYs = [FREE + RT / 2, rowY0[1] - RT / 2, rowY0[2] - RT / 2];
   const railT = b.part("Front rail", [IW, RT, RT], { material: "wood" });
   const rails = railYs.map((y) => b.place(railT, [0, y, zF]));
@@ -636,7 +641,7 @@ function nightstand(b: PlanBuilder, s: ProductSpec) {
   const shelfTop = legH - 142;
   const railY = shelfTop - RH / 2;
 
-  const sideT = sideFrame(b, legH, CD, zc, NFREE);
+  const sideT = sideFrame(b, legH, CD, zc, NFREE, [shelfTop + 20]);
   const sides = [-1, 1].map((g) => b.place(sideT, [g * lx, legH / 2, zc]));
   const rail = b.place(b.part("Front rail", [IW, RH, RH], { material: "wood" }), [0, railY, zFace - RH / 2]);
   const backZ0 = zB + 7;

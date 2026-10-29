@@ -218,12 +218,13 @@ function sofa(): CustomParams {
       },
       {
         title: "Bolt the tubes together all round",
-        detail: "Twelve of the longer countersunk bolts, at every hole along the edge tubes. Tighten them all.",
+        detail: "Twelve of the longer countersunk bolts, from the outside in through the holes along the edge tubes, a washer on each. Tighten them all.",
+        // each bolt goes in flat, in the plane of the fabric, through the tube and into the hem inside it
         fix: [
-          fix("bolt", [-1, 1].flatMap((sx) => [hinge[2] + 200, zf - 60].map((z): Vec3 => [sx * xb, yS - D / 2, z])), [0, 1, 0], { len: 45, dia: 6 }),
-          fix("bolt", [-1, 1].flatMap((sx) => [0.3, 0.9].map((t) => along(t, sx * xb, -D / 2))), [0, 0, 1], { len: 45, dia: 6 }),
-          fix("bolt", [-1, 1].map((sx): Vec3 => [sx * (xb - 60), yS - D / 2, zf]), [0, 1, 0], { len: 45, dia: 6 }),
-          fix("bolt", [-1, 1].map((sx) => along(1, sx * (xb - 60), -D / 2)), [0, 0, 1], { len: 45, dia: 6 }),
+          ...[-1, 1].map((sx) => fix("bolt", [hinge[2] + 200, zf - 60].map((z): Vec3 => [sx * (xb + D / 2), yS, z]), [-sx, 0, 0], { len: 45, dia: 6 })),
+          ...[-1, 1].map((sx) => fix("bolt", [0.3, 0.9].map((t) => along(t, sx * (xb + D / 2))), [-sx, 0, 0], { len: 45, dia: 6 })),
+          fix("bolt", [-1, 1].map((sx): Vec3 => [sx * (xb - 60), yS, zf + D / 2]), [0, 0, -1], { len: 45, dia: 6 }),
+          fix("bolt", [-1, 1].map((sx) => along(1 + D / 2 / backLen, sx * (xb - 60))), [0, -(top[1] - hinge[1]) / backLen, -(top[2] - hinge[2]) / backLen], { len: 45, dia: 6 }),
         ],
         tools: ["allen"],
       },

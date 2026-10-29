@@ -8,7 +8,8 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, ProductSpec, Vec3
  * go under the sides, two brackets on the top hold it to the wall with the screws and plugs in the box. Each drawer
  * is a front with four cam bolts, two sides locked with cams, a bottom slid in, a back knocked on with ribbed pins
  * and a knob; turn stops in the carcass keep the drawers in. The 6-drawer dresser has a middle divider joined to
- * the rails and the top with cam locks. The old 62x70 chest is a different product and keeps its old guide.
+ * the rails and the top with cam locks. The 3-drawer dresser 62x70 (rast-3-drawers, US manual) is built like one
+ * column of the 6-drawer dresser: one screw per rail end and a nailed back.
  */
 
 const T = 18;
@@ -18,6 +19,8 @@ function recipe(s: ProductSpec): CustomParams {
   const cols = W > 900 ? 2 : 1;
   const rows = 3;
   const six = cols === 2;
+  const old = /^rast-3-drawers$/.test(s.slug ?? "");
+  const nailed = six || old;
   const zb = -D / 2 + 8; // the back lies behind the boards
   const zf = D / 2;
   const inW = W - 2 * T - (cols - 1) * T;
@@ -40,7 +43,7 @@ function recipe(s: ProductSpec): CustomParams {
     wood(`rB${c}`, "Back rail", [w, railH, T], [x, 20 + railH / 2, zb + T / 2]);
     rails.push(`rF${c}`, `rB${c}`);
   }
-  parts.push({ id: "back", name: "Back panel", size: [six ? W : W - 2 * T + 16, H - 20, 3], pos: [0, 20 + (H - 20) / 2, six ? -D / 2 - 1.5 : -D / 2 + 5], material: "fiber" });
+  parts.push({ id: "back", name: "Back panel", size: [nailed ? W : W - 2 * T + 16, H - 20, 3], pos: [0, 20 + (H - 20) / 2, nailed ? -D / 2 - 1.5 : -D / 2 + 5], material: "fiber" });
 
   // drawers
   const dw = colW - 6, dd = D - 50, st = 12;
@@ -71,9 +74,10 @@ function recipe(s: ProductSpec): CustomParams {
   const isSide = (x: number) => Math.abs(Math.abs(x) - (W / 2 - T)) < 1;
   const sideScrews = (sx: number): CustomFix => {
     const pts: Vec3[] = [
-      ...[-1, 1].map((k) => [sx * (W / 2), H - T / 2, k * (D / 2 - 60)] as Vec3),
+      // beside the top's dowels, not on them
+      ...[-1, 1].map((k) => [sx * (W / 2), H - T / 2, k * (D / 2 - 100)] as Vec3),
       // the chest takes two screws into each rail end, the dresser one
-      ...[zf - T / 2, zb + T / 2].flatMap((z) => (six ? [0] : [-14, 14]).map((dy) => [sx * (W / 2), 20 + railH / 2 + dy, z] as Vec3)),
+      ...[zf - T / 2, zb + T / 2].flatMap((z) => (nailed ? [14] : [-14, 14]).map((dy) => [sx * (W / 2), 20 + railH / 2 + dy, z] as Vec3)),
     ];
     return fix("screw", pts, [-sx, 0, 0], { name: "Connector screw", len: 50, dia: 7, on: sx < 0 ? "sL" : "sR" });
   };
@@ -116,8 +120,8 @@ function recipe(s: ProductSpec): CustomParams {
         ...[-1, 1].map((sx) => fix("dowel", [-1, 1].map((k) => [sx * (W / 2 - T), H - T / 2, k * (D / 2 - 60)] as Vec3), [sx, 0, 0], { len: 30, dia: 8, on: "top" })),
         fix("camScrew", [[0, H - T, 0], [0, H - T, -60]], [0, 1, 0], { len: 34 }),
         fix("angle", brackets, [0, 0, 1], { name: "Wall bracket", len: 80, dia: 30 }),
-        fix("washer", brackets.map((p) => [p[0], p[1] - 1, p[2] + 20] as Vec3), [0, -1, 0]),
-        fix("screw", brackets.map((p) => [p[0], p[1] - 2, p[2] + 20] as Vec3), [0, -1, 0], { len: 16, dia: 4, on: "top" }),
+        fix("washer", brackets.map((p) => [p[0], p[1] - 1, p[2] + 25] as Vec3), [0, -1, 0]),
+        fix("screw", brackets.map((p) => [p[0], p[1] - 2, p[2] + 25] as Vec3), [0, -1, 0], { len: 16, dia: 4, on: "top" }),
       ],
       tools: ["screwdriver"],
     });
@@ -133,19 +137,23 @@ function recipe(s: ProductSpec): CustomParams {
     push({
       title: "Screw the wall brackets onto the top",
       detail: "At the back corners, one screw and washer each. Use the short screws, not the wall screws.",
-      fix: [fix("angle", brackets, [0, 0, 1], { name: "Wall bracket", len: 80, dia: 30, on: "top" }), fix("washer", brackets.map((p) => [p[0], p[1] - 1, p[2] + 20] as Vec3), [0, -1, 0]), fix("screw", brackets.map((p) => [p[0], p[1] - 2, p[2] + 20] as Vec3), [0, -1, 0], { len: 16, dia: 4, on: "top" })],
+      fix: [fix("angle", brackets, [0, 0, 1], { name: "Wall bracket", len: 80, dia: 30, on: "top" }), fix("washer", brackets.map((p) => [p[0], p[1] - 1, p[2] + 25] as Vec3), [0, -1, 0]), fix("screw", brackets.map((p) => [p[0], p[1] - 2, p[2] + 25] as Vec3), [0, -1, 0], { len: 16, dia: 4, on: "top" })],
       tools: ["screwdriver"],
     });
     push({ title: "Screw the top to one side", detail: "Two long screws through the side with the box spanner and Allen key.", fix: [{ ...sideScrews(-1), at: sideScrews(-1).at!.slice(0, 2), count: 2 }], tools: ["allen"], pose: "-z" });
-    push({ title: "Tap dowels into the bottom rails", detail: "Two into each end of both rails.", fix: rails.flatMap((id) => [-1, 1].map((sx) => fix("dowel", [[sx * (W / 2 - T), 20 + railH / 2, id.startsWith("rF") ? zf - T / 2 : zb + T / 2]], [sx, 0, 0], { len: 30, dia: 8, on: id }))), tools: ["hammer"] });
-    push({
-      title: "Fit the rails and the other side",
-      detail: "Push the rails into the first side, lay the second side on, then six long screws through it: two into the top and two into each rail.",
-      add: rails,
-      fix: [sideScrews(1)],
-      tools: ["allen"],
-      check: "square",
-    });
+    push({ title: "Tap dowels into the bottom rails", detail: old ? "One into each end of both rails." : "Two into each end of both rails.", fix: rails.flatMap((id) => [-1, 1].map((sx) => fix("dowel", [[sx * (W / 2 - T), 20 + railH / 2, id.startsWith("rF") ? zf - T / 2 : zb + T / 2]], [sx, 0, 0], { len: 30, dia: 8, on: id }))), tools: ["hammer"] });
+    if (old) {
+      push({ title: "Push the rails into the side", detail: "Front and back, then one long screw through the side into each.", add: rails, fix: [{ ...sideScrews(-1), at: sideScrews(-1).at!.slice(2), count: 2 }], tools: ["allen"] });
+      push({ title: "Screw the other side on", detail: "Onto the dowels, then four long screws through it: two into the top and one into each rail.", fix: [sideScrews(1)], tools: ["allen"], check: "square" });
+    } else
+      push({
+        title: "Fit the rails and the other side",
+        detail: "Push the rails into the first side, lay the second side on, then six long screws through it: two into the top and two into each rail.",
+        add: rails,
+        fix: [sideScrews(1)],
+        tools: ["allen"],
+        check: "square",
+      });
   } else {
     push({
       title: "Screw the sides on",
@@ -156,18 +164,20 @@ function recipe(s: ProductSpec): CustomParams {
       check: "square",
     });
   }
-  if (!six) {
+  if (!nailed) {
     push({ title: "Slide the back panel in", detail: "Into the grooves in the sides from the bottom, smooth side in.", add: ["back"], from: { back: [0, -400, 0] } });
     const pts: Vec3[] = [[-W / 4, H - T / 2, -D / 2 + 3], [W / 4, H - T / 2, -D / 2 + 3], [-W / 4, 20 + railH / 2, -D / 2 + 3], [W / 4, 20 + railH / 2, -D / 2 + 3]];
     push({ title: "Push the sleeves into the back", detail: "Four plastic sleeves into the holes, two into the top and two into the back rail.", fix: [fix("plug", pts, [0, 0, 1], { name: "Plastic sleeve", included: true, len: 12, dia: 8 })] });
     push({ title: "Press a pin into each sleeve", detail: "It spreads the sleeve and holds the back tight.", fix: [fix("cap", pts, [0, 0, 1], { name: "Push pin", len: 12, dia: 12 })] });
     push({ title: "Press the glides under the sides", detail: "Two under each side, pegs into the holes.", fix: [fix("glide", glides, [0, 1, 0], { name: "Glide", len: 6, dia: 20 })] });
   } else {
-    push({ title: "Press the glides in", detail: "Two under each side and two under the divider.", fix: [fix("glide", glides, [0, 1, 0], { name: "Glide", len: 6, dia: 20 })], pose: "-z" });
+    push({ title: "Press the glides in", detail: six ? "Two under each side and two under the divider." : "Two under each side.", fix: [fix("glide", glides, [0, 1, 0], { name: "Glide", len: 6, dia: 20 })], pose: "-z" });
     push({ title: "Lay the back panel on", detail: "Smooth side in. Line it up with the corners so the frame sits square.", add: ["back"], from: { back: [0, 0, -300] }, check: "square" });
     const nails: Vec3[] = [];
-    for (let i = 0; i < 10; i++) for (const y of [30, (H - T) * 0.5, H - 10]) nails.push([-W / 2 + 10 + ((W - 20) * i) / 9, y, -D / 2 - 3]);
-    chunk({ title: "Nail the back on", detail: "30 nails along the edges and across the middle, with the nail holder. A corner first, then check it's square.", tools: ["hammer"] }, [fix("nail", nails, [0, 0, 1], { len: 20, dia: 1.6 })]);
+    const row = (n: number, y: number) => { for (let i = 0; i < n; i++) nails.push([-W / 2 + 10 + ((W - 20) * i) / (n - 1), y, -D / 2 - 3]); };
+    if (six) for (const y of [30, (H - T) * 0.5, H - 10]) row(10, y);
+    else { row(6, 30); row(6, H - 10); for (const y of [H * 0.3, H * 0.6]) for (const sx of [-1, 1]) nails.push([sx * (W / 2 - 9), y, -D / 2 - 3]); }
+    chunk({ title: "Nail the back on", detail: `${nails.length} nails along the edges${six ? " and across the middle" : ""}, with the nail holder. A corner first, then check it's square.`, tools: ["hammer"] }, [fix("nail", nails, [0, 0, 1], { len: 20, dia: 1.6 })]);
   }
   push({ title: six ? "Stand it up together" : "Stand it up", detail: "Lift it upright, don't drag it by one corner.", pose: "+y", people: six ? 2 : 1, warnings: six ? ["two"] : [] });
   const wall: Vec3[] = brackets.map((p) => [p[0], p[1] - 30, -D / 2 - 2]);
@@ -205,7 +215,7 @@ function recipe(s: ProductSpec): CustomParams {
   );
   chunk(
     { title: "Screw on the knobs", detail: "One screw from the inside of each front into its knob.", tools: ["screwdriver"] },
-    drawers.flatMap((d, i) => [fix("knob", [[d.x, d.y0 + d.h / 2, zf]], [0, 0, -1], { on: `df${i}`, len: 25, dia: 34 }), fix("screw", [[d.x, d.y0 + d.h / 2, zf - T]], [0, 0, 1], { len: 30, dia: 4 })]),
+    drawers.flatMap((d, i) => [fix("knob", [[d.x, d.y0 + d.h / 2, zf + 3]], [0, 0, -1], { on: `df${i}`, len: 25, dia: 34 }), fix("screw", [[d.x, d.y0 + d.h / 2, zf - T - 2]], [0, 0, 1], { len: 30, dia: 4 })]),
   );
   push({ title: "Slide the drawers in", detail: "Onto the runners, all the way in." });
   const stopL: Vec3[] = drawers.map((d) => [walls(d.c)[0], d.y0 + d.h + 1, zf - 40]);
@@ -223,8 +233,7 @@ const family: Family = {
   names: ["RAST"],
   recipe(s) {
     const slug = s.slug ?? "";
-    // the 62x70 chest (rast-3-drawers) is the old RAST with its own manual
-    if (/rast-chest-3-drawers-60|rast-6-drawer-dresser/.test(slug)) return recipe(s);
+    if (/rast-chest-3-drawers-60|rast-6-drawer-dresser|^rast-3-drawers$/.test(slug)) return recipe(s);
     return null;
   },
 };

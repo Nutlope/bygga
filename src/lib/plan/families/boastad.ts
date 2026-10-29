@@ -367,7 +367,7 @@ function low(L: Low): CustomParams {
         detail: "One on the back edge of each side, near the top, with two screws.",
         fix: [
           fx("bracket", SIDES.map((g): Vec3 => [g * (W / 2 - ST / 2), H - 60, -D / 2]), [0, 0, 1], { len: 40, dia: 30 }),
-          fx("screw", pairs(SIDES.map((g): Vec3 => [g * (W / 2 - ST / 2), H - 60, -D / 2]), 1, 24), [0, 0, 1], { len: 12, dia: 4 }),
+          fx("screw", pairs(SIDES.map((g): Vec3 => [g * (W / 2 - ST / 2), H - 60, -D / 2]), 1, 50), [0, 0, 1], { len: 12, dia: 4 }),
         ],
         tools: ["screwdriver"],
         wall: false,
@@ -624,7 +624,7 @@ function high(s: ProductSpec): CustomParams {
       detail: "A bracket on the back edge of each side near the top, two screws each, and a spacer screwed into each bracket.",
       fix: [
         fx("bracket", SIDES.map((g): Vec3 => [g * (W / 2 - ST / 2), H - 60, -D / 2]), [0, 0, 1], { len: 40, dia: 30 }),
-        fx("screw", pairs(SIDES.map((g): Vec3 => [g * (W / 2 - ST / 2), H - 60, -D / 2]), 1, 24), [0, 0, 1], { len: 12, dia: 4 }),
+        fx("screw", pairs(SIDES.map((g): Vec3 => [g * (W / 2 - ST / 2), H - 60, -D / 2]), 1, 50), [0, 0, 1], { len: 12, dia: 4 }),
         fx("spacer", SIDES.map((g): Vec3 => [g * (W / 2 - ST / 2), H - 60, -D / 2 - 6]), [0, 0, 1], { name: "Wall spacer", len: 20, dia: 22 }),
       ],
       tools: ["screwdriver"],

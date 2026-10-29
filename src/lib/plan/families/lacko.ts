@@ -13,7 +13,7 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartMaterial, Par
  * 2-seat sofa: the seat lies upside down on a table; a side frame is bolted on each end (one bolt through the front
  * leg, two through the seat rail), the stretcher with its end inserts drops between them and is bolted, then it
  * stands up and the backrest hooks onto the back posts with two short bolts. Every bolt is tightened at the end.
- * The chair comes fully welded with no manual, so it keeps its old guide.
+ * The chair comes fully welded with no manual, so its guide only unpacks it.
  */
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
@@ -261,8 +261,43 @@ function sofa(): CustomParams {
   return { parts, steps };
 }
 
+/** A round rod from a to b (mm, relative to its part's centre). */
+function rod(a: Vec3, b: Vec3, d: number): PartPiece {
+  const v: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len = Math.hypot(...v);
+  return { shape: "cyl", size: [d, len, d], pos: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], rot: [Math.atan2(v[2], v[1]), 0, Math.asin(-v[0] / len)] };
+}
+
+/** The chair comes welded in one piece (its page has no manual), so its guide only unpacks it. */
+function chair(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const yS = (s.seat?.seatH ?? 45) * 10, t = 12, r = W / 2 - 20;
+  const zb = -D / 2 + 50; // the back legs' tops, under the back of the seat
+  const pieces: PartPiece[] = [
+    // four legs splaying out a little towards the floor
+    ...[-1, 1].flatMap((sx) => [rod([sx * (W / 2 - 15), -yS / 2, D / 2 - 30], [sx * (r - 30), yS / 2 - 15, D / 2 - 90], t), rod([sx * (W / 2 - 15), -yS / 2, -D / 2 + 10], [sx * (r - 30), yS / 2 - 15, zb], t)]),
+    // the back uprights, rising from the back legs, and the round top rail with its bars
+    ...[-1, 1].map((sx) => rod([sx * (r - 30), yS / 2 - 15, zb], [sx * (r - 20), H - yS / 2 - 80, zb - 40], t)),
+    rod([-(r - 20), H - yS / 2 - 80, zb - 40], [0, H - yS / 2 - 6, zb - 40], t),
+    rod([0, H - yS / 2 - 6, zb - 40], [r - 20, H - yS / 2 - 80, zb - 40], t),
+    ...[-0.5, -0.17, 0.17, 0.5].map((f) => rod([f * (r - 40), yS / 2 + 20, zb - 10], [f * (r - 40), H - yS / 2 - 70 + (1 - Math.abs(f)) * 60, zb - 40], 7)),
+    // the ring under the seat that ties the legs together
+    rod([-(W / 2 - 30), -yS / 2 + 160, -D / 2 + 30], [-(W / 2 - 30), -yS / 2 + 160, D / 2 - 50], 10),
+    rod([W / 2 - 30, -yS / 2 + 160, -D / 2 + 30], [W / 2 - 30, -yS / 2 + 160, D / 2 - 50], 10),
+  ];
+  // the seat is welded on too
+  const seat: PartPiece = { shape: "slab", size: [2 * r - 20, 8, D - 120], pos: [0, yS - 4 - H / 2, 20], outline: [[-(r - 10), -(D - 120) / 2], [r - 10, -(D - 120) / 2], [r - 30, (D - 120) / 2], [-(r - 30), (D - 120) / 2]], round: 60 };
+  const parts: CustomPart[] = [{ id: "F", name: "Chair", size: [W, H, D], pos: [0, H / 2, 0], material: "metal", pieces: [...pieces.map((p) => ({ ...p, pos: [p.pos[0], p.pos[1] + yS / 2 - H / 2, p.pos[2]] as Vec3 })), seat] }];
+  const steps: CustomStep[] = [
+    { title: "Unpack the chair", detail: "It comes welded in one piece, so there is nothing to put together. Take off all the packaging and the protective film.", add: ["F"], from: { F: [0, 300, 0] } },
+    { title: "Check it stands steady", detail: "All four feet should touch the ground. The chairs stack, so store them stacked under cover in winter." },
+  ];
+  return { parts, steps };
+}
+
 function recipe(s: ProductSpec): CustomParams | null {
   const slug = s.slug ?? "";
+  if (/^lacko-chair/.test(slug)) return chair(s);
   if (/lacko-shelving-unit/.test(slug)) return shelving(s);
   if (/lacko-table-outdoor/.test(slug)) return table();
   if (/lacko-2-seat-sofa/.test(slug)) return sofa();

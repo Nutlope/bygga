@@ -110,10 +110,10 @@ function cabinet(s: ProductSpec): CustomParams {
   const yH = [yS0 + 160, yS1 - 160];
   const hinges = SX.map((sx, i) => fx({ kind: "hinge", at: yH.map((y): Vec3 => [sx * xO, y, zHinge + 15]), dir: [sx, 0, 0], on: `D${i}` }));
   const hingeDoorScrews = SX.map((sx, i) => fx({ kind: "screw", len: 16, dia: 4, at: yH.flatMap((y) => [-35, 0, 35].map((dy): Vec3 => [sx * xO, y + dy, zHinge + 25])), dir: [sx, 0, 0], on: `D${i}` }));
-  const hingeSideScrews = SX.map((sx, i) => fx({ kind: "screw", len: 16, dia: 4, at: yH.flatMap((y) => [-35, 0, 35].map((dy): Vec3 => [sx * xS, y + dy, zF])), dir: [0, 0, -1], on: side(sx), mate: `D${i}` }));
+  const hingeSideScrews = SX.map((sx, i) => fx({ kind: "screw", len: 16, dia: 4, at: yH.flatMap((y) => [-50, -25, 50].map((dy): Vec3 => [sx * xS, y + dy, zF])), dir: [0, 0, -1], on: side(sx), mate: `D${i}` }));
   const zFree = zHinge + dW - 40;
-  const plates = SX.map((sx, i) => fx({ kind: "plate", name: "Strike plate", len: 2, dia: 30, at: [[sx * (xO + DT / 2), yDoor + dH / 2, zFree]], dir: [0, -1, 0], on: `D${i}` }));
-  const plateScrews = SX.map((sx, i) => fx({ kind: "screw", len: 10, dia: 3, at: [[sx * (xO + DT / 2), yDoor + dH / 2, zFree]], dir: [0, -1, 0], on: `D${i}` }));
+  const plates = SX.map((sx, i) => fx({ kind: "plate", name: "Strike plate", len: 2, dia: 40, at: [[sx * (xO + DT / 2), yDoor + dH / 2, zFree - 11]], dir: [0, -1, 0], on: `D${i}` }));
+  const plateScrews = SX.map((sx, i) => fx({ kind: "screw", len: 10, dia: 3, at: [[sx * (xO + DT / 2), yDoor + dH / 2, zFree + 12]], dir: [0, -1, 0], on: `D${i}` }));
   const yHandle = yS0 + dH * 0.6;
   const handles = SX.map((sx, i) => fx({ kind: "handle", len: 128, dia: 12, at: [[sx * (xO + DT), yHandle, zFree]], dir: [-sx, 0, 0], on: `D${i}`, twist: Math.PI / 2 }));
   const handleScrews = SX.map((sx, i) => fx({ kind: "screw", len: 40, dia: 4, at: [-64, 64].map((dy): Vec3 => [sx * xO, yHandle + dy, zFree]), dir: [sx, 0, 0], on: `D${i}` }));
@@ -225,16 +225,9 @@ function cabinet(s: ProductSpec): CustomParams {
       fix: SX.map((sx, i) => fx({ kind: "glide", name: "Bumper", len: 3, dia: 12, at: [[sx * xO, yS0 + 60, zFree]], dir: [sx, 0, 0], on: `D${i}` })),
     },
   ];
-  // the other two drawers: every fitting counted, merged into as few groups as the builder takes
+  // the other two drawers: every fitting counted, each kept on its own drawer's parts (24 groups, as many as a step takes)
   const more = [1, 2].map(drawerFix).flatMap((r) => [r.bolts, ...r.dowels, ...r.cams, r.pushBolts, ...r.backCams, ...r.runners, ...r.runScrews]);
-  const merged = new Map<string, CustomFix>();
-  for (const f of more) {
-    const key = `${f.kind}|${f.name ?? ""}|${f.dir?.join(",")}`;
-    const m = merged.get(key);
-    if (m) merged.set(key, { ...m, at: [...m.at!, ...f.at!], count: m.count + f.count, on: undefined, mate: undefined });
-    else merged.set(key, { ...f, on: undefined, mate: undefined });
-  }
-  steps.find((st) => st.title === "Build the other two drawers")!.fix = [...merged.values()];
+  steps.find((st) => st.title === "Build the other two drawers")!.fix = more;
   return { parts, steps };
 }
 

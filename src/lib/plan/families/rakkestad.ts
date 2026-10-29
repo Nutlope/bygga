@@ -183,7 +183,7 @@ function hinged(s: ProductSpec): { recipe: CustomParams; stages: Stages } {
   const hys = [dy0 + 110, (dy0 + dy1) / 2, dy1 - 110];
   const plate = (i: number) => hys.map((y): Vec3 => [hingeX(i), y, z1 - 37]);
   const plates = doorIds.map((_, i) => fx("angle", plate(i), [hingeSide(i) < 0 ? -1 : 1, 0, 0], hingeHost(i), { name: "Mounting plate" }));
-  const plateScrews = doorIds.map((_, i) => fx("screw", plate(i).flatMap((p): Vec3[] => [[p[0], p[1] - 16, p[2]], [p[0], p[1] + 16, p[2]]]), [hingeSide(i), 0, 0], hingeHost(i), { len: 14, dia: 4 }));
+  const plateScrews = doorIds.map((_, i) => fx("screw", plate(i).flatMap((p): Vec3[] => [[p[0], p[1] - 24, p[2]], [p[0], p[1] + 24, p[2]]]), [hingeSide(i), 0, 0], hingeHost(i), { len: 14, dia: 4 }));
   // the doors meet in the middle of the pair: a door stop there in the top and the bottom
   const xm = three ? doorX(0) + dw / 2 + 1.5 : 0;
   const stops = [fx("clip", [-15, 15].map((dx): Vec3 => [xm + dx, H - T, z1 - 15]), [0, 1, 0], "TOP", { name: "Door stop" }), fx("clip", [-15, 15].map((dx): Vec3 => [xm + dx, PL + T, z1 - 15]), [0, -1, 0], "BOT", { name: "Door stop" })];
@@ -214,22 +214,23 @@ function hinged(s: ProductSpec): { recipe: CustomParams; stages: Stages } {
     },
     { title: "Knock the door stops into the top and the bottom", detail: "Two in each, in the small holes near the front edge, where the doors will meet.", fix: stops, tools: ["hammer"] },
   ];
+  const divDowels: CustomFix[] = [fx("dowel", [z0 + 110, z1 - 110].map((z): Vec3 => [xd, PL + T, z]), [0, 1, 0], "DIV"), fx("dowel", [z0 + 110, z1 - 110].map((z): Vec3 => [xd, H - T, z]), [0, -1, 0], "DIV")];
   if (three) {
-    steps.push({ title: "Tap dowels into the ends of the divider", detail: "Two in each end.", fix: [fx("dowel", [z0 + 60, z1 - 60].map((z): Vec3 => [xd, PL + T, z]), [0, 1, 0], "DIV"), fx("dowel", [z0 + 60, z1 - 60].map((z): Vec3 => [xd, H - T, z]), [0, -1, 0], "DIV")], tools: ["hammer"] });
-    steps.push({ title: "Tap dowels into the three shelves", detail: "Three in each end of every shelf.", fix: shelfIds.flatMap((id) => endsOfShelf(parts, id, [z0 + 50, cz, z1 - 50])), tools: ["hammer"] });
+    steps.push({ title: "Tap dowels into the three shelves", detail: "Three in each end of every shelf.", fix: shelfIds.flatMap((id) => endsOfShelf(parts, id, [z0 + 100, cz, z1 - 100])), wait: shelfIds, from: Object.fromEntries(shelfIds.map((id) => [id, [300, 0, 0] as Vec3])), tools: ["hammer"] });
     steps.push({
       title: "Screw the middle shelf to the divider",
       detail: "Stand the divider on its front edge. Two connector screws through it into the shelf: leave them a turn loose for now.",
       add: ["DIV", "SH1"],
+      from: { DIV: [-300, 0, 0] },
       fix: [fx("bolt", [z0 + 60, z1 - 60].map((z): Vec3 => [xd - T / 2, parts.find((p) => p.id === "SH1")!.pos[1], z]), [1, 0, 0], "DIV", CONN)],
       tools: ["allen"],
     });
   }
-  steps.push({ title: "Tap dowels into the top and the bottom", detail: "Two in each end of both panels.", fix: [...endDowels(b, "TOP", H - T / 2, [z0 + 60, z1 - 60]), ...endDowels(b, "BOT", PL + T / 2, [z0 + 60, z1 - 60])], tools: ["hammer"] });
+  steps.push({ title: "Tap dowels into the top and the bottom", detail: "Two in each end of both panels.", fix: [...endDowels(b, "TOP", H - T / 2, [z0 + 100, z1 - 100]), ...endDowels(b, "BOT", PL + T / 2, [z0 + 100, z1 - 100])], tools: ["hammer"] });
   steps.push({ title: "Screw the angle bracket under the bottom", detail: "In the middle of the front edge, on the underside, with one short screw.", fix: [fx("angle", [angleAt], [0, 1, 0], "BOT"), fx("screw", [[angleAt[0] - 8, PL, angleAt[2] - 8]], [0, 1, 0], "BOT", { len: 14, dia: 4 })], tools: ["screwdriver"] });
   if (three) {
-    steps.push({ title: "Screw the bottom to the divider", detail: "Two connector screws up through the bottom into the end of the divider.", add: ["BOT"], fix: [fx("bolt", [z0 + 60, z1 - 60].map((z): Vec3 => [xd, PL, z]), [0, 1, 0], "BOT", CONN)], tools: ["allen"] });
-    steps.push({ title: "Screw the top to the divider", detail: "The same at the other end.", add: ["TOP"], fix: [fx("bolt", [z0 + 60, z1 - 60].map((z): Vec3 => [xd, H, z]), [0, -1, 0], "TOP", CONN)], tools: ["allen"] });
+    steps.push({ title: "Screw the bottom to the divider", detail: "Two dowels into the end of the divider, then push the bottom on and drive two connector screws up through it into the divider.", add: ["BOT"], fix: [divDowels[0], fx("bolt", [z0 + 60, z1 - 60].map((z): Vec3 => [xd, PL, z]), [0, 1, 0], "BOT", CONN)], tools: ["allen"] });
+    steps.push({ title: "Screw the top to the divider", detail: "The same at the other end: two dowels, then two connector screws.", add: ["TOP"], fix: [divDowels[1], fx("bolt", [z0 + 60, z1 - 60].map((z): Vec3 => [xd, H, z]), [0, -1, 0], "TOP", CONN)], tools: ["allen"] });
     steps.push({ title: "Slide in the other two shelves", detail: "Push them onto the divider's holes, dowels first.", add: ["SH0", "SH2"] });
     steps.push({ title: "Fit the right side", detail: "Line it up with all the dowels and press it on. Two connector screws into the top and bottom near the front.", add: ["SR"], fix: [sideScrews(b, 1, [H - T / 2, PL + T / 2], 1, [z1 - 50])], tools: ["allen"] });
     steps.push({ title: "Screw the right side on", detail: "Four more: the back of the top and the bottom, and both ends of the middle shelf.", fix: [sideScrews(b, 1, [H - T / 2, PL + T / 2], 1, [z0 + 50]), sideScrews(b, 1, [parts.find((p) => p.id === "SH1")!.pos[1]])], tools: ["allen"] });
@@ -238,12 +239,12 @@ function hinged(s: ProductSpec): { recipe: CustomParams; stages: Stages } {
     steps.push({ title: "Screw the top to a side", detail: "Stand the side on its front edge. Push the top onto the dowels, then two connector screws through the side.", add: ["SL", "TOP"], fix: [sideScrews(b, -1, [H - T / 2])], tools: ["allen"] });
     steps.push({ title: "Screw on the bottom", detail: "At the other end, the same way.", add: ["BOT"], fix: [sideScrews(b, -1, [PL + T / 2])], tools: ["allen"] });
     const y = parts.find((p) => p.id === "SH0")!.pos[1];
-    steps.push({ title: "Tap dowels into the fixed shelf", detail: "Three in each end.", fix: endsOfShelf(parts, "SH0", [z0 + 50, cz, z1 - 50]), tools: ["hammer"] });
+    steps.push({ title: "Tap dowels into the fixed shelf", detail: "Three in each end.", fix: endsOfShelf(parts, "SH0", [z0 + 100, cz, z1 - 100]), tools: ["hammer"] });
     steps.push({ title: "Screw in the fixed shelf", detail: "Low down, in the holes near the bottom. Two connector screws through the side.", add: ["SH0"], fix: [sideScrews(b, -1, [y])], tools: ["allen"] });
   }
   const pf = parts.find((p) => p.id === "PF")!, pb = parts.find((p) => p.id === "PB")!;
   steps.push({ title: "Press feet onto the plinths", detail: three ? "Two under each plinth." : "One in the middle of each plinth's bottom edge.", fix: [fx("glide", ft.rails, [0, 1, 0], undefined, { name: "Foot" })] });
-  steps.push({ title: "Tap dowels into the plinths", detail: "One in each end.", fix: [...endDowels(b, "PF", PL / 2, [pf.pos[2]]), ...endDowels(b, "PB", PL / 2, [pb.pos[2]])], tools: ["hammer"] });
+  steps.push({ title: "Tap dowels into the plinths", detail: "One in each end.", fix: [...endDowels(b, "PF", PL / 2 - 15, [pf.pos[2]]), ...endDowels(b, "PB", PL / 2 - 15, [pb.pos[2]])], tools: ["hammer"] });
   if (three) {
     steps.push({ title: "Push the plinths in", detail: "Under the bottom, onto the right side's dowels. The front one goes back from the edge.", add: ["PF", "PB"] });
     steps.push({ title: "Fit the left side", detail: "One of you holds the carcass steady while the other lines the side up with every dowel. Four connector screws: the top and the bottom.", add: ["SL"], fix: [sideScrews(b, -1, [H - T / 2, PL + T / 2])], tools: ["allen"], people: 2 });
@@ -276,7 +277,7 @@ function hinged(s: ProductSpec): { recipe: CustomParams; stages: Stages } {
     title: "Screw in the clothes rail holders and drop the rail in",
     detail: three ? "In the wide part, one screw each, then the rail clicks down into them." : "One screw each, then the rail clicks down into them.",
     add: ["RAIL"],
-    fix: [-1, 1].map((sx) => fx("hook", [[sx < 0 ? railX0 : railX1, railY + 10, cz]], [sx, 0, 0], sx < 0 ? "SL" : three ? "DIV" : "SR", { name: "Rail holder" })).concat([fx("screw", [[railX0, railY + 30, cz], [railX1, railY + 30, cz]], [0, 0, 0], undefined, { len: 14, dia: 4 })]),
+    fix: [-1, 1].map((sx) => fx("hook", [[sx < 0 ? railX0 : railX1, railY + 10, cz]], [sx, 0, 0], sx < 0 ? "SL" : three ? "DIV" : "SR", { name: "Rail holder" })).concat([-1, 1].map((sx) => fx("screw", [[sx < 0 ? railX0 + 3 : railX1 - 3, railY + 34, cz]], [sx, 0, 0], sx < 0 ? "SL" : three ? "DIV" : "SR", { len: 14, dia: 4 }))),
     tools: ["screwdriver"],
   });
   steps.push({
@@ -286,14 +287,14 @@ function hinged(s: ProductSpec): { recipe: CustomParams; stages: Stages } {
     tools: ["screwdriver"],
   });
   steps.push({ title: "Hang the doors", detail: "Hook each hinge onto its plate and press until it clicks, then tighten the screw on each hinge arm.", add: doorIds, tools: ["screwdriver"] });
-  steps.push({ title: `Screw on the ${n} knobs`, detail: "One long screw from inside each door.", fix: [fx("knob", kn, [0, 0, -1]), fx("screw", kn.map((p): Vec3 => [p[0], p[1], z1 + 2]), [0, 0, 1], undefined, { len: 30, dia: 4 })], tools: ["screwdriver"] });
+  steps.push({ title: `Screw on the ${n} knobs`, detail: "One long screw from inside each door.", fix: [fx("knob", kn, [0, 0, -1]), fx("screw", kn.map((p): Vec3 => [p[0], p[1], z1 - 3]), [0, 0, 1], undefined, { len: 30, dia: 4 })], tools: ["screwdriver"] });
   if (three) {
     const d = doorX(2) - dw / 2 + 25;
     steps.push({ title: "Stick on the door bumpers", detail: "Inside the right-hand door, near its free edge, one high and one low.", fix: [fx("glide", [[d, dy1 - 150, z1 + 2], [d, dy0 + 150, z1 + 2]], [0, 0, 1], "DR2", { name: "Door bumper" })] });
   }
   steps.push({ title: "Line up the doors", detail: "The hinge screws move each door up and down, in and out, and sideways, until the gaps are even.", tools: ["screwdriver"] });
   const flat = (ids: string[]) => lay(b, parts, ids, "-z");
-  return { recipe: { parts, steps }, stages: { 0: flat(three ? ["SL", "DIV", "SR", "TOP", "BOT"] : ["SL", "SR", "TOP", "BOT"]), [steps.findIndex((x) => /feet onto the plinths/.test(x.title))]: flat(["PF", "PB"]), [steps.findIndex((x) => /hinges into/.test(x.title))]: lay(b, parts, doorIds, "+y") } };
+  return { recipe: { parts, steps }, stages: { 0: flat(["SL", "SR", "TOP", "BOT"]), [steps.findIndex((x) => /feet onto the plinths/.test(x.title))]: flat(["PF", "PB"]), [steps.findIndex((x) => /hinges into/.test(x.title))]: lay(b, parts, doorIds, "+y") } };
 }
 
 /** Dowels in both ends of a shelf: into the sides, or the 3-door's divider and right side. */
@@ -344,7 +345,7 @@ function sliding(s: ProductSpec): { recipe: CustomParams; stages: Stages } {
   for (const d of doors) parts.push({ id: d.id, name: "Sliding door", size: [dw, dy1 - dy0, TD], pos: [d.x, (dy0 + dy1) / 2, d.z] });
 
   const ft = feet(b, 2);
-  const shelfEnds = endDowels(b, "SH", ys, [z0 + 50, sz, sz + sd / 2 - 50]);
+  const shelfEnds = endDowels(b, "SH", ys, [z0 + 100, sz, sz + sd / 2 - 100]);
   const divDowels = [fx("dowel", [z0 + 60, sz + sd / 2 - 60].map((z): Vec3 => [0, ys - T / 2, z]), [0, 1, 0], "DL"), fx("dowel", [z0 + 60, sz + sd / 2 - 60].map((z): Vec3 => [0, ys + T / 2, z]), [0, -1, 0], "DU")];
   const camZ = [z0 + 100, sz + sd / 2 - 100];
   const pf = parts.find((p) => p.id === "PF")!, pb = parts.find((p) => p.id === "PB")!;
@@ -376,18 +377,18 @@ function sliding(s: ProductSpec): { recipe: CustomParams; stages: Stages } {
       tools: ["hammer"],
     },
     { title: "Lock it with two cam locks", detail: "The same way.", fix: [fx("cam", camZ.map((z): Vec3 => [30, ys, z]), [-1, 0, 0], "SH")], tools: ["screwdriver"] },
-    { title: "Tap dowels into the top and the bottom", detail: "Two in each end of both panels.", fix: [...endDowels(b, "TOP", H - T / 2, [z0 + 60, z1 - 60]), ...endDowels(b, "BOT", PL + T / 2, [z0 + 60, z1 - 60])], tools: ["hammer"] },
+    { title: "Tap dowels into the top and the bottom", detail: "Two in each end of both panels.", fix: [...endDowels(b, "TOP", H - T / 2, [z0 + 100, z1 - 100]), ...endDowels(b, "BOT", PL + T / 2, [z0 + 100, z1 - 100])], tools: ["hammer"] },
     { title: "Press the door tracks into the top and the bottom", detail: "Two in each panel, in the grooves along the front edge. Push them right in along their length.", add: ["TOP", "BOT", "TT0", "TT1", "TB0", "TB1"] },
     { title: "Screw the top and bottom to a side", detail: "Stand the left side on its front edge. Two connector screws into each.", add: ["SL"], fix: [sideScrews(b, -1, [H - T / 2, PL + T / 2])], tools: ["allen"] },
     { title: "Screw the shelf and dividers in", detail: "Slide the shelf unit in so the dividers meet the middle of the top and bottom. Two connector screws through the side into the shelf, two down through the top and one up through the bottom into the dividers.", fix: [sideScrews(b, -1, [ys], 2, [z0 + 50, sz + sd / 2 - 50]), fx("bolt", [z0 + 60, sz + sd / 2 - 60].map((z): Vec3 => [0, H, z]), [0, -1, 0], "TOP", CONN), fx("bolt", [[0, PL, sz]], [0, 1, 0], "BOT", CONN)], tools: ["allen"] },
-    { title: "Tap dowels into the plinths", detail: "One in each end.", fix: [...endDowels(b, "PF", PL / 2, [pf.pos[2]]), ...endDowels(b, "PB", PL / 2, [pb.pos[2]])], tools: ["hammer"] },
-    { title: "Push the plinths in and screw them to the side", detail: "Under the bottom. One connector screw into each plinth, and one more into the bottom of the short divider.", add: ["PF", "PB"], fix: [sideScrews(b, -1, [PL / 2], 1, [pf.pos[2]]), sideScrews(b, -1, [PL / 2], 1, [pb.pos[2]]), fx("bolt", [[0, PL, z0 + 60]], [0, 1, 0], "BOT", CONN)], tools: ["allen"] },
+    { title: "Tap dowels into the plinths", detail: "One in each end.", fix: [...endDowels(b, "PF", PL / 2 - 15, [pf.pos[2]]), ...endDowels(b, "PB", PL / 2 - 15, [pb.pos[2]])], tools: ["hammer"] },
+    { title: "Push the plinths in and screw them to the side", detail: "Under the bottom. One connector screw into each plinth, and one more into the bottom of the short divider.", add: ["PF", "PB"], fix: [sideScrews(b, -1, [PL / 2 + 15], 1, [pf.pos[2]]), sideScrews(b, -1, [PL / 2 + 15], 1, [pb.pos[2]]), fx("bolt", [[0, PL, z0 + 60]], [0, 1, 0], "BOT", CONN)], tools: ["allen"] },
+    { title: "Tap dowels into the back rails", detail: "One in each end.", fix: [...endDowels(b, "RB", rb.pos[1], [rb.pos[2]]), ...endDowels(b, "RM", rm.pos[1], [rm.pos[2]])], wait: ["RB", "RM"], from: { RB: [300, 0, 0], RM: [300, 0, 0] }, tools: ["hammer"] },
+    { title: "Push the back rails onto the side", detail: "One under the top and one just above the shelf, at the back, onto the dowels.", add: ["RB", "RM"] },
     { title: "Fit the other side", detail: "Line it up with every dowel and press it on evenly.", add: ["SR"] },
-    { title: "Screw the other side to the top and the shelf", detail: "Three connector screws.", fix: [sideScrews(b, 1, [H - T / 2]), sideScrews(b, 1, [ys], 1, [sz])], tools: ["allen"] },
-    { title: "Tap dowels into the back rails", detail: "One in each end.", fix: [...endDowels(b, "RB", rb.pos[1], [rb.pos[2]]), ...endDowels(b, "RM", rm.pos[1], [rm.pos[2]])], tools: ["hammer"] },
-    { title: "Drop the back rails in", detail: "One under the top and one just above the shelf, at the back.", add: ["RB", "RM"] },
+    { title: "Screw the other side to the top and the shelf", detail: "Three connector screws.", fix: [sideScrews(b, 1, [H - T / 2]), sideScrews(b, 1, [ys], 1, [sz + 40])], tools: ["allen"] },
     { title: "Screw the other side to the bottom", detail: "Three connector screws: two into the bottom, one into the shelf's back end.", fix: [sideScrews(b, 1, [PL + T / 2]), sideScrews(b, 1, [ys], 1, [z0 + 50])], tools: ["allen"] },
-    { title: "Screw the plinths to the other side", detail: "One connector screw into each.", fix: [sideScrews(b, 1, [PL / 2], 1, [pf.pos[2]]), sideScrews(b, 1, [PL / 2], 1, [pb.pos[2]])], tools: ["allen"] },
+    { title: "Screw the plinths to the other side", detail: "One connector screw into each.", fix: [sideScrews(b, 1, [PL / 2 + 15], 1, [pf.pos[2]]), sideScrews(b, 1, [PL / 2 + 15], 1, [pb.pos[2]])], tools: ["allen"] },
     {
       title: "Lay the back panel on",
       detail: "Unfold it over the back, edges in the rebates, and push it square.",
@@ -422,14 +423,14 @@ function sliding(s: ProductSpec): { recipe: CustomParams; stages: Stages } {
       fix: [
         ...doors.map((d) => fx("roller", roll(d, dy0), [0, 1, 0], d.id)),
         ...doors.map((d) => fx("clip", roll(d, dy1), [0, -1, 0], d.id, { name: "Top guide" })),
-        ...doors.map((d) => fx("screw", [...roll(d, dy0), ...roll(d, dy1)].flatMap((p): Vec3[] => [[p[0] - 14, p[1], p[2]], [p[0] + 14, p[1], p[2]]]), [0, 0, 0], d.id, { len: 14, dia: 4 })),
+        ...doors.map((d) => fx("screw", [...roll(d, dy0), ...roll(d, dy1)].flatMap((p): Vec3[] => [[p[0] - 25, p[1], p[2]], [p[0] + 25, p[1], p[2]]]), [0, 0, 0], d.id, { len: 14, dia: 4 })),
       ],
       tools: ["screwdriver"],
     },
     { title: "Hang the back door", detail: "Top first into the inner track, then lift it and set the rollers down into the bottom track.", add: ["DR0"], people: 1 },
     { title: "Hang the front door", detail: "The same in the outer tracks. Slide both doors to check they run freely.", add: ["DR1"] },
     { title: "Level the doors", detail: "Turn the screw on each bottom roller until the doors hang straight and meet the sides evenly.", tools: ["screwdriver"] },
-    { title: "Screw on the knobs", detail: "One on each door, near its outer edge, a long screw from inside.", fix: [fx("knob", kn, [0, 0, -1]), fx("screw", kn.map((p): Vec3 => [p[0], p[1], p[2] - TD]), [0, 0, 1], undefined, { len: 30, dia: 4 })], tools: ["screwdriver"] },
+    { title: "Screw on the knobs", detail: "One on each door, near its outer edge, a long screw from inside.", fix: [fx("knob", kn, [0, 0, -1]), fx("screw", kn.map((p): Vec3 => [p[0], p[1], p[2] - TD - 5]), [0, 0, 1], undefined, { len: 30, dia: 4 })], tools: ["screwdriver"] },
   ];
   // the rail holders and the screws through the door fittings go sideways or into the door
   const rh = steps.find((x) => /clothes rails/.test(x.title))!;

@@ -45,7 +45,7 @@ function bedside(s: ProductSpec): CustomParams {
   const backYs = [yA - 45, yA + 45];
   const runner = (sx: number): CustomFix[] => [
     { kind: "runner", count: 1, len: 300, dia: 35, at: [[sx * xi, yD, 0]], dir: [-sx, 0, 0], on: fid(sx) },
-    { kind: "screw", count: 2, len: 12, dia: 5, at: [-100, 100].map((z): Vec3 => [sx * (xi - 12), yD, z]), dir: [sx, 0, 0], on: fid(sx) },
+    { kind: "screw", count: 2, len: 12, dia: 5, at: [-100, 100].map((z): Vec3 => [sx * (xi - 3), yD, z]), dir: [sx, 0, 0], on: fid(sx) },
   ];
   const steps: CustomStep[] = [
     {
@@ -133,7 +133,7 @@ function bedside(s: ProductSpec): CustomParams {
       title: "Screw on the drawer back",
       detail: "Its lower edge over the bottom, two long screws through each side.",
       add: ["DK"],
-      fix: sides.map((sx): CustomFix => ({ kind: "screw", count: 2, len: 40, dia: 4, at: [yD - 30, yD + 25].map((y): Vec3 => [sx * (dw / 2), y, dz0 + 7]), dir: [-sx, 0, 0], on: `DS${sx}` })),
+      fix: sides.map((sx): CustomFix => ({ kind: "screw", count: 2, len: 40, dia: 4, at: [yD - 30, yD + 5].map((y): Vec3 => [sx * (dw / 2), y, dz0 + 7]), dir: [-sx, 0, 0], on: `DS${sx}` })),
       tools: ["screwdriver"],
     },
     {
@@ -197,10 +197,11 @@ function drawerSteps(ds: Drawer[], h: number, zf: number, zb: number, gap: numbe
     { title: "Slide in the drawer bottoms", detail: "Down the grooves until they meet the front.", add: ds.map((d) => `${d.id}B`), from: Object.fromEntries(ds.map((d) => [`${d.id}B`, [0, 0, -400] as Vec3])) },
     {
       title: `Fit the ${what} backs`,
-      detail: "Four cam bolts in each back, press it onto the sides, then four cam locks.",
+      detail: "Four cam bolts in each back. Angle it in between the sides, one end first, then four cam locks.",
       add: ds.map((d) => `${d.id}K`),
+      from: Object.fromEntries(ds.map((d) => [`${d.id}K`, [220, 220, 0] as Vec3])),
       fix: [
-        ...ds.map((d): CustomFix => ({ kind: "camScrew", count: 4, at: [-1, 1].flatMap((sx) => ys(d).map((y): Vec3 => [sideX(d, sx) - sx * 7, y + 10, zb + 7])), dir: [-1, 0, 0], on: `${d.id}K` })),
+        ...ds.flatMap((d) => [-1, 1].map((sx): CustomFix => ({ kind: "camScrew", count: 2, at: ys(d).map((y): Vec3 => [sideX(d, sx) - sx * 7, y + 10, zb + 7]), dir: [-sx, 0, 0], on: `${d.id}K` }))),
         ...ds.map((d): CustomFix => ({ kind: "cam", count: 4, at: [-1, 1].flatMap((sx) => ys(d).map((y): Vec3 => [sideX(d, sx) - sx * 7, y + 10, zb + 40])), dir: [1, 0, 0], on: `${d.id}S${-1}` })),
       ],
       tools: ["screwdriver"],
@@ -249,30 +250,31 @@ function chest(s: ProductSpec): CustomParams {
   ];
   const sides = [-1, 1];
   const fid = (sx: number) => (sx < 0 ? "FL" : "FR");
-  const railYs = [yTop - ri / 2 - 15, yTop - ri / 2 + 15];
-  const camBolts = (sx: number): CustomFix => ({ kind: "camScrew", count: 4, at: [zl, -zl].flatMap((z) => railYs.map((y): Vec3 => [sx * xi, y, z])), dir: [-sx, 0, 0], on: fid(sx) });
+  // one cam bolt in the middle of each rail end, a dowel above and below it
+  const railYs = [yTop - ri / 2];
+  const camBolts = (sx: number): CustomFix => ({ kind: "camScrew", count: 2, at: [zl, -zl].flatMap((z) => railYs.map((y): Vec3 => [sx * xi, y, z])), dir: [-sx, 0, 0], on: fid(sx) });
   const camLocks = (sx: number): CustomFix[] => [
-    { kind: "cam", count: 2, at: railYs.map((y): Vec3 => [sx * (xi - 35), y, zl - 10]), dir: [0, 0, -1], on: "TF" },
-    { kind: "cam", count: 2, at: railYs.map((y): Vec3 => [sx * (xi - 35), y, -zl + 10]), dir: [0, 0, 1], on: "TB" },
+    { kind: "cam", count: 1, at: railYs.map((y): Vec3 => [sx * (xi - 35), y, zl - 10]), dir: [0, 0, -1], on: "TF" },
+    { kind: "cam", count: 1, at: railYs.map((y): Vec3 => [sx * (xi - 35), y, -zl + 10]), dir: [0, 0, 1], on: "TB" },
   ];
   const longScrews = (sx: number): CustomFix => ({ kind: "screw", name: "Long screw", count: 3, len: 70, dia: 6, at: [-zl + 60, 0, zl - 60].map((z): Vec3 => [sx * (xl + 9), y0 + 10, z]), dir: [-sx, 0, 0], on: fid(sx), mate: "BO" });
   const runnerYs = [0, 1, 2, 3].map((r) => rowY(r) - fh / 2 + 25);
   const runners = (sx: number): CustomFix[] => [
     { kind: "runner", count: 4, len: 400, dia: 35, at: runnerYs.map((y): Vec3 => [sx * xi, y, 0]), dir: [-sx, 0, 0], on: fid(sx) },
-    { kind: "screw", count: 8, len: 12, dia: 5, at: runnerYs.flatMap((y) => [-150, 150].map((z): Vec3 => [sx * (xi - 12), y, z])), dir: [sx, 0, 0], on: fid(sx) },
+    { kind: "screw", count: 8, len: 12, dia: 5, at: runnerYs.flatMap((y) => [-150, 150].map((z): Vec3 => [sx * (xi - 3), y, z])), dir: [sx, 0, 0], on: fid(sx) },
   ];
   const wallX = [-1, 1].map((sx) => sx * (xi - 120));
   const steps: CustomStep[] = [
-    { title: "Screw the cam bolts into the side frames", detail: "Lay both frames on a rug, inside up. Four in each, by the top.", fix: [camBolts(-1)], tools: ["screwdriver"], pose: "+x", warnings: ["floor"] },
+    { title: "Screw the cam bolts into the side frames", detail: "Lay both frames on a rug, inside up. Two in each, by the top.", fix: [camBolts(-1)], tools: ["screwdriver"], pose: "+x", warnings: ["floor"] },
     { title: "Screw the runners onto the side frames", detail: "Four on each frame, two screws in each. The left and right runners are different.", fix: runners(-1), tools: ["screwdriver"] },
     {
       title: "Stand the top rails on one frame",
       detail: "Tap two dowels into the ends of each rail and push them onto the frame's dowel holes and cam bolts.",
       add: ["FL", "TF", "TB"],
-      fix: [{ kind: "dowel", count: 4, at: [zl, -zl].flatMap((z) => [yTop - 10, yTop - ri + 10].map((y): Vec3 => [-xi, y, z])), dir: [-1, 0, 0], on: "FL" }],
+      fix: [{ kind: "dowel", count: 4, at: [zl, -zl].flatMap((z) => [yTop - ri / 2 + 23, yTop - ri / 2 - 23].map((y): Vec3 => [-xi, y, z])), dir: [-1, 0, 0], on: "FL" }],
       tools: ["hammer"],
     },
-    { title: "Lock the rails and slide in the back", detail: "Four cam locks, then slide the back panel down the grooves.", add: ["BK"], fix: camLocks(-1), from: { BK: [400, 0, 0] }, tools: ["screwdriver"] },
+    { title: "Lock the rails and slide in the back", detail: "Two cam locks, then slide the back panel down the grooves.", add: ["BK"], fix: camLocks(-1), from: { BK: [400, 0, 0] }, tools: ["screwdriver"] },
     { title: "Screw in the bottom panel", detail: "Three long screws through the frame into its edge, with the Allen key.", add: ["BO"], fix: [longScrews(-1)], tools: ["allen"] },
     {
       title: "Lay the other frame on together",
@@ -283,7 +285,7 @@ function chest(s: ProductSpec): CustomParams {
       warnings: ["two"],
       tools: ["screwdriver"],
     },
-    { title: "Lock the rails to this frame", detail: "Four more cam locks.", fix: camLocks(1), tools: ["screwdriver"] },
+    { title: "Lock the rails to this frame", detail: "Two more cam locks.", fix: camLocks(1), tools: ["screwdriver"] },
     { title: "Screw the bottom panel to this frame", detail: "Three long screws, as on the other side.", fix: [longScrews(1)], tools: ["allen"] },
     {
       title: "Screw the feet into the legs",
@@ -306,7 +308,7 @@ function chest(s: ProductSpec): CustomParams {
         { kind: "angle", name: "Wall bracket", count: 2, len: 60, dia: 30, at: wallX.map((x): Vec3 => [x, yTop, -zl - 10]), dir: [0, 1, 0], on: "TOP" },
         { kind: "screw", count: 2, len: 16, dia: 4, at: wallX.map((x): Vec3 => [x, yTop, -zl + 10]), dir: [0, 1, 0], on: "TOP" },
         ...sides.map((sx): CustomFix => ({ kind: "runner", count: 1, len: 400, dia: 35, at: [[sx * 9, runnerYs[3], 0]], dir: [sx, 0, 0], on: "DV" })),
-        ...sides.map((sx): CustomFix => ({ kind: "screw", count: 2, len: 12, dia: 5, at: [-150, 150].map((z): Vec3 => [sx * 21, runnerYs[3], z]), dir: [-sx, 0, 0], on: "DV" })),
+        ...sides.map((sx): CustomFix => ({ kind: "screw", count: 2, len: 12, dia: 5, at: [-150, 150].map((z): Vec3 => [sx * 12, runnerYs[3], z]), dir: [-sx, 0, 0], on: "DV" })),
         { kind: "dowel", count: 2, at: [-80, 80].map((z): Vec3 => [0, yTop, z]), dir: [0, -1, 0], on: "DV", mate: "TOP" },
         { kind: "cam", count: 2, at: [-80, 80].map((z): Vec3 => [9, yTop - 30, z + 30]), dir: [1, 0, 0], on: "DV" },
       ],
@@ -414,8 +416,8 @@ function bed(s: ProductSpec): CustomParams {
     { kind: "camScrew", name: "Cam stud", count: 2, at: [yr - 40, yr + 40].map((y): Vec3 => [sx * xr, y, zh + LG / 2]), dir: [0, 0, -1], on: sx < 0 ? "HL" : "HR" },
   ];
   const legDowels = (sx: number): CustomFix[] => [
-    { kind: "dowel", count: 2, at: [yr - 10, yr + 10].map((y): Vec3 => [sx * xi, y, zh]), dir: [-sx, 0, 0], on: sx < 0 ? "HL" : "HR" },
-    { kind: "dowel", count: 2, at: [yr0 + 20, yr1 - 20].map((y): Vec3 => [sx * xr, y, zh + LG / 2]), dir: [0, 0, -1], on: sx < 0 ? "HL" : "HR" },
+    { kind: "dowel", count: 2, at: [yr - 15, yr + 15].map((y): Vec3 => [sx * xi, y, zh]), dir: [-sx, 0, 0], on: sx < 0 ? "HL" : "HR" },
+    { kind: "dowel", count: 2, at: [yr0 + 15, yr1 - 15].map((y): Vec3 => [sx * xr, y, zh + LG / 2]), dir: [0, 0, -1], on: sx < 0 ? "HL" : "HR" },
   ];
   const ladderBolts = (sx: number): CustomFix[] => [
     { kind: "bolt", count: 2, len: 120, dia: 8, at: [HH - 43, HH - 170].map((y): Vec3 => [sx * W / 2, y, zh]), dir: [-sx, 0, 0], on: sx < 0 ? "HL" : "HR", mate: "LAD" },
@@ -453,7 +455,7 @@ function bed(s: ProductSpec): CustomParams {
       add: ["FB"],
       fix: [-1, 1].flatMap((sx): CustomFix[] => [
         { kind: "camScrew", name: "Cam stud", count: 2, at: [yr - 40, yr + 40].map((y): Vec3 => [sx * xr, y, zf - LG / 2]), dir: [0, 0, 1], on: "FB" },
-        { kind: "dowel", count: 2, at: [yr0 + 20, yr1 - 20].map((y): Vec3 => [sx * xr, y, zf - LG / 2]), dir: [0, 0, 1], on: "FB" },
+        { kind: "dowel", count: 2, at: [yr0 + 15, yr1 - 15].map((y): Vec3 => [sx * xr, y, zf - LG / 2]), dir: [0, 0, 1], on: "FB" },
       ]),
       people: 2,
       warnings: ["two"],
@@ -464,8 +466,10 @@ function bed(s: ProductSpec): CustomParams {
       title: "Screw the beam brackets on",
       detail: "One in the middle of the headboard rail and one on the footboard, two screws each.",
       fix: [
-        { kind: "angle", name: "Beam bracket", count: 2, len: 80, dia: 60, at: [brAt(zs0), brAt(zs1)], dir: [0, -1, 0] },
-        { kind: "screw", count: 4, len: 16, dia: 4, at: [zs0, zs1].flatMap((z) => [-25, 25].map((x): Vec3 => [x, ySup - 30, z])), dir: [0, 0, -1] },
+        // on the faces of the headboard rail and the footboard's board
+        { kind: "angle", name: "Beam bracket", count: 2, len: 80, dia: 60, at: [brAt(zh + 11), brAt(zf - 11)], dir: [0, -1, 0] },
+        { kind: "screw", count: 2, len: 16, dia: 4, at: [-25, 25].map((x): Vec3 => [x, ySup - 30, zh + 11]), dir: [0, 0, -1], on: "HB" },
+        { kind: "screw", count: 2, len: 16, dia: 4, at: [-25, 25].map((x): Vec3 => [x, ySup - 30, zf - 11]), dir: [0, 0, 1], on: "FB" },
       ],
       tools: ["screwdriver"],
     },
@@ -485,7 +489,7 @@ function bed(s: ProductSpec): CustomParams {
       title: "Put the slatted bases together",
       detail: "Each base has its own manual: screw its rail halves and cross rails together, then clip every slat into its holders, curved side up.",
       add: ["SL-1", "SL1"],
-      fix: [-1, 1].map((sx): CustomFix => ({ kind: "screw", count: 6, len: 60, dia: 6, at: [-1, 1].flatMap((k) => [-600, 0, 600].map((z): Vec3 => [sx * (bw / 2 + 30) + k * (bw / 2 - 20), ySup + 20, z])).slice(0, 6), dir: [0, -1, 0], on: `SL${sx}` })),
+      fix: [-1, 1].map((sx): CustomFix => ({ kind: "screw", count: 6, len: 40, dia: 6, at: [-1, 1].flatMap((k) => [-600, 0, 600].map((z): Vec3 => [sx * (bw / 2 + 30) + k * (bw / 2 - 20), ySup + 40, z])).slice(0, 6), dir: [0, -1, 0], on: `SL${sx}` })),
       from: { "SL-1": [0, 400, 0], SL1: [0, 400, 0] },
       tools: ["screwdriver"],
     },
@@ -494,7 +498,8 @@ function bed(s: ProductSpec): CustomParams {
       detail: "Eight stops over the edges of the bases, a small bolt through each into the slat support.",
       fix: [
         { kind: "clip", name: "Slat stop", count: 8, len: 20, dia: 25, at: stopAt, dir: [0, -1, 0] },
-        { kind: "screw", count: 8, len: 10, dia: 6, at: stopAt.map((p): Vec3 => [p[0], p[1] + 10, p[2]]), dir: [0, -1, 0] },
+        // through the stop's end, past the base's edge, into the support's top flange
+        { kind: "screw", count: 8, len: 10, dia: 6, at: stopAt.map((p): Vec3 => [p[0], ySup + 6, p[2] + (p[2] > 0 ? -23 : 23)]), dir: [0, -1, 0] },
       ],
       tools: ["screwdriver"],
     },

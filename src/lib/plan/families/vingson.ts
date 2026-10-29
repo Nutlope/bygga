@@ -52,6 +52,8 @@ function chair(s: ProductSpec): CustomParams {
       [
         ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [rail, railH, fd], pos: [sx * (fw / 2 - rail / 2), legH + railH / 2, zF] })),
         ...[-1, 1].map((sz): PartPiece => ({ shape: "box", size: [fw - 2 * rail, railH, rail], pos: [0, legH + railH / 2, zF + sz * (fd / 2 - rail / 2)] })),
+        // the ledges inside the side rails the slatted seat rests on and is screwed through
+        ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [20, 20, fd - 2 * rail], pos: [sx * (fw / 2 - rail - 10), seatY - 30, zF] })),
       ],
       [-fw / 2, legH, zF - fd / 2],
       [fw / 2, seatY, zF + fd / 2],
@@ -87,7 +89,7 @@ function chair(s: ProductSpec): CustomParams {
   // the joints between the sections: three bolts down each seam
   const seam = (x: number, z0: number): Vec3[] => [450, 850, 1250].map((y): Vec3 => [x, y, backZ(y) + z0]);
   const backBolts: Vec3[] = [...[-1, 1].map((sz): Vec3 => [-(fw / 2 - rail / 2), seatY, zF + sz * 180]), ...[-1, 1].map((sz): Vec3 => [fw / 2 - rail / 2, seatY, zF + sz * 180]), [-200, seatY, zBack + rail / 2], [200, seatY, zBack + rail / 2]];
-  const seatScrews: Vec3[] = [-1, 1].flatMap((sx) => [0, 1, 2, 3].map((i): Vec3 => [sx * 200, seatY - 20, zF - fd / 2 + rail + 50 + i * 170]));
+  const seatScrews: Vec3[] = [-1, 1].flatMap((sx) => [0, 1, 2, 3].map((i): Vec3 => [sx * (fw / 2 - rail - 12), seatY - 40, zF - fd / 2 + rail + 50 + i * 170]));
   const steps: CustomStep[] = [
     {
       title: "Fit a barrel nut and a threaded rod into each leg",

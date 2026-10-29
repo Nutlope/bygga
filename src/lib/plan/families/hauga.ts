@@ -817,7 +817,7 @@ function caseRunners(k: ReturnType<typeof kit>, ds: Drawer[], sideOf: (d: Drawer
       on.push(sid);
       dirs.push([sg, 0, 0]);
       for (const f of nScrews === 2 ? [-0.4, 0.4] : [-0.4, 0, 0.4]) {
-        screws.push([x - sg * 11, y, z + len * f]);
+        screws.push([x - sg * 2, y, z + len * f]); // through the runner's flange into the side
         son.push(sid);
         sdirs.push([sg, 0, 0]);
       }
@@ -1021,9 +1021,9 @@ function chest3(b: PlanBuilder, s: ProductSpec) {
     },
     {
       title: "Push the plinth rail in",
-      detail: "Two dowels in its ends first, no hammer. It goes in under the bottom, set back from the front.",
+      detail: "Two dowels in its top edge first, no hammer. It pushes onto the bottom, set back from the front.",
       pose: "-z",
-      ops: [{ fit: FF(T_DOWEL, [["PL", "-x", 1], ["PL", "+x", 1]]) }, { add: ["PL"], from: [0, -300, 0] }],
+      ops: [{ fit: F(T_DOWEL, "PL", "+y", 2, { a: 0.1, b: 0.9, mate: "BOT" }) }, { add: ["PL"], from: [0, -300, 0] }],
     },
     {
       title: "Click in the plinth brackets",
@@ -1369,9 +1369,9 @@ function caseBuild(b: PlanBuilder, s: ProductSpec, c: Cfg) {
         }
         steps.push({
           title: "Push the plinth rail in",
-          detail: `${ph.dowels} dowels in its ends first, no hammer. It goes in under the bottom, set back from the front.`,
+          detail: `${ph.dowels} dowels in its top edge first, no hammer. It pushes onto the bottom, set back from the front.`,
           pose: ps,
-          ops: [{ fit: FF(T_DOWEL, [["PL", "-x", ph.dowels / 2], ["PL", "+x", ph.dowels / 2]]) }, { add: ["PL"], from: [0, -300, 0] }],
+          ops: [{ fit: F(T_DOWEL, "PL", "+y", ph.dowels, { a: 0.1, b: 0.9, mate: "BOT" }) }, { add: ["PL"], from: [0, -300, 0] }],
         });
         break;
       case "feet":

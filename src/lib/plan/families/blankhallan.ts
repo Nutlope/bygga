@@ -68,8 +68,8 @@ function recipe(s: ProductSpec): CustomParams | null {
       detail: "The marked runners go left and right. Two screws each, pressing the runner flat against the panel.",
       add: ["SL", "SR"],
       fix: [-1, 1].flatMap((sx) => [
-        at("runner", [[sx * xi, runY, 10]], [-sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { len: 240, dia: 20 }),
-        at("screw", [-80, 100].map((z) => [sx * xi, runY, z] as Vec3), [-sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { len: 12, dia: 4 }),
+        at("runner", [[sx * xi, runY, 10]], [sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { len: 240, dia: 20 }),
+        at("screw", [-80, 100].map((z) => [sx * (xi - 2), runY, z] as Vec3), [sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { len: 12, dia: 4 }),
       ]),
       from: { SL: [-400, 0, 0], SR: [400, 0, 0] },
       tools: ["screwdriver"],
@@ -108,8 +108,8 @@ function recipe(s: ProductSpec): CustomParams | null {
     },
     {
       title: "Turn it over and screw the box onto the frames",
-      detail: "The box rests on the rails under it. Four countersunk bolts up through the rails into the bottom.",
-      fix: [at("bolt", [-1, 1].flatMap((sx) => [-100, 100].map((z) => [sx * (X - 6), Y0, z] as Vec3)), [0, 1, 0], undefined, "BB", { len: 20, dia: 6 })],
+      detail: "The box rests on the rails under it. Four countersunk bolts up through the rails into the sides.",
+      fix: [-1, 1].map((sx) => at("bolt", [-100, 100].map((z) => [sx * (X - 6), Y0 - 12, z] as Vec3), [0, 1, 0], sx < 0 ? "FL" : "FR", sx < 0 ? "SL" : "SR", { len: 20, dia: 6 })),
       tools: ["allen"],
       pose: "+y",
     },
@@ -151,8 +151,8 @@ function recipe(s: ProductSpec): CustomParams | null {
       title: "Screw the drawer runners onto the drawer",
       detail: "Two screws in each, by hand with the screwdriver, not a drill.",
       fix: [-1, 1].flatMap((sx) => [
-        at("runner", [[sx * dx, runY, 10]], [sx, 0, 0], sx < 0 ? "DL" : "DR", undefined, { len: 240, dia: 14 }),
-        at("screw", [-80, 100].map((z) => [sx * dx, runY, z] as Vec3), [sx, 0, 0], sx < 0 ? "DL" : "DR", undefined, { len: 14, dia: 4 }),
+        at("runner", [[sx * dx, runY, 10]], [-sx, 0, 0], sx < 0 ? "DL" : "DR", undefined, { len: 240, dia: 14 }),
+        at("screw", [-80, 100].map((z) => [sx * (dx + 2), runY, z] as Vec3), [-sx, 0, 0], sx < 0 ? "DL" : "DR", undefined, { len: 14, dia: 4 }),
       ]),
       tools: ["screwdriver"],
     },

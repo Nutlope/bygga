@@ -129,7 +129,7 @@ async function main() {
   // a wash-stand when asked for, US words too, without taking the family's cabinets
   expect("hemnes wash-stand", "hemnes-wash-stand-2-drawers-60-x-47-x-83");
   expect("hemnes vanity", "hemnes-wash-stand-2-drawers-60-x-47-x-83");
-  expect("hemnes cabinet", "hemnes-glass-door-cabinet-90-x-197");
+  expect("hemnes glass door cabinet", "hemnes-glass-door-cabinet-3-drawers-90-x-197");
   // the same for a kitchen's sink cabinet
   expect("enhet sink cabinet", "enhet-base-cb-f-sink-60-x-60-x-75");
   expect("metod base cabinet", "metod-base-cabinet-shelves-60-x-60");

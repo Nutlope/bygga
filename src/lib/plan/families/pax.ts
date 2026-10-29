@@ -1,6 +1,6 @@
-import type { ProductSpec, Vec3 } from "../../types";
+import type { CustomParams, CustomPart, CustomStep, ProductSpec, Vec3 } from "../../types";
 import { HW, type FitOpts, type HwDef, type PlanBuilder } from "../builder";
-import { buildCabinet } from "../cabinet";
+import { buildCustom } from "../custom";
 import { buildRow, type RowJoint } from "../row";
 import { buildUnits, unitOf } from "../units";
 import type { Family } from "./family";
@@ -22,7 +22,13 @@ import type { Family } from "./family";
  * Wardrobes add the KOMPLEMENT clothes rail (two holders, four screws) and shelves on four pins each, and hinged
  * doors go on with KOMPLEMENT soft-closing hinges (three a door on 201 cm frames, four on 236 cm): screwed into
  * the door lying flat, then to the side, and two bumpers each. Sliding doors are drawn across a whole row by the
- * row builder. The add-on corner unit has its own manual and keeps its old guide.
+ * row builder.
+ *
+ * The add-on corner unit has its own manual and is the older flat pack: the sides take cam bolts, the top, bottom
+ * and plinth dowels; one side is laid down, the others stood onto it, the cams turned, the second side put on from
+ * above and four long bolts go through the sides into the bottom. Turned over, the back is nailed on, a joining
+ * bracket is screwed across the top and the bottom, it is stood up and fixed to the wall, then the corner
+ * fittings, bumpers and four shelves on pins go in.
  */
 
 const t = 19; // sides, top and bottom
@@ -499,16 +505,150 @@ const JOINT: RowJoint = {
   tools: ["drill", "screwdriver"],
 };
 
-/** A frame of a row: drawn here when it's a PAX frame, otherwise (the add-on corner unit) by the cabinet builder. */
+/** The add-on corner unit, from its own manual. In a corner wardrobe its wall fixing waits until last. */
+function cornerUnit(s: ProductSpec, inSet: boolean): CustomParams {
+  const W = s.size.w * 10, H = Math.round(s.size.h * 10), D = s.size.d * 10;
+  const ct = 18, PH = 80;
+  const xs = W / 2 - ct / 2, xi = W / 2 - ct;
+  const zf = D / 2;
+  const n = 4;
+  const y0 = PH + ct, y1 = H - ct;
+  const shelfY = (i: number) => Math.round(y0 + ((y1 - y0) * (i + 1)) / (n + 1));
+  const parts: CustomPart[] = [
+    { id: "SL", name: "Side panel", size: [ct, H, D], pos: [-xs, H / 2, 0] },
+    { id: "SR", name: "Side panel", size: [ct, H, D], pos: [xs, H / 2, 0] },
+    { id: "T", name: "Top panel", size: [W - 2 * ct, ct, D], pos: [0, H - ct / 2, 0] },
+    { id: "B", name: "Bottom panel", size: [W - 2 * ct, ct, D], pos: [0, PH + ct / 2, 0] },
+    { id: "P", name: "Plinth", size: [W - 2 * ct, PH, ct], pos: [0, PH / 2, zf - 30 - ct / 2] },
+    { id: "K", name: "Back panel", size: [W, H, 3], pos: [0, H / 2, -D / 2 - 1.5], material: "fiber" },
+    { id: "J1", name: "Joining bracket", size: [W - 2 * ct - 20, 2, 40], pos: [0, H + 1, zf - 30], material: "metal" },
+    { id: "J2", name: "Joining bracket", size: [W - 2 * ct - 20, 2, 40], pos: [0, y0 + 1, zf - 30], material: "metal" },
+  ];
+  for (let i = 0; i < n; i++) parts.push({ id: `S${i}`, name: "Shelf", size: [W - 2 * ct - 4, ct, D - 20], pos: [0, shelfY(i), 10] });
+  const sg = [-1, 1];
+  const boltZ = [-D / 4, D / 4];
+  const wallX = [-(xi - 60), xi - 60];
+  const wallStep: CustomStep = {
+    title: "Fix it to the wall",
+    detail: "Screw the two wall brackets under the top at the back, then screw them to the wall. Wall screws and plugs aren't included: pick ones made for your wall.",
+    kind: "anchor",
+    wall: true,
+    fix: [
+      { kind: "bracket", count: 2, at: wallX.map((x): Vec3 => [x, H - ct, -D / 2 + 20]), dir: [0, 1, 0], on: "T" },
+      { kind: "plug", count: 2, len: 35, dia: 8, at: wallX.map((x): Vec3 => [x, H - 60, -D / 2 - 40]), dir: [0, 0, -1] },
+      { kind: "screw", count: 2, len: 50, dia: 5, at: wallX.map((x): Vec3 => [x, H - 60, -D / 2 - 3]), dir: [0, 0, -1] },
+    ],
+    tools: ["drill", "screwdriver", "pencil"],
+    warnings: ["wall", "tip"],
+  };
+  const steps: CustomStep[] = [
+    {
+      title: "Screw the two feet under the bottom panel",
+      detail: "Tap the two T-nuts into the holes near the front edge first, then screw the feet in.",
+      fix: [{ kind: "foot", count: 2, len: 50, dia: 30, at: sg.map((x): Vec3 => [x * (xi - 60), PH, zf - 90]), dir: [0, 1, 0], on: "B" }],
+      wait: ["B"],
+      from: { B: [500, 0, 0] },
+      tools: ["hammer"],
+    },
+    {
+      title: "Screw the cam bolts into the sides",
+      detail: "Into the holes at the top and the bottom, by hand until they stop.",
+      fix: [{ kind: "camScrew", count: 8, to: ["SL", "SR"] }],
+      wait: ["SL", "SR"],
+      // they wait out to the sides, so they only ever move along their bolts and dowels
+      from: { SL: [-500, 0, 0], SR: [900, 0, 0] },
+    },
+    {
+      title: "Tap the dowels into the top, bottom and plinth",
+      detail: "Into the holes in their ends, all the way in.",
+      fix: [
+        { id: "T", y: H - ct / 2, zs: [-D / 2 + 40, zf - 40] },
+        { id: "B", y: PH + ct / 2, zs: [-D / 2 + 35, 0, zf - 35] },
+        { id: "P", y: 0, zs: [] },
+      ].flatMap(({ id, y, zs }) =>
+        sg.map((x) => {
+          const at: Vec3[] = id === "P" ? [20, PH - 20].map((py): Vec3 => [x * xi, py, zf - 30 - ct / 2]) : zs.map((z): Vec3 => [x * xi, y, z]);
+          return { kind: "dowel" as const, count: at.length, len: 30, dia: 8, at, dir: [-x, 0, 0] as Vec3, on: id };
+        }),
+      ),
+      wait: ["T", "B", "P"],
+      from: { T: [500, 0, 0], B: [500, 0, 0], P: [500, 0, 0] },
+      tools: ["hammer"],
+    },
+    {
+      title: "Lay a side down and stand the panels on it",
+      detail: "On a rug, holes up. Stand the top, the bottom and the plinth on its dowels.",
+      add: ["SL", "T", "B", "P"],
+      pose: "+x",
+      warnings: ["floor"],
+    },
+    { title: "Turn the cams to lock them", detail: "Drop each cam in with the arrow towards the bolt and turn it clockwise.", fix: [{ kind: "cam", count: 8, to: ["T", "B", "P"] }] },
+    {
+      title: "Put the other side on",
+      detail: "Lower it onto the dowels from above, then lock its cams the same way.",
+      add: ["SR"],
+      people: 2,
+      warnings: ["two"],
+    },
+    {
+      title: "Bolt the sides to the bottom",
+      detail: "Two long bolts through each side into the ends of the bottom panel.",
+      fix: sg.map((x) => ({ kind: "bolt", count: 2, len: 50, dia: 7, at: boltZ.map((z): Vec3 => [x * (W / 2), PH + ct / 2, z]), dir: [-x, 0, 0] as Vec3, on: x < 0 ? "SL" : "SR" })),
+      tools: ["allen"],
+    },
+    {
+      title: "Turn it over and nail the back on",
+      detail: "Lay it on its front, check it's square and nail the back to all the edges.",
+      add: ["K"],
+      fix: [{ kind: "nail", count: 47, to: ["K"] }],
+      pose: "-z",
+      check: "square",
+    },
+    {
+      title: "Screw a joining bracket across the top and the bottom",
+      detail: "Along the front edge, three screws each. They join it to the wardrobe beside it later.",
+      add: ["J1", "J2"],
+      fix: [{ kind: "screw", count: 6, len: 12, dia: 4, at: [H + 2, y0 + 2].flatMap((y) => [-150, 0, 150].map((x): Vec3 => [x, y, zf - 30])), dir: [0, -1, 0] }],
+    },
+    { title: "Stand it up together", detail: "Lift it from the top end and walk it up, with a cloth under the bottom edge.", pose: "+y", people: 2, kind: "standup", warnings: ["two", "floor"] },
+  ];
+  if (!inSet) steps.push(wallStep, { title: "Screw it to the wardrobe beside it", detail: "Push it against the side of the next frame, fronts in line, and screw the joining brackets into it.", tools: ["screwdriver"] });
+  steps.push(
+    {
+      title: "Click in the four corner fittings",
+      detail: "Two on the inside of each side at the front, near the top and near the bottom. They hold the corner doors.",
+      fix: sg.map((x) => ({ kind: "clip", name: "Corner fitting", count: 2, len: 20, dia: 30, at: [y0 + 200, H - 200].map((y): Vec3 => [x * xi, y, zf - 20]), dir: [x, 0, 0] as Vec3, on: x < 0 ? "SL" : "SR" })),
+    },
+    {
+      title: "Press on the four bumpers",
+      detail: "On the front edges of the sides, near the top and near the bottom.",
+      fix: [{ kind: "glide", count: 4, len: 3, dia: 12, at: sg.flatMap((x) => [y0 + 100, H - 100].map((y): Vec3 => [x * xs, y, zf])), dir: [0, 0, -1] }],
+    },
+    {
+      title: "Push in the pins and lay the shelves on",
+      detail: "Four pins a shelf, at the same height on both sides.",
+      add: parts.filter((p) => p.name === "Shelf").map((p) => p.id),
+      fix: [{ kind: "pin", count: 16, to: ["SL", "SR"] }],
+    },
+  );
+  if (inSet) steps.push(wallStep);
+  return { parts, steps };
+}
+
+/** A frame of a row: a PAX frame, or the add-on corner unit from its own manual. */
 function frame(b: PlanBuilder, s: ProductSpec) {
-  if (!build(b, s)) buildCabinet(b, s);
+  if (unitOf(s)?.corner || /corner unit/i.test(s.variant)) buildCustom(b, { ...s, custom: cornerUnit(s, !!unitOf(s)) });
+  else build(b, s);
 }
 
 const family: Family = {
   names: ["PAX"],
   build(b, s) {
-    // the add-on corner unit of a corner wardrobe has its own manual
-    if (unitOf(s)?.corner) return false;
+    // the add-on corner unit has its own manual
+    if (unitOf(s)?.corner || /corner unit/i.test(s.variant)) {
+      buildCustom(b, { ...s, custom: cornerUnit(s, !!unitOf(s)) });
+      return true;
+    }
     return build(b, s);
   },
   row(b, s) {

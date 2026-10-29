@@ -74,7 +74,8 @@ function sofa(s: ProductSpec): CustomParams {
   const sides = [-1, 1] as const;
   const backPts = (x: number) => [0.2, 0.75].map((u): Vec3 => { const [z, y] = onBack(u); return [x, Math.round(y), Math.round(z)]; });
   const seatPts = (x: number) => [-60, 140].map((z): Vec3 => [x, SY - 15, z]);
-  const cornerPts = (x: number) => [zb + t / 2, zf - t / 2].map((z): Vec3 => [x, SY - 15, z]);
+  // into the seat frame's back and front rails
+  const cornerPts = (x: number) => [zb + t + 12, zf - 12].map((z): Vec3 => [x, SY - 15, z]);
   const bolt = { len: 20, dia: 6 };
   const NUT = { name: "Barrel nut", len: 15, dia: 10 };
   return {

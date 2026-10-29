@@ -73,11 +73,12 @@ function tableRecipe(s: ProductSpec, kind: "side" | "coffee" | "tv"): CustomPara
     const ls = legs.filter((l) => l.sx === sx);
     const face = sx * (W / 2 - L);
     const dir: Vec3 = [sx, 0, 0];
-    const at = ls.map((l) => [face, SHELF_Y - 12, l.z - 11] as Vec3);
+    // mirrored front to back, so each bracket's tab reaches in under the shelf
+    const at = ls.map((l) => [face, SHELF_Y - 12, l.z - l.sz * 11] as Vec3);
     return {
       brackets: fx("angle", at, dir, { len: 44, dia: 24 }),
-      screws: fx("screw", ls.map((l) => [face, SHELF_Y - 22, l.z + 9] as Vec3), dir, { len: 16, dia: 4 }),
-      up: ls.map((l) => [face - sx * 20, SHELF_Y, l.z - 32] as Vec3),
+      screws: fx("screw", ls.map((l) => [face, SHELF_Y - 22, l.z + l.sz * 9] as Vec3), dir, { len: 16, dia: 4 }),
+      up: ls.map((l) => [face - sx * 20, SHELF_Y, l.z - l.sz * 32] as Vec3),
       legs: ls.map((l) => `L${legs.indexOf(l)}`),
     };
   };

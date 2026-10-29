@@ -131,7 +131,7 @@ function recipe(s: ProductSpec) {
     {
       title: "Screw the seat down",
       detail: "One screw down through each plank into each end panel.",
-      fix: [{ ...SCREW, count: 4, dir: [0, -1, 0], at: ends.flatMap((e) => [-1, 1].map((z) => [e * sx, H, z * (D / 4)] as Vec3)) }],
+      fix: [{ ...SCREW, count: 4, dir: [0, -1, 0], at: ends.flatMap((e) => [-1, 1].map((z) => [e * sx, H, z * (sideD / 2 - 30)] as Vec3)) }], // outside the dowels
     },
   );
   if (bench) {

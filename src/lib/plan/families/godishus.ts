@@ -41,10 +41,11 @@ function chest(s: ProductSpec): CustomParams {
   const yb = 30, hs = H - T; // bottom panel, sides under the top
   const xi = X - T;
   const parts: CustomPart[] = [
-    box("SL", "Side", [-X, 0, -Z], [-xi, hs, Z]),
-    box("SR", "Side", [xi, 0, -Z], [X, hs, Z]),
+    // the back is a full-width board on the sides' back edges, dowelled and screwed into them
+    box("SL", "Side", [-X, 0, -Z + T], [-xi, hs, Z]),
+    box("SR", "Side", [xi, 0, -Z + T], [X, hs, Z]),
     box("BT", "Bottom", [-xi, yb, -Z + T], [xi, yb + T, Z]),
-    box("BK", "Back panel", [-xi, yb, -Z], [xi, hs, -Z + T]),
+    box("BK", "Back panel", [-X, 0, -Z], [X, hs, -Z + T]),
     box("TP", "Top", [-X, hs, -Z], [X, H, Z + 5]),
   ];
   const y0 = yb + T, gap = (hs - y0) / 3;
@@ -73,7 +74,7 @@ function chest(s: ProductSpec): CustomParams {
       add: ["SL", "SR"],
       fix: [-1, 1].flatMap((sx) => [
         at("runner", runnerPts(sx), [-sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { name: "Drawer runner", len: 340, dia: 20 }),
-        at("screw", runnerPts(sx).flatMap((p) => [[p[0], p[1], -100], [p[0], p[1], 100]] as Vec3[]), [-sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { len: 14, dia: 4 }),
+        at("screw", runnerPts(sx).flatMap((p) => [[p[0] - sx * 3, p[1], -100], [p[0] - sx * 3, p[1], 100]] as Vec3[]), [sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { len: 14, dia: 4 }),
       ]),
       warnings: ["floor"],
       tools: ["screwdriver"],
@@ -84,12 +85,12 @@ function chest(s: ProductSpec): CustomParams {
     { title: "Lock it with two cam locks", detail: "Arrow towards the cam bolt, then turn clockwise.", fix: [{ kind: "cam", count: 2, to: ["BT", "SL"] }], tools: ["screwdriver"] },
     { title: "Push the other side on", detail: "Onto the other end of the bottom, dowels and cam bolts into its holes." },
     { title: "Lock it with two cam locks", detail: "The same as the first side.", fix: [{ kind: "cam", count: 2, to: ["BT", "SR"] }], tools: ["screwdriver"] },
-    { title: "Tap dowels into the back edges of the sides", detail: "Two in each side, for the back panel.", fix: [-1, 1].map((sx) => at("dowel", [yb + 120, hs - 120].map((y) => [sx * xi, y, -Z + T / 2] as Vec3), [sx, 0, 0], sx < 0 ? "SL" : "SR", "BK", { len: 30, dia: 8 })), tools: ["hammer"] },
+    { title: "Tap dowels into the back edges of the sides", detail: "Two in each side, for the back panel. Turn the frame so its back faces you.", fix: [-1, 1].map((sx) => at("dowel", [yb + 120, hs - 120].map((y) => [sx * (X - T / 2), y, -Z + T] as Vec3), [0, 0, 1], sx < 0 ? "SL" : "SR", "BK", { len: 30, dia: 8 })), tools: ["hammer"] },
     {
-      title: "Slide the back panel in and screw it",
-      detail: "Label side in. Push it down between the sides at the back, then four Allen screws through the sides into it.",
+      title: "Put the back panel on and screw it",
+      detail: "Label side in. Push it onto the dowels in the sides' back edges, then four Allen screws through it into the sides.",
       add: ["BK"],
-      fix: [-1, 1].map((sx) => at("screw", [yb + 120, hs - 120].map((y) => [sx * X, y, -Z + T / 2] as Vec3), [-sx, 0, 0], sx < 0 ? "SL" : "SR", "BK", { len: 50, dia: 6 })),
+      fix: [-1, 1].map((sx) => at("screw", [yb + 70, hs - 70].map((y) => [sx * (X - T / 2), y, -Z] as Vec3), [0, 0, 1], "BK", sx < 0 ? "SL" : "SR", { len: 50, dia: 6 })),
       from: { BK: [0, 0, -300] },
       tools: ["allen"],
     },
@@ -136,7 +137,7 @@ function chest(s: ProductSpec): CustomParams {
     {
       title: "Screw a knob onto each drawer",
       detail: "One screw from inside the front. Stick on the labels from the sheet if you like.",
-      fix: [at("knob", drawers.map((d) => [0, d.ym, Z] as Vec3), [0, 0, -1], undefined, undefined, { len: 30, dia: 50 }), at("screw", drawers.map((d) => [0, d.ym, d.zf] as Vec3), [0, 0, 1], undefined, undefined, { len: 30, dia: 4 })],
+      fix: [at("knob", drawers.map((d) => [0, d.ym, Z] as Vec3), [0, 0, -1], undefined, undefined, { len: 30, dia: 50 }), at("screw", drawers.map((d) => [0, d.ym, d.zf - 5] as Vec3), [0, 0, 1], undefined, undefined, { len: 30, dia: 4 })],
       tools: ["screwdriver"],
     },
     { title: "Slide the drawers in", detail: "Lift each drawer onto its runners and push it all the way in.", kind: "drawer" },
@@ -187,7 +188,7 @@ function wardrobe(s: ProductSpec): CustomParams {
     {
       title: "Screw the bottom to the side",
       detail: "Dowels into the holes, then two Allen screws through the side into the bottom.",
-      fix: [at("screw", [zk + 60, Z - 60].map((z) => [-X, yb + T / 2, z] as Vec3), [1, 0, 0], "SL", "BT", { len: 50, dia: 6 })],
+      fix: [at("screw", [zk + 30, Z - 30].map((z) => [-X, yb + T / 2, z] as Vec3), [1, 0, 0], "SL", "BT", { len: 50, dia: 6 })],
       tools: ["allen"],
     },
     {
@@ -197,9 +198,9 @@ function wardrobe(s: ProductSpec): CustomParams {
       fix: [-1, 1].map((sx) => at("dowel", [zk + 60, Z - 60].map((z) => [sx * xi, H - T / 2, z] as Vec3), [-sx, 0, 0], "TP", sx < 0 ? "SL" : "SR", { len: 30, dia: 8 })),
       tools: ["hammer"],
     },
-    { title: "Screw the top to the side", detail: "Two more Allen screws through the side.", fix: [at("screw", [zk + 60, Z - 60].map((z) => [-X, H - T / 2, z] as Vec3), [1, 0, 0], "SL", "TP", { len: 50, dia: 6 })], tools: ["allen"] },
+    { title: "Screw the top to the side", detail: "Two more Allen screws through the side.", fix: [at("screw", [zk + 30, Z - 30].map((z) => [-X, H - T / 2, z] as Vec3), [1, 0, 0], "SL", "TP", { len: 50, dia: 6 })], tools: ["allen"] },
     { title: "Lay the other side on", detail: "Turn the frame so it lies on its back, and push the second side onto the dowels.", add: ["SR"] },
-    { title: "Screw the second side on", detail: "Four Allen screws, two into the top and two into the bottom.", fix: [at("screw", [yb + T / 2, H - T / 2].flatMap((y) => [zk + 60, Z - 60].map((z) => [X, y, z] as Vec3)), [-1, 0, 0], "SR", undefined, { len: 50, dia: 6 })], tools: ["allen"] },
+    { title: "Screw the second side on", detail: "Four Allen screws, two into the top and two into the bottom.", fix: [at("screw", [yb + T / 2, H - T / 2].flatMap((y) => [zk + 30, Z - 30].map((z) => [X, y, z] as Vec3)), [-1, 0, 0], "SR", undefined, { len: 50, dia: 6 })], tools: ["allen"] },
     {
       title: "Tap in the plinth clips and click the plinth on",
       detail: "Four clips into the holes at the front of the sides, low down, then press the plinth onto them.",

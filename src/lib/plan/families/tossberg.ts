@@ -256,7 +256,7 @@ function swivel(b: PlanBuilder, s: ProductSpec, malskar: boolean) {
       b.then(0.1);
       b.stage(under[1], b.partItem(under[1]).final.pos, [0, 0, 0], [0, -200, 0]);
       b.then(0.1);
-      b.fits(BOLT, [-1, 1].map((sx) => ({ on: under[1], at: [sx * 75, shellBot - 57, zs + sx * 70] as Vec3, dir: [0, 1, 0] as Vec3, mate: under[0] })), 0.1);
+      b.fits(BOLT, [-1, 1].map((sx) => ({ on: under[1], at: [sx * 50, shellBot - 57, zs + sx * 60] as Vec3, dir: [0, 1, 0] as Vec3, mate: under[0] })), 0.1);
     }, "plate");
     b.step({ title: "Tighten all four bolts", detail: "Now that everything sits square, tighten them firmly until the heads are flat.", tools: ["allen"], scene: "plate", pose: "-y", kind: "bolts" }, () => {
       b.stagger(0);

@@ -687,8 +687,9 @@ class Metod {
         const yb = lo + 18;
         const front = this.part("Drawer front", [bay?.fw ?? W - GAP, r(h - GAP), T], [bay?.fx ?? 0, r((lo + hi) / 2), this.fz]);
         const sides = [-1, 1].map((sx) => this.part("Drawer side", [16, sh, dd], [xc + sx * (bw / 2 - 8), yb + sh / 2, zc], { material: "metal" })) as [string, string];
-        const back = this.part("Drawer back", [bw - 32, sh - 20, 16], [xc, yb + 16 + (sh - 20) / 2, zc - dd / 2 + 10]);
-        const bottom = this.part("Drawer bottom", [bw - 32, 16, dd - 20], [xc, yb + 8, zc + 8]);
+        // the bottom runs under the back, so its screw goes up through the bottom into the back's lower edge
+        const back = this.part("Drawer back", [bw - 32, sh - 16, 16], [xc, yb + 12 + (sh - 16) / 2, zc - dd / 2 + 10]);
+        const bottom = this.part("Drawer bottom", [bw - 32, 12, dd - 4], [xc, yb + 6, zc]);
         const extras =
           size === "medium"
             ? [-1, 1].map((sx) => this.part("Gallery rail", [12, 12, dd - 20], [xc + sx * (bw / 2 - 8), yb + sh + 40, zc + 8], { material: "metal" }))
@@ -1286,9 +1287,6 @@ function hoodCabinet(m: Metod) {
   });
 
   if (hood) {
-    m.step({ title: "Screw in the cam bolts for the hood board", detail: "Two into each side, low down. The row depends on your hood: its own manual says which.", kind: "cams", tools: ["screwdriver"] }, () => {
-      b.fits(BOLT, hoodJ.flatMap((j) => j.bolts), 0.08);
-    });
     m.step(
       {
         title: "Drill the hood board for your hood",
@@ -1303,6 +1301,9 @@ function hoodCabinet(m: Metod) {
         b.stage(hood, [0, T / 2, p[2]], [0, 0, 0], [0, 160, 0]);
       },
     );
+    m.step({ title: "Screw in the cam bolts for the hood board", detail: "Two into each side, low down. The row depends on your hood: its own manual says which.", kind: "cams", tools: ["screwdriver"], scene: "main" }, () => {
+      b.fits(BOLT, hoodJ.flatMap((j) => j.bolts), 0.08);
+    });
     m.step({ title: "Tap the dowels into the hood board", detail: "Two into each end.", kind: "dowels", tools: ["hammer"], scene: "hood" }, () => {
       b.fits(DOWEL, hoodJ.flatMap((j) => j.dowels), 0.06);
     });
@@ -1632,7 +1633,8 @@ function cornerBase128(m: Metod) {
     b.fits(CONFIRMAT, [0.2, 0.5, 0.8].map((f) => ({ on: post, at: [xp - 25, r(y0 + H * f), D / 2 + 60] as Vec3, dir: [0, 0, -1] as Vec3, mate: front })), 0.12);
   });
 
-  const hangAt: Vec3 = [bx, top - 16, -D / 2 + 60];
+  // the bracket hangs from the back rail beside the middle panel (its bolt goes across) or over the brace (its bolt goes down)
+  const hangAt: Vec3 = middle ? [xp - T - 4, top - 16, -D / 2 + 60] : [bx, top - 16, -D / 2 + 60];
   m.step({ title: "Hook the hanging bracket onto the back rail", detail: drawer ? "Behind the post, where the middle panel will hang." : "Behind the post, where the top brace will go.", kind: "general" }, () => {
     b.fit(HANGER, { on: backRail, at: hangAt, dir: [0, -1, 0], hole: false });
   });
@@ -1641,9 +1643,9 @@ function cornerBase128(m: Metod) {
       m.put(brace, [0, 120, 300]);
     });
     m.step({ title: "Bolt the brace to the bracket", detail: "The bolt goes up through the brace and the bracket. Hold the nut with a spanner and tighten.", kind: "screws", tools: ["screwdriver", "wrench"] }, () => {
-      b.fit(M6_BOLT, { on: brace, at: [bx, top - 2 * T, -D / 2 + 70], dir: [0, 1, 0] });
+      b.fit(M6_BOLT, { on: brace, at: [bx, top - 14, -D / 2 + 70], dir: [0, -1, 0] });
       b.then(0.05);
-      b.fit(M6_NUT, { on: brace, at: [bx, top - T, -D / 2 + 70], dir: [0, -1, 0], hole: false });
+      b.fit(M6_NUT, { on: brace, at: [bx, top - 2 * T - 2, -D / 2 + 70], dir: [0, 1, 0], hole: false });
     });
     m.step({ title: "Screw the brace onto the support block", detail: "Two screws up through the block into the front of the brace.", kind: "screws", tools: ["screwdriver"] }, () => {
       b.fits(JOIN_SCREW, [-12, 12].map((d) => ({ on: brace, at: [bx + d, top - 2 * T, D / 2 - T - 15] as Vec3, dir: [0, 1, 0] as Vec3 })), 0.1);
@@ -1659,9 +1661,9 @@ function cornerBase128(m: Metod) {
       m.put(middle, [0, -200, 0]);
     });
     m.step({ title: "Bolt the panel to the bracket", detail: "The bolt goes through the bracket and the panel. Hold the nut with a spanner and tighten.", kind: "screws", tools: ["screwdriver", "wrench"] }, () => {
-      b.fit(M6_BOLT, { on: middle, at: [xp - T, top - T - 30, -D / 2 + 70], dir: [1, 0, 0], hole: false });
+      b.fit(M6_BOLT, { on: middle, at: [xp - T - 4, top - T - 30, -D / 2 + 70], dir: [1, 0, 0], hole: false });
       b.then(0.05);
-      b.fit(M6_NUT, { on: middle, at: [xp, top - T - 30, -D / 2 + 70], dir: [-1, 0, 0], hole: false });
+      b.fit(M6_NUT, { on: middle, at: [xp + 2, top - T - 30, -D / 2 + 70], dir: [-1, 0, 0], hole: false });
     });
     m.step({ title: "Screw the panel to the front", detail: "One long screw through the post and the front panel into the middle panel's front edge.", kind: "screws", tools: ["screwdriver"] }, () => {
       b.fit(LONG_SCREW, { on: post, at: [xp - T / 2, top - T - 150, D / 2 + 60], dir: [0, 0, -1], mate: middle });
@@ -1946,8 +1948,8 @@ function cornerBase88(m: Metod) {
       [
         { on: tRail, at: [xf - 30, top, z0 + T / 2], dir: [0, -1, 0], mate: s1a },
         { on: tRail, at: [xf - 30, top, W / 2 - T / 2], dir: [0, -1, 0], mate: s1b },
-        { on: tRail, at: [W / 2 - T / 2, top, zf - 30], dir: [0, -1, 0], mate: side2 },
-        { on: tRail, at: [xf - 30, top, zf - 30], dir: [0, -1, 0] },
+        { on: tRail, at: [W / 2 - T / 2, top, zf - 45], dir: [0, -1, 0], mate: side2 },
+        { on: tRail, at: [W / 2 - T / 2, top, zf - 15], dir: [0, -1, 0], mate: side2 },
       ],
       0.12,
     );
@@ -2095,7 +2097,7 @@ function corner88Carousel(m: Metod, c: { x0: number; z0: number; xf: number; top
   m.step({ title: "Fit the beam across the long box", detail: "A bracket screwed into each side, the beam bolted to both brackets with two bolts and nuts each, and the top bearing under it with three screws.", kind: "screws", tools: ["screwdriver", "allen", "wrench"] }, () => {
     const ends = [c.z0 + T, -c.z0 - T];
     b.fits(BEAM_BRACKET, ends.map((z, i) => ({ on: i ? c.s1b : c.s1a, at: [cx, c.top - 90, z] as Vec3, dir: [0, 0, i ? 1 : -1] as Vec3, hole: false as const })), 0.12);
-    b.fits(JOIN_SCREW, ends.map((z, i) => ({ on: i ? c.s1b : c.s1a, at: [cx, c.top - 70, z] as Vec3, dir: [0, 0, i ? 1 : -1] as Vec3 })), 0.1);
+    b.fits(PLATE_SCREW, ends.map((z, i) => ({ on: i ? c.s1b : c.s1a, at: [cx, c.top - 70, z] as Vec3, dir: [0, 0, i ? 1 : -1] as Vec3 })), 0.1);
     b.then(0.1);
     m.put(beam, [0, 200, 0]);
     b.then(0.1);

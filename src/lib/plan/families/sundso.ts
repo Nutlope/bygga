@@ -1,5 +1,5 @@
 import type { Family } from "./family";
-import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Vec3 } from "../../types";
+import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, ProductSpec, Vec3 } from "../../types";
 
 /**
  * SUNDSÖ, read from the cabinet's manual. The steel cabinet slots together: both sides drop onto the base frame's
@@ -7,7 +7,7 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Vec3 }
  * it. Lying on its back it gets two screws at the bottom and four feet tapped into the base; stood up, the bottom
  * panel drops in and is screwed to the sides, the shelves rest on clips, and the door turns on a pin at the bottom
  * and a sprung pin at the top. Two screws through the back hold it to the wall. The table and the folding chair are
- * sold ready to use, with no assembly manual, so they keep their old guides.
+ * sold ready to use, with no assembly manual: their guides only unfold them.
  */
 
 const W = 600, H = 860, D = 350;
@@ -168,8 +168,9 @@ function cabinet(): CustomParams {
       title: "Screw the bumpers inside the door",
       detail: "One near the top and one near the bottom, on the edge that closes. They stop the door banging on the sides.",
       fix: [
-        { kind: "washer", name: "Door bumper", count: 2, len: 6, dia: 14, at: [YT - 60, Y0 + 60].map((y) => [-dw / 2 + 30, y, D / 2 - DOOR] as Vec3), dir: [0, 0, 1], on: "D" },
-        { kind: "screw", count: 2, len: 12, dia: 3.5, at: [YT - 60, Y0 + 60].map((y) => [-dw / 2 + 30, y, D / 2 - DOOR - 6] as Vec3), dir: [0, 0, 1], on: "D" },
+        // through the bumper into the back of the door's face
+        { kind: "screw", count: 2, len: 12, dia: 3.5, at: [YT - 60, Y0 + 60].map((y) => [-dw / 2 + 30, y, D / 2 - 10] as Vec3), dir: [0, 0, 1], on: "D" },
+        { kind: "washer", name: "Door bumper", count: 2, len: 6, dia: 14, at: [YT - 60, Y0 + 60].map((y) => [-dw / 2 + 30, y, D / 2 - 10] as Vec3), dir: [0, 0, 1], on: "D" },
       ],
       tools: ["screwdriver"],
     },
@@ -200,11 +201,96 @@ function cabinet(): CustomParams {
   return { parts, steps };
 }
 
+/* ---------- sold folded: the table and the folding chair ---------- */
+
+/** A round or square bar from a to b (mm, relative to the part's middle), as a piece. */
+function bar(a: Vec3, b: Vec3, t = 16): PartPiece {
+  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len = Math.hypot(...d);
+  const mid: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+  // a bar along y turned about x (leaning front to back), or one lying along x
+  if (Math.abs(d[0]) > Math.abs(d[1]) && Math.abs(d[0]) > Math.abs(d[2])) return { shape: "box", size: [len, t, t], pos: mid };
+  if (Math.abs(d[2]) > Math.abs(d[1])) return { shape: "box", size: [t, t, len], pos: mid, rot: [Math.atan2(-d[1], d[2]), 0, 0] };
+  return { shape: "box", size: [t, len, t], pos: mid, rot: [Math.atan2(d[2], d[1]), 0, 0] };
+}
+
+/**
+ * The SUNDSÖ table has no manual: it comes folded, its two leg frames crossing under the top. Unfold it and lock
+ * the brace, that's all.
+ */
+function table(s: ProductSpec): CustomParams {
+  const round = !/-x-/.test(s.slug ?? ""); // "65 cm" is the round one, "65 x 65" the square
+  const Wt = s.size.w * 10, Dt = s.size.d * 10, Ht = s.size.h * 10;
+  const tt = 16, yc = Ht / 2;
+  const xl = Wt / 2 - 70;
+  // legs cross in an X seen from the side: one frame leans forward, the other back
+  const frameOf = (lean: number): PartPiece[] => {
+    const top: Vec3 = [0, Ht - tt - 20 - yc, -lean * 200];
+    const foot: Vec3 = [0, -yc, lean * 260];
+    const at = (k: number): Vec3 => [0, top[1] + (foot[1] - top[1]) * k, top[2] + (foot[2] - top[2]) * k];
+    return [
+      ...[-1, 1].map((sx) => bar([sx * xl, top[1], top[2]], [sx * xl, foot[1], foot[2]])),
+      bar([-xl, at(0.9)[1], at(0.9)[2]], [xl, at(0.9)[1], at(0.9)[2]]),
+      bar([-xl, at(0.08)[1], at(0.08)[2]], [xl, at(0.08)[1], at(0.08)[2]]),
+    ];
+  };
+  const parts: CustomPart[] = [
+    {
+      id: "T",
+      name: "Top with front legs",
+      size: [Wt, Ht, Dt],
+      pos: [0, yc, 0],
+      material: "metal",
+      pieces: [round ? { shape: "cyl", size: [Wt, tt, Dt], pos: [0, Ht - tt / 2 - yc, 0] } : { shape: "box", size: [Wt, tt, Dt], pos: [0, Ht - tt / 2 - yc, 0] }, ...frameOf(1)],
+    },
+    { id: "L", name: "Back leg frame", size: [Wt - 100, Ht - tt - 20, 500], pos: [0, (Ht - tt - 20) / 2, 0], material: "metal", pieces: frameOf(-1).map((p) => ({ ...p, pos: [p.pos[0], p.pos[1] + yc - (Ht - tt - 20) / 2, p.pos[2]] as Vec3 })) },
+  ];
+  return {
+    parts,
+    steps: [
+      { title: "Stand the folded table on its front legs", detail: "It comes ready made, with no fittings: the legs fold flat under the top.", add: ["T"] },
+      { title: "Swing the back legs out", detail: "Pull them away from the front legs until they stand on the floor and the top lies level.", add: ["L"], from: { L: [0, 120, 360] }, warnings: ["hand"] },
+      { title: "Lock it open", detail: "Push the brace under the top down until it clicks over the rail. To fold it, lift the brace first and keep your fingers clear of the hinges." },
+    ],
+  };
+}
+
+/** The folding chair has no manual either: unfold it, press the seat down and it's ready. */
+function chair(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const ys = 450, xl = W / 2 - 25;
+  const back: PartPiece[] = [
+    ...[-1, 1].map((sx) => bar([sx * xl, 0, -D / 2 + 120], [sx * xl, H, -D / 2 + 20])),
+    ...[0, 1, 2].map((k): PartPiece => ({ shape: "box", size: [W - 40, 60, 10], pos: [0, H - 50 - k * 80, -D / 2 + 25 + k * 10], rot: [-0.12, 0, 0] })),
+    bar([-xl, 120, -D / 2 + 110], [xl, 120, -D / 2 + 110]),
+  ];
+  const seat: PartPiece[] = Array.from({ length: 6 }, (_, k): PartPiece => ({ shape: "box", size: [W - 40, 12, 52], pos: [0, ys, -D / 2 + 90 + k * 58] }));
+  const front: PartPiece[] = [
+    ...[-1, 1].map((sx) => bar([(sx * xl) - sx * 20, ys - 10, -D / 2 + 110], [sx * xl - sx * 20, 0, D / 2 - 20])),
+    bar([-xl + 20, 100, D / 2 - 40], [xl - 20, 100, D / 2 - 40]),
+  ];
+  const parts: CustomPart[] = [
+    { id: "B", name: "Back frame", size: [W, H, D], pos: [0, H / 2, 0], material: "metal", pieces: back.map((p) => ({ ...p, pos: [p.pos[0], p.pos[1] - H / 2, p.pos[2]] as Vec3 })) },
+    { id: "F", name: "Front legs", size: [W, ys, D], pos: [0, ys / 2, 0], material: "metal", pieces: front.map((p) => ({ ...p, pos: [p.pos[0], p.pos[1] - ys / 2, p.pos[2]] as Vec3 })) },
+    { id: "S", name: "Seat", size: [W - 40, 12, D - 100], pos: [0, ys, 0], material: "metal", pieces: seat.map((p) => ({ ...p, pos: [p.pos[0], p.pos[1] - ys, p.pos[2]] as Vec3 })) },
+  ];
+  return {
+    parts,
+    steps: [
+      { title: "Stand the folded chair on its back legs", detail: "It comes ready made, with no fittings to add.", add: ["B"] },
+      { title: "Swing the front legs out", detail: "Pull the bottom of the front legs forward until both pairs stand on the floor.", add: ["F"], from: { F: [0, 0, -260] }, warnings: ["hand"] },
+      { title: "Press the seat down", detail: "Push it down flat until it rests on the front rail. To fold the chair, lift the front of the seat; keep your fingers clear of the joints.", add: ["S"], from: { S: [0, 300, -150] } },
+    ],
+  };
+}
+
 const family: Family = {
   names: ["SUNDSÖ", "SUNDSO"],
   recipe(s) {
     if (/^cabinet/i.test(s.variant)) return cabinet();
-    return null; // the table and the folding chair come ready to use
+    if (/table/i.test(s.variant)) return table(s);
+    if (/folding chair/i.test(s.variant)) return chair(s);
+    return null;
   },
 };
 export default family;

@@ -28,6 +28,14 @@ function trolley(s: ProductSpec): CustomParams {
     material,
   });
   const ySh1 = 280, ySh2 = 390;
+  // a tray end, its two edges bent round as tabs that sit inside the long sides and take the corner screws
+  const trayEnd = (id: string, sx: number): CustomPart => ({
+    ...box(id, "Tray end", sx < 0 ? -xO : xO - 14, sx < 0 ? -xO + 14 : xO, yTop, H, -D / 2 + 2, D / 2 - 2, "metal"),
+    pieces: [
+      { shape: "box", size: [2, H - yTop, D - 4], pos: [sx * 6, 0, 0] },
+      ...[-1, 1].map((sz) => ({ shape: "box" as const, size: [12, H - yTop, 2] as Vec3, pos: [-sx, 0, sz * (D / 2 - 3)] as Vec3 })),
+    ],
+  });
   const parts: CustomPart[] = [
     box("C1B", "Bottom", xL, xD - t / 2, yFloor, yFloor + t),
     box("C1S", "Side panel", -xO, xL, yFloor, yLow + t),
@@ -37,13 +45,17 @@ function trolley(s: ProductSpec): CustomParams {
     box("C2S", "Side panel", xR, xO, yFloor, yTop - t),
     box("C2T", "Top", -xO, xO, yTop - t, yTop),
     box("BASE", "Base", -xO, xO, yBase, yFloor),
-    box("MF", "Perforated panel", xL, xD - t / 2, yLow + t, yTop - t, D / 2 - 2, D / 2, "metal"),
+    // the front panel's bottom edge is folded in, a lip that lies on the low box and takes two screws
+    { ...box("MF", "Perforated panel", xL, xD - t / 2, yLow + t, yTop - t, D / 2 - 20, D / 2, "metal"), pieces: [
+      { shape: "box", size: [xD - t / 2 - xL, yTop - yLow - 2 * t, 2], pos: [0, 0, 9] },
+      { shape: "box", size: [xD - t / 2 - xL, 2, 20], pos: [0, -(yTop - yLow - 2 * t) / 2 + 1, 0] },
+    ] },
     box("MS", "Perforated panel", -xO, -xO + 2, yLow + t, yTop - t, -D / 2, D / 2, "metal"),
     box("TRP", "Tray bottom", -xO, xO, yTop, yTop + 2, -D / 2, D / 2, "metal"),
     box("TRF", "Tray side", -xO, xO, yTop, H, D / 2 - 2, D / 2, "metal"),
     box("TRK", "Tray side", -xO, xO, yTop, H, -D / 2, -D / 2 + 2, "metal"),
-    box("TRL", "Tray end", -xO, -xO + 2, yTop, H, -D / 2 + 2, D / 2 - 2, "metal"),
-    box("TRR", "Tray end", xO - 2, xO, yTop, H, -D / 2 + 2, D / 2 - 2, "metal"),
+    trayEnd("TRL", -1),
+    trayEnd("TRR", 1),
     box("SH1", "Shelf", xL, xD - t / 2, ySh1, ySh1 + t, -D / 2 + 10, D / 2 - 10),
     box("SH2", "Shelf", xD + t / 2, xR, ySh2, ySh2 + t, -D / 2 + 10, D / 2 - 10),
   ];
@@ -99,7 +111,7 @@ function trolley(s: ProductSpec): CustomParams {
       {
         title: "Join the two boxes",
         detail: "Turn the two connecting screws in through the divider with the Allen key.",
-        fix: [at("bolt", [[xD + t / 2, cy("C1T"), 0]], [-1, 0, 0], "DIV", "C1T", CONN), at("bolt", [[xD + t / 2, cy("C1B"), 0]], [-1, 0, 0], "DIV", "C1B", CONN)],
+        fix: [at("bolt", [[xD + t / 2, cy("C1T"), 60]], [-1, 0, 0], "DIV", "C1T", CONN), at("bolt", [[xD + t / 2, cy("C1B"), 60]], [-1, 0, 0], "DIV", "C1B", CONN)],
       },
       {
         title: "Screw the castors to the base",
@@ -119,7 +131,7 @@ function trolley(s: ProductSpec): CustomParams {
         fix: [at("bolt", [xO - t / 2, xD, -xO + t / 2].flatMap((x) => [[x, yBase, -D / 2 + 60], [x, yBase, D / 2 - 60]] as Vec3[]), [0, 1, 0], "BASE", undefined, CONN)],
       },
       { title: "Slide in the perforated panels", detail: "Stand the trolley up. Hook both panels into the slots above the low box, one at the front and one at the side.", add: ["MF", "MS"], pose: "+y", from: { MF: [0, 0, 300], MS: [-300, 0, 0] } },
-      { title: "Screw the front panel down", detail: "Two connecting screws through its bottom edge into the low box.", fix: [at("bolt", [[xL + 30, yLow + t, D / 2 - 10], [xD - t / 2 - 30, yLow + t, D / 2 - 10]], [0, -1, 0], "MF", "C1T", CONN)] },
+      { title: "Screw the front panel down", detail: "Two connecting screws through its bottom edge into the low box.", fix: [at("bolt", [[xL + 30, yLow + t + 2, D / 2 - 10], [xD - t / 2 - 30, yLow + t + 2, D / 2 - 10]], [0, -1, 0], "MF", "C1T", CONN)] },
       {
         title: "Put the tray together",
         detail: "Hook the two ends onto the long sides, then lay the bottom sheet in so its tabs sit in the slots.",
@@ -129,7 +141,7 @@ function trolley(s: ProductSpec): CustomParams {
       {
         title: "Screw the tray's corners",
         detail: "One screw in each corner. Use the short screws here, not the countersunk ones.",
-        fix: [-1, 1].map((sx) => at("screw", [[sx * xO, yTop + 60, -D / 2 + 6], [sx * xO, yTop + 60, D / 2 - 6]], [-sx, 0, 0], sx < 0 ? "TRL" : "TRR", undefined, { len: 10, dia: 4 })),
+        fix: [-1, 1].map((sz) => at("screw", [-1, 1].map((sx): Vec3 => [sx * (xO - 7), yTop + 60, sz * D / 2]), [0, 0, -sz], sz < 0 ? "TRK" : "TRF", undefined, { len: 10, dia: 4, to: ["TRL", "TRR"] })),
       },
       { title: "Set the tray on top", detail: "Push its four tabs into the slots in the top and slide it back until it stops.", add: tray, from: Object.fromEntries(tray.map((id) => [id, [0, 250, 0] as Vec3])) },
       { title: "Screw the tray to the top", detail: "Four connecting screws through the tray's bottom.", fix: [at("bolt", [-1, 1].flatMap((sx) => [[sx * 150, yTop + 2, -80], [sx * 150, yTop + 2, 80]] as Vec3[]), [0, -1, 0], "TRP", "C2T", CONN)] },
@@ -139,8 +151,8 @@ function trolley(s: ProductSpec): CustomParams {
         title: "Screw on the shelf stops",
         detail: "Two at the back of each shelf. Screw them by hand, not with a drill.",
         fix: [
-          at("clip", [[-200, ySh1 + t, -D / 2 + 30], [-90, ySh1 + t, -D / 2 + 30], [40, ySh2 + t, -D / 2 + 30], [180, ySh2 + t, -D / 2 + 30]], [0, -1, 0], "SH1", undefined, { name: "Shelf stop", len: 30, dia: 20, to: ["SH1", "SH2"] }),
-          at("screw", [[-200, ySh1 + t + 10, -D / 2 + 22], [-90, ySh1 + t + 10, -D / 2 + 22], [40, ySh2 + t + 10, -D / 2 + 22], [180, ySh2 + t + 10, -D / 2 + 22]], [0, 0, -1], "SH1", undefined, { len: 12, dia: 3.5, to: ["SH1", "SH2"] }),
+          at("clip", [[-200, ySh1 + t + 32, -D / 2 + 30], [-90, ySh1 + t + 32, -D / 2 + 30], [40, ySh2 + t + 32, -D / 2 + 30], [180, ySh2 + t + 32, -D / 2 + 30]], [0, -1, 0], "SH1", undefined, { name: "Shelf stop", len: 30, dia: 20, to: ["SH1", "SH2"] }),
+          at("screw", [[-200, ySh1 + t + 8, -D / 2 + 30], [-90, ySh1 + t + 8, -D / 2 + 30], [40, ySh2 + t + 8, -D / 2 + 30], [180, ySh2 + t + 8, -D / 2 + 30]], [0, -1, 0], "SH1", undefined, { len: 12, dia: 3.5, to: ["SH1", "SH2"] }),
         ],
         tools: ["screwdriver"],
       },

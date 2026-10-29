@@ -320,7 +320,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
   }
   if (tv) {
     const stops = doors.map((d): Vec3 => [d.hs < 0 ? d.x1 - 30 : d.x0 + 30, y1 - 10, zf - DOOR - 12]);
-    push({ title: "Screw in the door stops", detail: "One under the top behind the free edge of each door opening.", fix: [fix("angle", stops, [0, 1, 0], { name: "Door stop", len: 30, dia: 20 }), fix("screw", stops.map((p) => [p[0], p[1] - 3, p[2] - 8] as Vec3), [0, 1, 0], { len: 12, dia: 4 })], tools: ["screwdriver"] });
+    push({ title: "Screw in the door stops", detail: "One under the top behind the free edge of each door opening.", fix: [fix("angle", stops, [0, 1, 0], { name: "Door stop", len: 30, dia: 20 }), fix("screw", stops.map((p) => [p[0], y1 - 2, p[2] - 24] as Vec3), [0, 1, 0], { len: 12, dia: 4 })], tools: ["screwdriver"] });
   }
 
   // shelves
@@ -346,7 +346,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
       title: "Screw on the drawer backs",
       detail: "Lay each back over its bottom, then two long screws through each side into it.",
       add: both((c) => [`dk${c}`]),
-      fix: both((c, x) => [-1, 1].map((sx) => fix("screw", [-20, 20].map((dy) => [x + sx * (dw / 2), dyB + dh / 2 + dy, dzB + 7] as Vec3), [-sx, 0, 0], { on: sideOf(c, sx), mate: `dk${c}`, len: 40, dia: 4 }))),
+      fix: both((c, x) => [-1, 1].map((sx) => fix("screw", [-30, 0].map((dy) => [x + sx * (dw / 2), dyB + dh / 2 + dy, dzB + 7] as Vec3), [-sx, 0, 0], { on: sideOf(c, sx), mate: `dk${c}`, len: 40, dia: 4 }))),
       tools: ["screwdriver"],
     });
     push({ title: "Screw in the drawer stops", detail: "One screw near the back of each side. Leave its head standing out: it stops the drawer.", fix: both((c, x) => [-1, 1].map((sx) => fix("screw", [[x + sx * (dw / 2), dyB + dh - 15, dzB + 30]], [-sx, 0, 0], { name: "Stop screw", len: 12, dia: 5, on: sideOf(c, sx) }))), tools: ["screwdriver"] });
@@ -395,8 +395,8 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
         fix: [
           fix("angle", tops, [0, 1, 0], { name: "Door stop", len: 30, dia: 20 }),
           fix("angle", bots, [0, -1, 0], { name: "Door stop", len: 30, dia: 20 }),
-          fix("screw", tops.map((p) => [p[0], p[1] - 3, p[2] - 8] as Vec3), [0, 1, 0], { len: 12, dia: 4 }),
-          fix("screw", bots.map((p) => [p[0], p[1] + 3, p[2] - 8] as Vec3), [0, -1, 0], { len: 12, dia: 4 }),
+          fix("screw", tops.map((p) => [p[0], y1 - 2, p[2] - 24] as Vec3), [0, 1, 0], { len: 12, dia: 4 }),
+          fix("screw", bots.map((p) => [p[0], y0 + 2, p[2] - 24] as Vec3), [0, -1, 0], { len: 12, dia: 4 }),
         ],
         tools: ["screwdriver"],
       });
@@ -408,7 +408,7 @@ function recipe(s: ProductSpec, kind: Kind): CustomParams {
       fix: [fix("washer", bump, [0, 0, 1], { name: "Bumper", len: 6, dia: 12 }), fix("screw", bump.map((p) => [p[0], p[1], p[2] - 1] as Vec3), [0, 0, 1], { len: 16, dia: 4 })],
       tools: ["screwdriver"],
     });
-    const hx = (d: Door) => (d.hs < 0 ? d.x1 - 45 : d.x0 + 45);
+    const hx = (d: Door) => (d.hs < 0 ? d.x1 - 17 : d.x0 + 17); // on the frame stile, not the glass
     const hdY = dy0 + (dy1 - dy0) * (tall ? 0.48 : 0.5);
     push({
       title: nD > 1 ? "Screw on the handles" : "Screw on the handle",

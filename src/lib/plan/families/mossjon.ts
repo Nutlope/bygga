@@ -138,7 +138,7 @@ function wallCabinet(s: ProductSpec) {
       detail: "Choose which side the door opens first: the stop goes on the side away from the pivots.",
       fix: [
         { kind: "clip", name: "Door stop", count: plates.length, at: plates.map((y) => [W / 2 - F, y, zp] as Vec3), dir: [-1, 0, 0], on: "P3" },
-        { kind: "screw", count: plates.length, len: 10, dia: 4, at: plates.map((y) => [W / 2 - F - 2, y, zp] as Vec3), dir: [-1, 0, 0] },
+        { kind: "screw", count: plates.length, len: 10, dia: 4, at: plates.map((y) => [W / 2 - F - 4, y + 25, zp] as Vec3), dir: [1, 0, 0] },
       ],
       tools: ["screwdriver"],
     },
@@ -263,7 +263,7 @@ function doorCabinet(s: ProductSpec) {
     },
     { title: "Push the pivot pins into the floor", detail: "With a washer each, in both front corners.", fix: [{ kind: "pin", name: "Pivot pin", count: 2, at: [0, 1].map((i) => [xh(i), boxLo - 4, zh] as Vec3), dir: [0, -1, 0], on: "FL" }, { kind: "washer", count: 2, at: [0, 1].map((i) => [xh(i), boxLo - 2, zh] as Vec3), dir: [0, -1, 0], on: "FL" }] },
     { title: "Set the doors on their pins", detail: "Tilt each door in at the top and lower it onto its pin." },
-    { title: "Bolt the top pivots", detail: "One pivot bolt down through the top frame into each door, with the long Allen key.", fix: [{ kind: "bolt", name: "Pivot bolt", count: 2, len: 30, dia: 6, at: [0, 1].map((i) => [xh(i), levels[3] + F / 2, zh] as Vec3), dir: [0, -1, 0] }], tools: ["allen"] },
+    { title: "Bolt the top pivots", detail: "One pivot bolt down through the top frame into each door, with the long Allen key.", fix: [{ kind: "bolt", name: "Pivot bolt", count: 2, len: 30, dia: 6, at: [0, 1].map((i) => [xh(i), levels[3] + F / 2 + 3, zh] as Vec3), dir: [0, -1, 0] }], tools: ["allen"] },
     { title: "Lay the top on", detail: "Hook it over the front edge, then press the back down.", add: ["TP"] },
     { title: "Screw the top on", detail: "Two screws at the back and two at the sides.", fix: [{ kind: "screw", count: 4, len: 10, dia: 4, at: [[-(W / 2 - 40), H - TT / 2, -D / 2], [W / 2 - 40, H - TT / 2, -D / 2], [-W / 2, H - TT / 2, 0], [W / 2, H - TT / 2, 0]], dir: [0, 0, 1] }], tools: ["screwdriver"] },
     { title: "Slide the back panel on", detail: "Down behind the posts.", add: ["BK"], from: { BK: [0, 0, -300] } },

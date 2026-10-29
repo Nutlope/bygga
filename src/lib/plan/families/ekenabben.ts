@@ -48,14 +48,14 @@ function shelving(s: ProductSpec): CustomParams {
   const rails = (sx: number) => Array.from({ length: n }, (_, k) => `R${fr(sx)}${k}`);
   const posts = (sx: number, sz?: number) => (sz === undefined ? [-1, 1] : [sz]).map((z) => `P${fr(sx)}${z < 0 ? "b" : "f"}`);
   const railEnds = (sx: number, sz: number, dy: number) => Array.from({ length: n }, (_, k) => [sx * xp, yTop(k) - RH / 2 + dy, sz * (zp - P / 2)] as Vec3);
-  const shelfBolts = (sx: number, sz: number) => Array.from({ length: n }, (_, k) => [sx * (xp + 14), yTop(k) - RH / 2, sz * (Z - 70)] as Vec3);
+  const shelfBolts = (sx: number, sz: number) => Array.from({ length: n }, (_, k) => [sx * (xp + 14), yTop(k) - 9, sz * (Z - 70)] as Vec3);
 
   const steps: CustomStep[] = [
     {
       title: "Tap dowels into both ends of every rail",
       detail: "Two in each end of the ten rails.",
       add: [...rails(-1), ...rails(1)],
-      fix: sides.flatMap((sx) => [-1, 1].map((sz) => at("dowel", [...railEnds(sx, sz, -9), ...railEnds(sx, sz, 9)], [0, 0, -sz], undefined, undefined, { len: 30, dia: 8 }))),
+      fix: sides.flatMap((sx) => [-1, 1].map((sz) => at("dowel", [...railEnds(sx, sz, -12), ...railEnds(sx, sz, 12)], [0, 0, -sz], undefined, undefined, { len: 30, dia: 8 }))),
       tools: ["hammer"],
     },
     {
@@ -73,15 +73,17 @@ function shelving(s: ProductSpec): CustomParams {
     },
     {
       title: "Bolt the shelves to one ladder",
-      detail: "Lay one ladder flat and stand the five shelves on it. One bolt through the rail into each shelf, at the front.",
+      detail: "Slide the five shelves in between the ladders, white side up, ends on the rails. One bolt through the rail into each shelf, at the front.",
       add: Array.from({ length: n }, (_, k) => `S${k}`),
+      // in from the front, between the two ladders, so they don't pass through the rails
+      from: Object.fromEntries(Array.from({ length: n }, (_, k) => [`S${k}`, [0, 0, 500] as Vec3])),
       fix: [at("bolt", shelfBolts(-1, 1), [1, 0, 0], undefined, undefined, BOLT)],
       tools: ["allen"],
     },
     { title: "Bolt the back of the shelves", detail: "Five more bolts at the back of the same ladder.", fix: [at("bolt", shelfBolts(-1, -1), [1, 0, 0], undefined, undefined, BOLT)], tools: ["allen"] },
     {
-      title: "Turn it over and bolt the other ladder on",
-      detail: "Lay the second ladder on top, holes over the shelf ends, and ten bolts through it.",
+      title: "Turn it over and bolt the other ladder",
+      detail: "Ten bolts through the second ladder's rails into the shelf ends.",
       fix: [at("bolt", [...shelfBolts(1, 1), ...shelfBolts(1, -1)], [-1, 0, 0], undefined, undefined, BOLT)],
       pose: "-x",
       tools: ["allen"],
@@ -138,7 +140,7 @@ function cabinet(s: ProductSpec): CustomParams {
       title: "Tap dowels into the ends of the rails",
       detail: "Two in each end of all four rails.",
       add: ["RT0", "RL0", "RT1", "RL1"],
-      fix: sides.flatMap((sx) => [yb + 20, H - 20].flatMap((y) => [-1, 1].map((sz) => at("dowel", [railEnds(sx, y, -9)[sz < 0 ? 0 : 1], railEnds(sx, y, 9)[sz < 0 ? 0 : 1]], [0, 0, -sz], undefined, undefined, { len: 30, dia: 8 })))),
+      fix: sides.flatMap((sx) => [yb + 20, H - 20].flatMap((y) => [-1, 1].map((sz) => at("dowel", [railEnds(sx, y, -12)[sz < 0 ? 0 : 1], railEnds(sx, y, 12)[sz < 0 ? 0 : 1]], [0, 0, -sz], undefined, undefined, { len: 30, dia: 8 })))),
       tools: ["hammer"],
     },
     {
@@ -152,7 +154,8 @@ function cabinet(s: ProductSpec): CustomParams {
     {
       title: "Screw each top corner",
       detail: "One screw through the top rail into each post. Use the shorter screws with the coarse thread.",
-      fix: sides.map((sx) => at("screw", [-1, 1].map((sz) => [sx * xp, H, sz * zp] as Vec3), [0, -1, 0], `RT${fr(sx)}`, undefined, SCREW)),
+      // a little out from the post's middle, clear of the rail's dowels
+      fix: sides.flatMap((sx) => [-1, 1].map((sz) => at("screw", [[sx * xp, H, sz * (zp + 6)]], [0, -1, 0], `P${fr(sx)}${sz < 0 ? "b" : "f"}`, undefined, SCREW))),
       tools: ["allen"],
     },
     { title: "Screw a foot into each post", detail: "Into the bottom end, by hand.", fix: [at("foot", sides.flatMap((sx) => [-1, 1].map((sz) => [sx * xp, 0, sz * zp] as Vec3)), [0, 1, 0], undefined, undefined, FOOT)] },
@@ -165,6 +168,7 @@ function cabinet(s: ProductSpec): CustomParams {
       ],
       tools: ["screwdriver"],
       pose: "+y",
+      wait: ["BT"],
     },
     { title: "Click the push openers in", detail: "Push each one into its holder until it clicks, plunger to the front.", fix: [at("clip", [-60, 60].map((x) => [x, yb + 40, Z - 30] as Vec3), [0, 0, -1], "BT", undefined, { name: "Push opener", len: 50, dia: 16 })] },
     {

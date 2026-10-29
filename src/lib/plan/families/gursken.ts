@@ -96,8 +96,8 @@ function chest(s: ProductSpec): CustomParams {
       dowels: SX.map((sx) => fx({ kind: "dowel", at: [[sx * dxS, ym, zF - T]], dir: [0, 0, -1], on: sx < 0 ? k.l : k.r })),
       cams: SX.map((sx) => fx({ kind: "cam", dia: 15, at: [-45, 45].map((dy) => [sx * (dxS - 6), ym + dy, zF - T - 30] as Vec3), dir: [sx, 0, 0], on: sx < 0 ? k.l : k.r })),
       pins: SX.map((sx) => fx({ kind: "clip", name: "Plastic pin", len: 30, dia: 8, at: [-30, 30].map((dy) => [sx * (dxS + 6), y + 115 + dy, zDb] as Vec3), dir: [-sx, 0, 0], on: sx < 0 ? k.l : k.r, mate: k.b })),
-      knob: fx({ kind: "knob", dia: 32, at: [[0, y + slot / 2, zF]], dir: [0, 0, -1], on: k.f }),
-      knobScrew: fx({ kind: "screw", len: 25, dia: 4, at: [[0, y + slot / 2, zF - T]], dir: [0, 0, 1], on: k.f }),
+      knob: fx({ kind: "knob", dia: 32, at: [[0, y + slot / 2, zF + 4]], dir: [0, 0, -1], on: k.f }),
+      knobScrew: fx({ kind: "screw", len: 25, dia: 4, at: [[0, y + slot / 2, zF - T - 4]], dir: [0, 0, 1], on: k.f }),
       stops: SX.map((sx) => fx({ kind: "stud", name: "Drawer stop", len: 10, dia: 12, at: [[sx * (dxS + 6), yRun(i), zDb + 15]], dir: [-sx, 0, 0], on: sx < 0 ? k.l : k.r })),
     };
   };
@@ -200,7 +200,7 @@ function chest(s: ProductSpec): CustomParams {
       tools: ["screwdriver"],
       from: {},
     },
-    { title: "Tap a dowel into each drawer side", detail: "Into the front end, the one nearest the groove.", add: [dr(0).l, dr(0).r], fix: d0.dowels, tools: ["hammer"] },
+    { title: "Tap a dowel into each drawer side", detail: "Into the front end, the one nearest the groove.", add: [dr(0).l, dr(0).r], fix: d0.dowels, tools: ["hammer"], from: { [dr(0).l]: [0, 0, -300], [dr(0).r]: [0, 0, -300] } },
     { title: "Fix the sides to the front", detail: "Onto the bolts and the dowels, grooves facing in, then turn the four cam locks clockwise.", fix: d0.cams, tools: ["screwdriver"] },
     { title: "Slide in the drawer bottom", detail: "From the back, along the grooves until it stops in the front.", add: [dr(0).bt] },
     { title: "Put the drawer back in", detail: "Between the sides at the back, resting on top of the bottom.", add: [dr(0).b] },
@@ -211,6 +211,8 @@ function chest(s: ProductSpec): CustomParams {
       title: "Build the other two drawers",
       detail: "The same way, step by step.",
       add: [1, 2].flatMap((i) => [dr(i).f, dr(i).l, dr(i).r, dr(i).bt, dr(i).b]),
+      // each arrives built, in one piece, and slides in from the front
+      from: Object.fromEntries([1, 2].flatMap((i) => [dr(i).f, dr(i).l, dr(i).r, dr(i).bt, dr(i).b]).map((k) => [k, [0, 0, 400] as Vec3])),
       repeat: 2,
     },
     { title: "Slide the drawers in", detail: "Each one onto its rails, all the way in.", kind: "drawer" },
@@ -309,8 +311,8 @@ function wardrobe(s: ProductSpec): CustomParams {
       tools: ["hammer"],
     },
     { title: "Screw the shelf to the side", detail: "Near the top end, holes facing the top. Two screws.", fix: [screw2(-1, yShelf, "shelf")], tools: ["allen"] },
-    { title: "Tap dowels into the plinth", detail: "Two into each end.", add: ["plinth"], fix: ends({ kind: "dowel", at: SX.flatMap((sx) => [-15, 15].map((dy) => [sx * xIn, P / 2 + dy, zPl] as Vec3)), on: "plinth" }), tools: ["hammer"] },
-    { title: "Slide the plinth in under the bottom", detail: "Along the floor, onto the side's holes at the front.", from: {} },
+    { title: "Tap dowels into the plinth", detail: "Two into each end.", wait: ["plinth"], fix: ends({ kind: "dowel", at: SX.flatMap((sx) => [-15, 15].map((dy) => [sx * xIn, P / 2 + dy, zPl] as Vec3)), on: "plinth" }), tools: ["hammer"] },
+    { title: "Slide the plinth in under the bottom", detail: "Along the floor, onto the side's holes at the front.", add: ["plinth"], from: { plinth: [350, 0, 0] } },
     { title: "Fit the other side together", detail: "One of you holds the frame while the other pushes the side onto all the dowels.", add: ["R"], people: 2, warnings: ["two"] },
     { title: "Screw the side to the bottom", detail: "Two screws at the bottom end.", fix: [screw2(1, yBot, "bottom")], tools: ["allen"] },
     { title: "Screw it to the top and the shelf", detail: "Four screws at the top end.", fix: [screw2(1, yTop, "top"), screw2(1, yShelf, "shelf")], tools: ["allen"] },
@@ -389,7 +391,7 @@ function wardrobe(s: ProductSpec): CustomParams {
       fix: [...hinges, ...hingeScrews],
       tools: ["screwdriver"],
     },
-    ...(two ? [] : [{ title: "Screw on the knob", detail: "On the edge away from the hinges, the screw from behind.", fix: [fx({ kind: "knob", dia: 32, at: knobXs.map((x) => [x, yKnob, zF] as Vec3), dir: [0, 0, -1], on: "door0" }), fx({ kind: "screw", len: 25, dia: 4, at: knobXs.map((x) => [x, yKnob, zF - DT] as Vec3), dir: [0, 0, 1], on: "door0" })], tools: ["screwdriver"] } as CustomStep]),
+    ...(two ? [] : [{ title: "Screw on the knob", detail: "On the edge away from the hinges, the screw from behind.", fix: [fx({ kind: "knob", dia: 32, at: knobXs.map((x) => [x, yKnob, zF + 4] as Vec3), dir: [0, 0, -1], on: "door0" }), fx({ kind: "screw", len: 25, dia: 4, at: knobXs.map((x) => [x, yKnob, zF - DT - 4] as Vec3), dir: [0, 0, 1], on: "door0" })], tools: ["screwdriver"] } as CustomStep]),
     {
       title: two ? "Clip the doors on" : "Clip the door on",
       detail: "Hook each hinge arm onto its plate and press until it clicks, then tighten the screw on each arm.",
@@ -397,7 +399,7 @@ function wardrobe(s: ProductSpec): CustomParams {
       tools: ["screwdriver"],
     },
     ...(two
-      ? [{ title: "Screw on the knobs", detail: "Near the middle edges, the screw from behind.", fix: [fx({ kind: "knob", dia: 32, at: knobXs.map((x) => [x, yKnob, zF] as Vec3), dir: [0, 0, -1] }), fx({ kind: "screw", len: 25, dia: 4, at: knobXs.map((x) => [x, yKnob, zF - DT] as Vec3), dir: [0, 0, 1] })], tools: ["screwdriver"] } as CustomStep]
+      ? [{ title: "Screw on the knobs", detail: "Near the middle edges, the screw from behind.", fix: [fx({ kind: "knob", dia: 32, at: knobXs.map((x) => [x, yKnob, zF + 4] as Vec3), dir: [0, 0, -1] }), fx({ kind: "screw", len: 25, dia: 4, at: knobXs.map((x) => [x, yKnob, zF - DT - 4] as Vec3), dir: [0, 0, 1] })], tools: ["screwdriver"] } as CustomStep]
       : []),
     { title: two ? "Line up the doors" : "Line up the door", detail: "Turn the hinge screws: one moves it up and down, one in and out, one sideways, until the gaps are even.", tools: ["screwdriver"] },
   ];

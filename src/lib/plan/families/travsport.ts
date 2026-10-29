@@ -89,7 +89,8 @@ function recipe(s: ProductSpec): CustomParams {
             count: 5,
             len: 60,
             dia: 6,
-            at: [...pairs(blocksX[0], under, zSh, 40), [blocksX[1], under, zSh], ...pairs(blocksX[2], under, zSh, 40)],
+            // the middle one beside the block's dowel, not under it
+            at: [...pairs(blocksX[0], under, zSh, 40), [blocksX[1], under, zSh + 40], ...pairs(blocksX[2], under, zSh, 40)],
             dir: [0, 1, 0],
             on: "TP",
             mate: "K1",
@@ -109,7 +110,7 @@ function recipe(s: ProductSpec): CustomParams {
         detail: "The brackets are marked L and R. Two flat screws in each, turned in with the Allen key, then four bolts screwed into them by hand.",
         fix: [
           ...[-1, 1].map((sx): CustomFix => ({ kind: "bolt", name: "Flat screw", count: 2, len: 16, dia: 6, at: pairs(sx * xC, yFoot + footH / 2, 0, 20), dir: [0, -1, 0], on: sx < 0 ? "F1" : "F2" })),
-          { kind: "bolt", count: 4, len: 16, dia: 8, at: [-1, 1].flatMap((sx) => pairs(sx * xC, yFoot + footH / 2, 0, 30)), dir: [0, -1, 0] },
+          { kind: "bolt", count: 4, len: 16, dia: 8, at: [-1, 1].flatMap((sx) => pairs(sx * xC, yFoot + footH / 2, 0, 60)), dir: [0, -1, 0] },
         ],
       },
       { title: "Bolt the columns onto the brackets", detail: "Six bolts in each column, then tighten the four bracket bolts too.", add: ["C1", "C2"], fix: [colBolts(-1), colBolts(1)] },

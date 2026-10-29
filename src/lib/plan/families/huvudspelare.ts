@@ -119,13 +119,15 @@ function desk(s: ProductSpec): CustomParams {
     {
       title: "Click the spacers into the frame",
       detail: "One in each of the twelve holes along the rails and the tops of the loops, until it clicks.",
-      fix: [at("cap", topBolts, [0, 1, 0], undefined, undefined, { len: 8, dia: 20, name: "Plastic spacer" })],
+      // the spacers sit in the holes' top ends, between the frame and the top
+      fix: [at("cap", topBolts.map(([x, , z]): Vec3 => [x, topY0 - 4, z]), [0, 1, 0], undefined, undefined, { len: 8, dia: 20, name: "Plastic spacer" })],
     },
     {
       title: "Lower the frame onto the top and bolt it on",
       detail: "Lay the top face down on the rug. Set the frame on it with the holes lined up, then twelve bolts with their washers.",
       add: ["TOP"],
-      fix: [at("bolt", topBolts.map(([x, y, z]): Vec3 => [x, y - 4, z]), [0, 1, 0], undefined, "TOP", { len: 35, dia: 6 })],
+      // up through the hollow rails and tubes, their tips in the top
+      fix: [at("bolt", [...railPts.map(([x, , z]): Vec3 => [x, topY0 - 26, z]), ...loopPts.map(([x, , z]): Vec3 => [x, topY0 - tube, z])], [0, 1, 0], undefined, "TOP", { len: 35, dia: 6 })],
       tools: ["allen"],
       from: { TOP: [0, -420, 0] },
     },
@@ -213,6 +215,8 @@ function chair(s: ProductSpec): CustomParams {
         { shape: "cyl", size: [26, armY - seatTop + 40, 26], pos: [0, 0, armZf - (armZf + armZb) / 2] },
         { shape: "cyl", size: [26, armLen - 20, 26], pos: [0, armY - cy, 0], rot: [Math.PI / 2, 0, 0] },
         { shape: "box", size: [60, 14, 40], pos: [-sx * 30, seatTop - 40 - cy + 7, armZf - (armZf + armZb) / 2] },
+        // the plate at the back end that bolts against the backrest's side bracket
+        { shape: "box", size: [14, armY - seatTop - 20, 40], pos: [-sx * 7, (seatTop + 20 + armY) / 2 - cy, armZb - (armZf + armZb) / 2] },
       ],
       material: "metal",
     });
@@ -226,15 +230,18 @@ function chair(s: ProductSpec): CustomParams {
   const padScrews = (sx: number): Vec3[] => [-60, 60].map((dz): Vec3 => [sx * armX, armY + 13, (armZf + armZb) / 2 + 20 + dz]);
   const armBolts = (sx: number): CustomFix[] => [
     at("bolt", [[sx * (armX - 30), seatTop - 40, armZf]], [0, 1, 0], sx < 0 ? "AL" : "AR", "SEAT", { len: 60, dia: 6 }),
-    at("bolt", [seatTop + 60, seatTop + 140].map((y): Vec3 => [sx * (armX + 15), y, backZ + 20]), [-sx, 0, 0], sx < 0 ? "AL" : "AR", "BACK", { len: 16, dia: 6 }),
+    at("bolt", [seatTop + 60, seatTop + 140].map((y): Vec3 => [sx * armX, y, armZb]), [-sx, 0, 0], sx < 0 ? "AL" : "AR", "BACK", { len: 16, dia: 6 }),
   ];
 
+  // the seat, its back and arms are put together beside the base, then lowered onto the gas lift
+  const arms = ["AL", "PL", "AR", "PR"], top = ["SEAT", "MECH", "BACK", ...arms];
+  const aside = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, [800, 0, 0] as Vec3]));
   const steps: CustomStep[] = [
     { title: "Push the five legs into the hub", detail: "On a rug, each leg straight into its socket until it stops.", add: ["HUB", ...legs], warnings: ["floor"] },
     {
       title: "Screw the legs to the hub",
       detail: "Two screws in each leg, each with a washer. Tighten them with the Allen key.",
-      fix: [at("washer", legScrews, [0, -1, 0], "HUB", undefined, { len: 2, dia: 12, name: "Spring washer" }), at("screw", legScrews, [0, -1, 0], "HUB", undefined, { len: 12, dia: 6 })],
+      fix: [at("screw", legScrews, [0, -1, 0], "HUB", undefined, { len: 12, dia: 6 }), at("washer", legScrews, [0, -1, 0], "HUB", undefined, { len: 2, dia: 12, name: "Spring washer" })],
       tools: ["allen"],
     },
     { title: "Push a castor into each leg", detail: "Press each pin in hard until the castor clicks home.", fix: [at("castor", tips, [0, 1, 0], undefined, undefined, { len: 58, dia: 50 })] },
@@ -243,25 +250,26 @@ function chair(s: ProductSpec): CustomParams {
     {
       title: "Bolt the mechanism under the seat",
       detail: "Do this with the seat upside down on the rug, the lever on the right. Four bolts, tight.",
-      add: ["SEAT", "MECH"],
+      wait: ["SEAT", "MECH"],
       fix: [at("bolt", mechBolts, [0, 1, 0], "MECH", "SEAT", { len: 20, dia: 6 })],
       tools: ["allen"],
-      from: { SEAT: [0, 500, 0], MECH: [0, 650, 0] },
+      from: aside(["SEAT", "MECH"]),
     },
     {
       title: "Bolt the backrest's bar to the mechanism",
       detail: "Rest the back on a table edge and lay its bar over the back of the mechanism. Four bolts, tight.",
-      add: ["BACK"],
+      wait: ["BACK"],
+      from: aside(["BACK"]),
       fix: [at("bolt", backBolts, [0, 1, 0], "BACK", "MECH", { len: 20, dia: 6 })],
       tools: ["allen"],
     },
     {
       title: "Screw a pad onto each arm",
       detail: "Two small screws up through each arm into its pad.",
-      add: ["AL", "PL", "AR", "PR"],
-      fix: [at("screw", [...padScrews(-1), ...padScrews(1)], [0, 1, 0], undefined, undefined, { len: 16, dia: 4 })],
+      wait: arms,
+      fix: [-1, 1].map((sx) => at("screw", padScrews(sx), [0, 1, 0], sx < 0 ? "AL" : "AR", sx < 0 ? "PL" : "PR", { len: 16, dia: 4 })),
       tools: ["screwdriver"],
-      from: { AL: [-400, 0, 0], AR: [400, 0, 0], PL: [-400, 200, 0], PR: [400, 200, 0] },
+      from: aside(arms),
     },
     {
       title: "Bolt the left arm on",
@@ -276,7 +284,7 @@ function chair(s: ProductSpec): CustomParams {
       tools: ["allen"],
     },
     { title: "Tighten the four bolts on the back bracket", detail: "Turn each one with the Allen key until it is tight.", tools: ["allen"], kind: "bolts" },
-    { title: "Lower the seat onto the gas lift", detail: "Stand it up and press it straight down over the lift. Sit on it once to lock the taper." },
+    { title: "Lower the seat onto the gas lift", detail: "Stand it up and press it straight down over the lift. Sit on it once to lock the taper.", add: top, from: Object.fromEntries(top.map((id) => [id, [0, 350, 0] as Vec3])) },
   ];
   return { parts, steps };
 }

@@ -1,5 +1,5 @@
 import type { HwItem, HwType, PartItem, PartType, ProductSpec, RowUnit, Step, Vec3 } from "../types";
-import { HW, PlanBuilder, type FitOpts } from "./builder";
+import { HW, PlanBuilder, defOf, type FitOpts } from "./builder";
 import { rotate, toLocal, toWorld } from "./math";
 import { slidingDoors } from "./sliding";
 import { jointFits, type RowOpts } from "./row";
@@ -62,7 +62,7 @@ interface Built {
 /** Takes the last step off when it fixes the frame to the wall: that waits until every frame stands in place. */
 function takeAnchor(b: PlanBuilder): Built["anchor"] {
   const last = b.steps[b.steps.length - 1];
-  if (last?.kind !== "anchor") return undefined;
+  if (!last || (last.kind !== "anchor" && !last.wall) || b.items.some((it) => it.kind === "part" && it.states.some((x) => x.step === last.n))) return undefined;
   const items = b.items.filter((it): it is HwItem => it.kind === "hw" && it.step === last.n);
   b.items = b.items.filter((it) => !(it.kind === "hw" && it.step === last.n));
   for (const it of items) b.map.delete(it.key);
@@ -205,7 +205,7 @@ export function buildUnits(b: PlanBuilder, s: ProductSpec, one: (b: PlanBuilder,
       const key = frameParts[i].get(h.parent!);
       if (!key) continue;
       const f = b.partItem(key).final;
-      const k2 = b.preset({ kind: ht.kind, len: ht.len, dia: ht.dia, notIncluded: ht.notIncluded }, { on: key, at: toWorld(h.pos, f.pos, f.rot), dir: rotate(h.dir, f.rot), twist: h.twist, scale: h.scale, hole: false });
+      const k2 = b.preset(defOf(ht), { on: key, at: toWorld(h.pos, f.pos, f.rot), dir: rotate(h.dir, f.rot), twist: h.twist, scale: h.scale, hole: false });
       const c = b.map.get(k2) as HwItem;
       c.spin = h.spin;
       c.turn = h.turn;
@@ -226,7 +226,7 @@ export function buildUnits(b: PlanBuilder, s: ProductSpec, one: (b: PlanBuilder,
     let title: string, detail: string;
     if (u.corner) {
       title = "Build the corner unit";
-      detail = `The same way as a ${what}, without a clothes rail. Its shelves go on pins.`;
+      detail = "Every step of its own guide, lying down, then stand it up. Its shelves go on pins.";
     } else if (g.includes(first)) {
       title = k > 1 ? `Build ${COUNT[k]} more ${adj(u)}${whats} the same way` : `Build another ${adj(u)}${what} the same way`;
       detail = k > 1 ? "Every step as for the first one. Stand each one next to the last." : "Every step as for the first one. Stand it next to the first.";
@@ -287,15 +287,12 @@ export function buildUnits(b: PlanBuilder, s: ProductSpec, one: (b: PlanBuilder,
       if (joint) for (const y of joint.ys(H)) addJoint(a, c, [Math.min(frontOf(a, 0), frontOf(c, 0)) - joint.back, y, zj], [0, 0, 1]);
       else for (const y of ys) screws.push({ on: a, at: [xf, y, zj], dir: [0, 0, 1], mate: c });
     }
-    // the corner unit: screwed to the side of the first frame along the back wall, and to the first one on the side wall
+    // the corner unit: its own joining brackets hold it to the first frame along the back wall (they're in its own
+    // steps); here it's screwed to the first one on the side wall
     const cu = units.findIndex((u) => u.corner);
     if (cu >= 0) {
-      const cz0 = places[cu].pos[2] - (units[cu].w * 10) / 2, cz1 = cz0 + units[cu].w * 10;
+      const cz1 = places[cu].pos[2] + (units[cu].w * 10) / 2;
       const cx1 = -W / 2 + depth(cu);
-      const b0 = backRun[0];
-      const bl = b0 !== undefined ? extreme(b0, 0, false) : undefined;
-      const zb1 = -D / 2 + (b0 !== undefined ? depth(b0) : 0);
-      if (bl && zb1 - cz0 > 80) for (const y of ys) screws.push({ on: bl, at: [b.partItem(bl).final.pos[0] + tOf(bl) / 2, y, (cz0 + zb1) / 2], dir: [-1, 0, 0], hole: false });
       const s0 = sideRun[0];
       const cs = extreme(cu, 2, true), fs = s0 !== undefined ? extreme(s0, 2, false) : undefined;
       if (cs && fs) for (const y of ys) screws.push({ on: cs, at: [Math.min(cx1, -W / 2 + depth(s0)) - 60, y, cz1 - tOf(cs)], dir: [0, 0, 1], mate: fs });
@@ -340,7 +337,7 @@ export function buildUnits(b: PlanBuilder, s: ProductSpec, one: (b: PlanBuilder,
     if (!src.anchor) return;
     for (const h of src.anchor.items) {
       const ht = src.hw.get(h.ref)!;
-      const def = { kind: ht.kind, len: ht.len, dia: ht.dia, notIncluded: ht.notIncluded };
+      const def = defOf(ht);
       if (h.parent) {
         // fittings sit on their part, wherever the part now stands
         const key = frameParts[i].get(h.parent);

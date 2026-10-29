@@ -54,6 +54,21 @@ function turn(v: Vec3, r: Rot): Vec3 {
   return [x * c - y * s, x * s + y * c, z];
 }
 
+type M3 = number[][];
+const mul = (a: M3, b: M3): M3 => a.map((r) => [0, 1, 2].map((j) => r[0] * b[0][j] + r[1] * b[1][j] + r[2] * b[2][j]));
+/** The matrix of a three.js "XYZ" Euler turn. */
+function matOf([x, y, z]: Vec3): M3 {
+  const [a, b, c] = [x, y, z].map(Math.cos), [d, e, f] = [x, y, z].map(Math.sin);
+  const rx = [[1, 0, 0], [0, a, -d], [0, d, a]], ry = [[b, 0, e], [0, 1, 0], [-e, 0, b]], rz = [[c, -f, 0], [f, c, 0], [0, 0, 1]];
+  return mul(mul(rx, ry), rz);
+}
+/** Back to an "XYZ" Euler turn, as three.js reads one from a matrix. */
+function eulerOf(m: M3): Vec3 {
+  const y = Math.asin(Math.max(-1, Math.min(1, m[0][2])));
+  if (Math.abs(m[0][2]) < 0.9999999) return [Math.atan2(-m[1][2], m[2][2]), y, Math.atan2(-m[0][1], m[0][0])];
+  return [Math.atan2(m[2][1], m[1][1]), y, 0];
+}
+
 /** Parts placed where they end up; steps bring them in, in the main scene or laid out on their own in another. */
 class Kit {
   private keys = new Map<string, string>();
@@ -106,8 +121,10 @@ class Kit {
     for (const id of ids) {
       const p = this.boxes.get(id)!;
       const d = turn([p.pos[0] - c[0], p.pos[1] - c[1], p.pos[2] - c[2]], r);
-      const rot: Vec3 = [0, 0, 0];
-      rot[r.axis] = r.a;
+      const turnBy: Vec3 = [0, 0, 0];
+      turnBy[r.axis] = r.a;
+      // a part already turned in the bed (the left slat rail) keeps that turn inside the group's
+      const rot = p.rot.some((a) => a) ? eulerOf(mul(matOf(turnBy), matOf(p.rot))) : turnBy;
       this.b.stage(this.key(id), [to[0] + d[0], to[1] + d[1], to[2] + d[2]], rot, from);
     }
     this.b.then(0.12);

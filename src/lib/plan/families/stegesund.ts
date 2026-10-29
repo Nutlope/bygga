@@ -81,6 +81,8 @@ function shelfRecipe(s: ProductSpec): CustomParams {
       // a rail under each shelf, and one at the foot of the upper unit's ladder that stands on the lower unit
       const ys = u.levels.map((l) => l.y - 20 - 15);
       if (k === 1) ys.push(u.y0 + 15);
+      // the lower unit of the tall one has a rung at the very top too: the joining bolts go up through it
+      if (k === 0 && tall) ys.push(u.y0 + u.h - 15);
       for (const y of ys) pieces.push(box([18, 30, D - 2 * P], [x, y, 0]));
       const part = compound(`L${k}${i}`, "Ladder", pieces);
       parts.push(part);
@@ -133,18 +135,16 @@ function shelfRecipe(s: ProductSpec): CustomParams {
   if (tall) {
     steps.push({
       title: "Bolt the two units together",
-      detail: "End to end on the rug. Two bolts up through the top of the lower unit into the foot rails of the upper one.",
-      fix: [
-        {
-          kind: "bolt",
-          count: 2,
-          ...SHORT,
-          at: [-1, 1].map((sx) => [sx * (W / 2 - P / 2), 870, 0] as Vec3),
-          dir: [0, 1, 0],
-          on: ids[1].sides[0],
-          mate: ids[0].shelves[0],
-        },
-      ],
+      detail: "End to end on the rug. Two bolts from inside the lower unit, through its top rungs into the foot rails of the upper one.",
+      fix: [0, 1].map((i): CustomFix => ({
+        kind: "bolt",
+        count: 1,
+        ...SHORT,
+        at: [[(i ? 1 : -1) * (W / 2 - P / 2), 840, 0]],
+        dir: [0, 1, 0],
+        on: ids[0].sides[i],
+        mate: ids[1].sides[i],
+      })),
       tools: ["allen"],
     });
   }
@@ -216,7 +216,7 @@ function benchRecipe(): CustomParams {
   parts.push(slatted("S", iw, D - 2 * L, shelfY, 40, 0, zl));
   for (const [i, sz] of [-1, 1].entries()) parts.push({ id: `R${i}`, name: "Long rail", size: [iw, rh, 20], pos: [0, ry, sz * zl], material: "wood" });
   parts.push({ id: "T", name: "Seat", size: [iw, bt, D], pos: [0, top - bt / 2, 0], material: "wood" });
-  const railY = shelfY + 40 - 20;
+  const railY = shelfY - 20; // middle of the shelf's rails
   const long = (side: number, mate: string, y: number) => bolts(side, ends[side < 0 ? 0 : 1], mate, W / 2, [-1, 1].map((sz) => [y, sz * zl] as [number, number]), LONG);
   const steps: CustomStep[] = [
     {

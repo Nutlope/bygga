@@ -66,10 +66,11 @@ function recipe(s: ProductSpec): CustomParams | null {
   ];
   const foot = (pts: Vec3[], on: string) => at("foot", pts, [0, 1, 0], on, undefined, { len: legH, dia: 40, name: "Leg" });
   const pads = (pts: Vec3[], on: string) => at("glide", pts.map((p) => [p[0], 0, p[2]] as Vec3), [0, 1, 0], on, undefined, { len: 3, dia: 34, name: "Felt pad" });
-  const backPts = (xs: number[], y: number) => xs.map((x) => [x, y, zb] as Vec3);
+  // from inside the base, through its back frame into the backrest
+  const backPts = (xs: number[], y: number) => xs.map((x) => [x, y, zb + 30] as Vec3);
   const screwPts = backPts([xa + 250, xb - 250], legH + 120);
   const boltPts = backPts([xa + 250, xb - 250], seatH - lidT - 60);
-  const armPts: Vec3[] = [zb + 120, z1 - 120].flatMap((z) => [legH + 80, seatH - lidT - 60].map((y) => [xa, y, z] as Vec3));
+  const armPts: Vec3[] = [zb + 120, z1 - 120].flatMap((z) => [legH + 80, seatH - lidT - 60].map((y) => [xa + 20, y, z] as Vec3));
   const washer = (pts: Vec3[], dir: Vec3, on: string) => at("washer", pts, dir, on, undefined, { len: 1.5, dia: 20 });
 
   const steps: CustomStep[] = [
@@ -84,13 +85,13 @@ function recipe(s: ProductSpec): CustomParams | null {
     {
       title: "Screw the base to the backrest",
       detail: "Lift the lid and put the two long pointed screws, each with a washer, through the lower holes in the back of the base.",
-      fix: [washer(screwPts, [0, 0, -1], "BED"), at("screw", screwPts, [0, 0, -1], "BED", "BK", { len: 90, dia: 6, name: "Long screw" })],
+      fix: [at("screw", screwPts, [0, 0, -1], "BED", "BK", { len: 90, dia: 6, name: "Long screw" }), washer(screwPts, [0, 0, -1], "BED")],
       tools: ["allen"],
     },
     {
       title: "Bolt it at the top",
       detail: "Two bolts with washers through the upper holes. These are the blunt ones, not the pointed screws.",
-      fix: [washer(boltPts, [0, 0, -1], "BED"), at("bolt", boltPts, [0, 0, -1], "BED", "BK", { len: 70, dia: 6 })],
+      fix: [at("bolt", boltPts, [0, 0, -1], "BED", "BK", { len: 70, dia: 6 }), washer(boltPts, [0, 0, -1], "BED")],
       tools: ["allen"],
     },
     {
@@ -108,7 +109,7 @@ function recipe(s: ProductSpec): CustomParams | null {
       title: "Bolt the armrest to the end",
       detail: "Stand the base up and lift the lid. Four bolts with washers from inside the storage space into the armrest.",
       add: ["ARM"],
-      fix: [washer(armPts, [-1, 0, 0], "BED"), at("bolt", armPts, [-1, 0, 0], "BED", "ARM", { len: 70, dia: 6 })],
+      fix: [at("bolt", armPts, [-1, 0, 0], "BED", "ARM", { len: 70, dia: 6 }), washer(armPts, [-1, 0, 0], "BED")],
       pose: "+y",
       tools: ["allen"],
     },

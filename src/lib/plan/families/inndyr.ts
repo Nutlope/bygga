@@ -51,7 +51,8 @@ function bench(): CustomParams {
   });
   parts.push({ id: "LID", name: "Padded lid", size: [W, hLid, D], pos: [0, yBox1 + hLid / 2, 0], material: "soft" });
 
-  const batEnds = (x: number): Vec3[] => [-1, 1].map((sz) => [x, yBat, sz * zIn] as Vec3);
+  // the dowel sits beside the long screw in each batten end
+  const batEnds = (x: number): Vec3[] => [-1, 1].map((sz) => [x + 20, yBat, sz * zIn] as Vec3);
   const panelEnds = (z: number, sx: number): Vec3[] => [yLeg + 60, yBox1 - 60].map((y) => [sx * xIn, y, z] as Vec3);
   const endScrews = (sx: number): Vec3[] => [-1, 1].flatMap((sz) => [yLeg + 100, yBox1 - 100].map((y) => [sx * Wb / 2, y, sz * zLong] as Vec3));
   const SCREW = { len: 50, dia: 6, name: "Long screw" };
@@ -66,20 +67,22 @@ function bench(): CustomParams {
         fix: batX.flatMap((x, i) => batEnds(x).map((p) => at("dowel", [p], [0, 0, -Math.sign(p[2])], `T${i + 1}`, p[2] < 0 ? "B" : "F"))),
         tools: ["hammer"],
         wait: ["T1", "T2", "T3"],
+        from: { T1: [0, 0, 300], T2: [0, 0, 300], T3: [0, 0, 300] },
       },
       {
         title: "Screw the battens to the back panel",
         detail: "Stand the back panel on its long edge, holes at the bottom. One long screw through it into each batten.",
         add: ["B", "T1", "T2", "T3"],
-        fix: [at("bolt", batX.map((x) => [x, yBat, -Db / 2] as Vec3), [0, 0, 1], "B", undefined, SCREW)],
+        fix: [at("bolt", batX.map((x) => [x - 15, yBat, -Db / 2] as Vec3), [0, 0, 1], "B", undefined, SCREW)],
         tools: ["allen"],
         warnings: ["floor"],
+        from: { B: [0, 0, -300] },
       },
       {
         title: "Screw on the front panel",
         detail: "Push it onto the dowels at the other ends of the battens, then three more long screws.",
         add: ["F"],
-        fix: [at("bolt", batX.map((x) => [x, yBat, Db / 2] as Vec3), [0, 0, -1], "F", undefined, SCREW)],
+        fix: [at("bolt", batX.map((x) => [x - 15, yBat, Db / 2] as Vec3), [0, 0, -1], "F", undefined, SCREW)],
         tools: ["allen"],
       },
       {
@@ -120,7 +123,7 @@ function bench(): CustomParams {
         detail: "At the back, tight under the top edge. Two screws each with the small Allen key.",
         fix: [-1, 1].flatMap((sx) => [
           at("plate", [hingeAt(sx)], [-sx, 0, 0], sx < 0 ? "E1" : "E2", undefined, { name: "Lid hinge", len: 6, dia: 40 }),
-          at("bolt", [-25, 25].map((dy) => [sx * xIn, hingeAt(sx)[1] + dy - 20, hingeAt(sx)[2]] as Vec3), [-sx, 0, 0], sx < 0 ? "E1" : "E2", undefined, { len: 12, dia: 6, name: "Screw" }),
+          at("bolt", [-15, 15].map((dz) => [sx * xIn, hingeAt(sx)[1] - 25, hingeAt(sx)[2] + dz] as Vec3), [sx, 0, 0], sx < 0 ? "E1" : "E2", undefined, { len: 12, dia: 6, name: "Screw" }),
         ]),
         tools: ["allen"],
         pose: "+y",

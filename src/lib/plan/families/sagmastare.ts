@@ -55,6 +55,14 @@ const postStep = (level: string, yTop: number, word: string): CustomStep => ({
   wait: ids(level),
   fix: [at("stud", CORNERS.map((c) => cornerAt(c, yTop)), [0, 1, 0], undefined, undefined, { len: 30, dia: 8 })],
 });
+/** The cabinet's posts take their studs in the bottom end and screw down into the cabinet top; the top shelf is screwed to their tops. */
+const postStepDown = (level: string, yBot: number, word: string): CustomStep => ({
+  title: `Screw a stud into the end of the ${word} posts`,
+  detail: "Into one end of each post, by hand until it stops. That end goes down.",
+  add: ids(level),
+  wait: ids(level),
+  fix: [at("stud", CORNERS.map((c) => cornerAt(c, yBot)), [0, 1, 0], undefined, undefined, { len: 30, dia: 8 })],
+});
 const screwPosts = (level: string, title: string): CustomStep => ({
   title,
   detail: "Turn each post onto a stud through the shelf until it's tight against it.",
@@ -207,7 +215,7 @@ function cabinet(): CustomParams {
       pose: "+y",
     },
     { title: "Press the cabinet top on", detail: "Stand the cabinet up. The brackets go behind the back panels and the corner holes over the posts.", add: ["C", "RT"] },
-    postStep("P", H - PT, "four"),
+    postStepDown("P", yC, "four"),
     screwPosts("P", "Screw the posts on through the cabinet top"),
     ...topSteps("T"),
     { title: "Lay the shelf in", detail: "Press it down onto the four supports inside the sides until it clicks.", add: ["M"], from: { M: [0, 0, 300] } },
@@ -222,7 +230,8 @@ function cabinet(): CustomParams {
     {
       title: "Screw a pivot into each outer leaf",
       detail: "One screw with a washer into the bottom corner of each outer leaf, on the hinged side.",
-      fix: [at("washer", [[xLeaf(0) - leafW / 2 + 20, yB + 7, zDoor]], [0, 1, 0], "D0", undefined, { len: 2, dia: 14 }), at("washer", [[xLeaf(3) + leafW / 2 - 20, yB + 7, zDoor]], [0, 1, 0], "D3", undefined, { len: 2, dia: 14 }), at("screw", [[xLeaf(0) - leafW / 2 + 20, yB + 6, zDoor], [xLeaf(3) + leafW / 2 - 20, yB + 6, zDoor]], [0, 1, 0], undefined, undefined, { len: 16, dia: 4 })],
+      // the screw first: the engine stacks a washer onto the screw already at its point
+      fix: [at("screw", [[xLeaf(0) - leafW / 2 + 20, yB + 6, zDoor]], [0, 1, 0], "D0", undefined, { len: 16, dia: 4 }), at("screw", [[xLeaf(3) + leafW / 2 - 20, yB + 6, zDoor]], [0, 1, 0], "D3", undefined, { len: 16, dia: 4 }), at("washer", [[xLeaf(0) - leafW / 2 + 20, yB + 7, zDoor]], [0, 1, 0], "D0", undefined, { len: 2, dia: 14 }), at("washer", [[xLeaf(3) + leafW / 2 - 20, yB + 7, zDoor]], [0, 1, 0], "D3", undefined, { len: 2, dia: 14 })],
       tools: ["screwdriver"],
     },
     {
@@ -240,7 +249,7 @@ function cabinet(): CustomParams {
     {
       title: "Screw on the knobs",
       detail: "One knob on each inner leaf, near the top, screwed on from behind.",
-      fix: [at("knob", [[xLeaf(1) + leafW / 2 - 25, yIn - 50, zDoor + 9]], [0, 0, -1], "D1"), at("knob", [[xLeaf(2) - leafW / 2 + 25, yIn - 50, zDoor + 9]], [0, 0, -1], "D2"), at("screw", [[xLeaf(1) + leafW / 2 - 25, yIn - 50, zDoor - 9], [xLeaf(2) - leafW / 2 + 25, yIn - 50, zDoor - 9]], [0, 0, 1], undefined, undefined, { len: 12, dia: 4 })],
+      fix: [at("knob", [[xLeaf(1) + leafW / 2 - 25, yIn - 50, zDoor + 9]], [0, 0, -1], "D1"), at("knob", [[xLeaf(2) - leafW / 2 + 25, yIn - 50, zDoor + 9]], [0, 0, -1], "D2"), at("screw", [[xLeaf(1) + leafW / 2 - 25, yIn - 50, zDoor - 14]], [0, 0, 1], "D1", undefined, { len: 12, dia: 4 }), at("screw", [[xLeaf(2) - leafW / 2 + 25, yIn - 50, zDoor - 14]], [0, 0, 1], "D2", undefined, { len: 12, dia: 4 })],
       tools: ["screwdriver"],
     },
     { title: "Check the door folds", detail: "Open it: the two leaves fold together and turn out of the way. Close it again before the next one." },

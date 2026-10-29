@@ -71,7 +71,7 @@ function chair(s: ProductSpec): CustomParams {
     kind: "bolt",
     count: 2,
     ...BOLT,
-    at: [sx * (xi - 12), sx * (xi - 32)].map((x): Vec3 => [x, yRail + (dir[1] < 0 ? 10 : -10), z]),
+    at: [sx * (xi - 10), sx * (xi - 34)].map((x): Vec3 => [x, yRail + (dir[1] < 0 ? 10 : -10), z]),
     dir,
     on: rail,
     mate: side,

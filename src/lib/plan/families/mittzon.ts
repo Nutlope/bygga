@@ -225,7 +225,8 @@ function desk(b: PlanBuilder, s: ProductSpec, electric: boolean) {
   });
   step({ title: "Fix the top with seven more screws", detail: "Up through the brackets along the arms and the beam.", kind: "screws", tools: ["screwdriver"] }, () => {
     arms.forEach((a, i) => fit(SCREW, [-D / 2 + 70, D / 2 - 60, D / 8].slice(0, i ? 4 : 3).map((z) => pt(a, [(i ? 1 : -1) * xl, yArm, z], [0, 1, 0])), 0.06));
-    fit(SCREW, [pt(inner, [L / 4, yb + 25, 0], [0, 1, 0])]);
+    // the beam's bracket reaches up to the top: the screw goes through its flange
+    fit(SCREW, [pt(inner, [L / 4, H - TT - 6, 0], [0, 1, 0])]);
   });
   strapStep("+y", back);
   step({ title: "Click the cable tray together and hang it in the holders", detail: "The two halves click into one tray.", kind: "join" }, () => b.add(tray, [0, -200, 0]));
@@ -295,11 +296,13 @@ function conference(s: ProductSpec): CustomParams | null {
   const cornerOf = (p: Vec3) => `L${p[0] > 0 ? 1 : 0}${p[2] > 0 ? 1 : 0}`;
   const railScrews = (n: number): CustomFix => {
     const pts: Vec3[] = [];
-    for (const sz of [-1, 1]) for (let i = 0; i < n / 2; i++) pts.push([-fw / 2 + 150 + ((fw - 300) * i) / Math.max(1, n / 2 - 1), H - TT - RH, sz * (fd / 2 - RT / 2)]);
-    return { kind: "bolt", count: n, len: 40, dia: 6, at: pts, dir: [0, 1, 0] };
+    // through the rail's flange under the top and into the top
+    for (const sz of [-1, 1]) for (let i = 0; i < n / 2; i++) pts.push([-fw / 2 + 150 + ((fw - 300) * i) / Math.max(1, n / 2 - 1), H - TT - 12, sz * (fd / 2 - RT / 2)]);
+    return { kind: "bolt", count: n, len: 30, dia: 6, at: pts, dir: [0, 1, 0] };
   };
-  const plates: CustomFix = { kind: "plate", count: 4, at: corners.map((p) => [p[0], p[1], p[2]] as Vec3), dir: [0, 1, 0] };
-  const plateScrews: CustomFix = { kind: "bolt", count: 4, len: 40, dia: 6, at: corners.map((p) => [p[0] * 0.97, p[1], p[2] * 0.95] as Vec3), dir: [0, 1, 0] };
+  // the plate lies flat against the top in the frame's corner, its screw up through it into the top
+  const plates: CustomFix = { kind: "plate", count: 4, at: corners.map((p) => [p[0], H - TT, p[2]] as Vec3), dir: [0, 1, 0], on: top };
+  const plateScrews: CustomFix = { kind: "bolt", count: 4, len: 20, dia: 6, at: corners.map((p) => [p[0] - Math.sign(p[0]) * 30, H - TT - 4, p[2] - Math.sign(p[2]) * 30] as Vec3), dir: [0, 1, 0], on: top };
   const blockPts: Vec3[] = corners.map((p) => [p[0] - Math.sign(p[0]) * 30, H - TT - RH / 2, p[2] - Math.sign(p[2]) * 30]);
   const blocks: CustomFix = { kind: "clamp", count: 4, at: blockPts, dir: [0, 1, 0], name: "Corner block" } as CustomFix;
   // a washer and a cap bolt through each block into its own leg
@@ -315,7 +318,7 @@ function conference(s: ProductSpec): CustomParams | null {
   } else {
     steps.push({ title: "Lay the top face down and set the rails on it", detail: "On a rug or the box. The long rails along the long edges, the short ones across the ends.", add: [top, "RL0", "RL1", "RS0", "RS1"], pose: P, warnings: ["floor"] });
     if (deep) {
-      steps.push({ title: "Lay the centre beam along the middle", detail: "Between the long rails, over the cable slot. One screw at each end.", add: ["B"], pose: P, fix: [{ kind: "screw", count: 2, len: 12, dia: 6, at: [-1, 1].map((sx) => [sx * (fw / 2 - RT - 60), H - TT - 40, 0] as Vec3), dir: [0, 1, 0], on: "B" }] });
+      steps.push({ title: "Lay the centre beam along the middle", detail: "Between the long rails, over the cable slot. One screw at each end.", add: ["B"], pose: P, fix: [{ kind: "screw", count: 2, len: 50, dia: 6, at: [-1, 1].map((sx) => [sx * (fw / 2 - RT - 60), H - TT - 40, 0] as Vec3), dir: [0, 1, 0], on: "B" }] });
       steps.push({ title: "Screw the long rails to the top", detail: "Ten countersunk screws, with the Allen key.", fix: [railScrews(10)], pose: P, tools: ["allen"] });
     } else steps.push({ title: "Screw the long rails to the top", detail: "Four countersunk screws, with the Allen key.", fix: [railScrews(4)], pose: P, tools: ["allen"] });
     steps.push({ title: "Screw a corner plate into each corner", detail: "Flat side down, the hole over the hole in the top. One screw each.", fix: [plates, plateScrews], pose: P, tools: ["allen"] });

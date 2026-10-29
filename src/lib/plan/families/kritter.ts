@@ -58,7 +58,7 @@ function chair(): CustomParams {
       pose: "+x",
       warnings: ["floor"],
     },
-    { title: "Set it onto a side frame", detail: "Lay one side frame flat, holes up, and lower the seat and top rail into its holes.", add: ["L"], from: { L: [0, 0, 300] } },
+    { title: "Set it onto a side frame", detail: "Lay one side frame flat, holes up, and lower the seat and top rail into its holes.", add: ["L"], from: { L: [-260, 0, 0] } },
     { title: "Lay the other side frame on top", detail: "Line up every hole and dowel before you press it down.", add: ["R"] },
     { title: "Screw this side on", detail: "Three screws through the frame: the top rail, the back and the front of the seat.", fix: [screws(1)], tools: ["allen"] },
     { title: "Turn it over and screw the other side", detail: "Three more screws, the same way.", fix: [screws(-1)], tools: ["allen"], pose: "-x" },
@@ -93,8 +93,8 @@ function table(s: ProductSpec): CustomParams {
   const other = ["AR", "AB", "AL", "AF"];
   const bx = ix - 14, bz = iz - 14;
   const brackets: Vec3[] = corners.map(([sx, sz]) => [sx * bx, ya, sz * bz]);
-  const longFace = iz + LT / 2 - AT; // inner face of a long rail
-  const shortFace = ix + LT / 2 - AT;
+  const longFace = lz + LT / 2 - AT; // inner face of a long rail
+  const shortFace = lx + LT / 2 - AT;
   const screwInto = (id: string, sx: number, sz: number): Vec3 => (id === "AF" || id === "AB" ? [sx * (ix - 28), ya, sz * longFace] : [sx * shortFace, ya, sz * (iz - 28)]);
   const dirInto = (id: string, sx: number, sz: number): Vec3 => (id === "AF" || id === "AB" ? [0, 0, sz] : [sx, 0, 0]);
   const SHORT = { kind: "screw" as const, len: 12, dia: 4 };
@@ -130,8 +130,9 @@ function table(s: ProductSpec): CustomParams {
           len: 30,
           dia: 4,
           at: [
-            ...[-1, 1].flatMap((sz) => [-1, 1].map((d): Vec3 => [d * ix * 0.5, H - TT - AH, sz * (iz + LT / 2 - AT / 2)])),
-            ...[-1, 1].flatMap((sx) => [-1, 1].map((d): Vec3 => [sx * (ix + LT / 2 - AT / 2), H - TT - AH, d * iz * 0.5])),
+            // from the bottom of a deep counterbore, so the tip bites into the top
+            ...[-1, 1].flatMap((sz) => [-1, 1].map((d): Vec3 => [d * ix * 0.5, H - TT - 26, sz * (lz + LT / 2 - AT / 2)])),
+            ...[-1, 1].flatMap((sx) => [-1, 1].map((d): Vec3 => [sx * (lx + LT / 2 - AT / 2), H - TT - 26, d * iz * 0.5])),
           ],
           dir: [0, 1, 0],
         },
@@ -146,6 +147,7 @@ function table(s: ProductSpec): CustomParams {
         ...corners.map(([sx, sz]): CustomFix => ({ kind: "nut", name: "Cross dowel", count: 1, len: 20, dia: 10, at: [[sx * lx, H - TT - 30, sz * lz]], dir: [0, -1, 0], on: legId(sx, sz) })),
       ],
       tools: ["flathead"],
+      wait: corners.map(([sx, sz]) => legId(sx, sz)),
     },
     {
       title: "Push a wedge into each bracket",

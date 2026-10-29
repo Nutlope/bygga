@@ -117,6 +117,10 @@ function recipe(g: Geo) {
 
   // short post at the ladder end of the front panel, carrying the ladder's top
   const stubH = yTopRod + ROD / 2 - yUb;
+  const rod = parts.find((p) => p.id === front.rod)!;
+  const rodX0 = rod.pos[0] - rod.size[0] / 2, rodX1 = xLR + D / 2;
+  rod.size = [rodX1 - rodX0, rod.size[1], rod.size[2]];
+  rod.pos = [(rodX0 + rodX1) / 2, rod.pos[1], rod.pos[2]];
   put("ST", "Short post", [D, stubH, D], [xLR, yUb + stubH / 2, zLad], { shape: "cyl" });
 
   // the frame's own cross rails: the bunk's lower front flat bar and foot bar, the loft's ladder ends and long back rail
@@ -151,7 +155,7 @@ function recipe(g: Geo) {
       ...[0, 1, 2, 3].map((k): PartPiece => ({ shape: "box", size: [LW, 20, 40], pos: [0, -len / 2 + (len * (k + 1)) / 5, 0], material: "metal" })),
     ];
     put("LD", "Ladder", [LW + 30, len, 50], [X - D / 2 - 40 - LW / 2, rise / 2, zLad + 10 + reach / 2], { pieces, rot: [-a, 0, 0] });
-    put("LK", "Ladder bracket", [LW + 60, 60, 10], [X - D / 2 - 40 - LW / 2, rise - 30, zLad + 5]);
+    put("LK", "Ladder bracket", [LW + 60, 60, 10], [X - D / 2 - 40 - LW / 2, rise - 30, Z + RAIL_T / 2 + 5]);
   }
 
   // roll-out slatted bases on the bed rails
@@ -182,7 +186,7 @@ function recipe(g: Geo) {
   const longEnd = (x: -1 | 1, z: -1 | 1, ys: number[], mate: string): CustomFix => fix("bolt", ys.map((y) => [x * (L / 2), y, z * Z] as Vec3), [-x, 0, 0], post(x, z), mate, FRAME_BOLT);
   // and into an end part's end, through the post from the front or back
   const endEnd = (x: -1 | 1, z: -1 | 1, ys: number[], mate: string): CustomFix => fix("bolt", ys.map((y) => [x * X, y, z * (W / 2)] as Vec3), [0, 0, -z], post(x, z), mate, FRAME_BOLT);
-  const railYs = (bi: number) => [g.beds[bi] + 12, g.beds[bi] + RAIL_H - 12];
+  const railYs = (bi: number) => [g.beds[bi] + 8, g.beds[bi] + RAIL_H - 8]; // far enough apart to tell two bolts apart
   const yBar = (p: Panel) => p.yb + BAR_H / 2;
 
   const steps: CustomStep[] = [];
@@ -230,9 +234,9 @@ function recipe(g: Geo) {
         endEnd(-1, -1, [yBar(eUh)], eUh.bar),
         endEnd(-1, -1, [eUh.yr], eUh.rod),
         endEnd(-1, 1, [yBar(eUh)], eUh.bar),
-        endEnd(-1, -1, [crossYs[0] - 10, crossYs[0] + 10], hc[0]),
-        endEnd(-1, 1, [crossYs[0] - 10, crossYs[0] + 10], hc[0]),
-        endEnd(-1, -1, [crossYs[1] - 10, crossYs[1] + 10], hc[1]),
+        endEnd(-1, -1, [crossYs[0] - 12, crossYs[0] + 12], hc[0]),
+        endEnd(-1, 1, [crossYs[0] - 12, crossYs[0] + 12], hc[0]),
+        endEnd(-1, -1, [crossYs[1] - 12, crossYs[1] + 12], hc[1]),
         endEnd(-1, 1, [crossYs[1]], hc[1]),
       ],
       tools: ["allen"],
@@ -262,7 +266,7 @@ function recipe(g: Geo) {
       title: "Bolt the foot end together",
       detail: "Two posts and two end rails, the post with the extra holes at the front. Seven bolts.",
       add: [post(1, -1), post(1, 1), ...fc],
-      fix: [endEnd(1, -1, [crossYs[0] - 10, crossYs[0] + 10], fc[0]), endEnd(1, 1, [crossYs[0] - 10, crossYs[0] + 10], fc[0]), endEnd(1, -1, [crossYs[1]], fc[1]), endEnd(1, 1, [crossYs[1] - 10, crossYs[1] + 10], fc[1])],
+      fix: [endEnd(1, -1, [crossYs[0] - 12, crossYs[0] + 12], fc[0]), endEnd(1, 1, [crossYs[0] - 12, crossYs[0] + 12], fc[0]), endEnd(1, -1, [crossYs[1]], fc[1]), endEnd(1, 1, [crossYs[1] - 12, crossYs[1] + 12], fc[1])],
       tools: ["allen"],
       pose: "-x",
     });
@@ -305,7 +309,7 @@ function recipe(g: Geo) {
     fix: [fix("screw", [[xLR, yUb + 40, zLad - D / 2]], [0, 0, 1], "ST", front.bar, { len: 16, dia: 4 })],
     tools: ["screwdriver"],
   });
-  steps.push({ title: "Bolt it to the top rod", detail: "One long bolt through the short post.", fix: [fix("bolt", [[xLR + D / 2, yTopRod, zLad]], [-1, 0, 0], "ST", front.rod, FRAME_BOLT)], tools: ["allen"] });
+  steps.push({ title: "Bolt it to the top rod", detail: "One long bolt from the front through the short post into the rod behind it.", fix: [fix("bolt", [[xLR, yTopRod, zLad + D / 2]], [0, 0, -1], "ST", front.rod, FRAME_BOLT)], tools: ["allen"] });
   const fr = `R${g.beds.length - 1}f`;
   steps.push({
     title: "Bolt the front bed rail under it",
@@ -371,7 +375,7 @@ function recipe(g: Geo) {
       title: "Stand the ends up and bolt in the long back rail",
       detail: "One of you holds the ends upright. Two bolts at each end.",
       add: ["K"],
-      fix: sx.map((x) => longEnd(x, -1, [crossYs[0] - 70, crossYs[0] - 50], "K")),
+      fix: sx.map((x) => longEnd(x, -1, [crossYs[0] - 72, crossYs[0] - 48], "K")),
       tools: ["allen"],
       pose: "+y",
       people: 2,
@@ -390,7 +394,7 @@ function recipe(g: Geo) {
       title: "Screw the ladder bracket to the front rail",
       detail: "Under the short post, two flat-head bolts.",
       add: ["LK"],
-      fix: [fix("bolt", [-1, 1].map((dx) => [xl + dx * 60, upper + RAIL_H - 30, zLad + 10] as Vec3), [0, 0, -1], "LK", fr, FLAT_BOLT)],
+      fix: [fix("bolt", [-1, 1].map((dx) => [xl + dx * 60, upper + RAIL_H - 25, Z + RAIL_T / 2 + 10] as Vec3), [0, 0, -1], "LK", fr, FLAT_BOLT)],
       tools: ["allen"],
     });
     const rise = upper + RAIL_H;
@@ -415,13 +419,13 @@ function recipe(g: Geo) {
     steps.push({
       title: "Bolt the ladder's top to the front rail",
       detail: "Two flat-head bolts at each ladder rail.",
-      fix: [fix("bolt", sx.flatMap((s) => [-1, 1].map((dy) => [xl + s * (LW / 2), rise - 20 + dy * 10, zLad + 20] as Vec3)), [0, 0, -1], "LD", fr, FLAT_BOLT)],
+      fix: [fix("bolt", sx.flatMap((s) => [-1, 1].map((dy) => [xl + s * (LW / 2), rise - 40 + dy * 12, Z + RAIL_T / 2 + 12] as Vec3)), [0, 0, -1], "LD", "LK", FLAT_BOLT)],
       tools: ["allen"],
     });
     steps.push({
-      title: "Hook the bracket over the ladder",
-      detail: "Push it down over the ladder's top and the short post, then two flat-head bolts on each side.",
-      fix: [fix("bolt", sx.flatMap((s) => [-1, 1].map((dy) => [xl + s * (LW / 2 + 20), rise + dy * 15, zLad + 10] as Vec3)), [0, 0, -1], "LK", "ST", FLAT_BOLT)],
+      title: "Bolt the bracket ends to the front rail",
+      detail: "Its ends reach past the ladder's rails: two flat-head bolts on each side, through the bracket into the front rail.",
+      fix: [fix("bolt", sx.flatMap((s) => [-1, 1].map((dy) => [xl + s * (LW / 2 + 24), rise - 25 + dy * 12, Z + RAIL_T / 2 + 10] as Vec3)), [0, 0, -1], "LK", fr, FLAT_BOLT)],
       tools: ["allen"],
     });
     steps.push({ title: "Stick the grip strips on the ladder steps", detail: "Four strips, one along the top of each step." });

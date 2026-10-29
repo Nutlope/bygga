@@ -258,7 +258,8 @@ function sofaBed(s: ProductSpec): CustomParams {
     at.map((p): CustomFix => ({ kind: "bolt", count: 1, len, dia: 8, at: [p], dir: dir(p), on: on(p), mate: mate?.(p) })).slice(0, n);
   const sideOf = (p: Vec3) => (p[0] < 0 ? "armL" : "armR");
   const inward = (p: Vec3): Vec3 => [p[0] < 0 ? 1 : -1, 0, 0];
-  const rodBolts = (sx: number) => rz.flatMap((z, i) => [[0, 40], [-35, -20], [35, -20]].map(([dz, dy]) => [inner(sx), 75 + dy, z + dz] as Vec3).map((p) => ({ p, i })));
+  const rodBolts = (sx: number) => rz.flatMap((z, i) => // the plate's three bolts sit above the rod, where the armrest is (its foot ends at the legs)
+  [[0, 45], [-35, 12], [35, 12]].map(([dz, dy]) => [inner(sx), 75 + dy, z + dz] as Vec3).map((p) => ({ p, i })));
   return {
     parts,
     steps: [

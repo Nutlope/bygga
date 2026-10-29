@@ -61,7 +61,7 @@ function recipe(s: ProductSpec): CustomParams | null {
   // three glass shelves, at the heights in IKEA's picture
   const shelfYs = [470, 810, 1160];
   const shelfIds = shelfYs.map((y, i) => {
-    parts.push({ id: `G${i + 1}`, name: "Glass shelf", size: [2 * xi - 6, 6, sd - 40], pos: [0, y + 3, zc], material: "glass" });
+    parts.push({ id: `G${i + 1}`, name: "Glass shelf", size: [2 * xi - 6, 6, sd - 20], pos: [0, y + 3, zc + 5], material: "glass" });
     return `G${i + 1}`;
   });
 
@@ -70,8 +70,15 @@ function recipe(s: ProductSpec): CustomParams | null {
   const topScrews = [-1, 1].map((sx) => at("screw", [[sx * xi, topY, zc - 80], [sx * xi, topY, zc + 80]], [-sx, 0, 0], sx < 0 ? "SL" : "SR", "TF", { len: 12, dia: 6 }));
   const feet: Vec3[] = [-1, 1].flatMap((sx) => [zb + 10, zf - 10].map((z) => [sx * (W / 2 - 10), F, z] as Vec3));
   const clips: Vec3[] = [-1, 1].map((sx) => [sx * 90, topY - 15, zb + 14] as Vec3);
+  const clipScrews: Vec3[] = clips.map((c) => [c[0], topY + 5, zb - 2] as Vec3);
   const strapAt: Vec3 = [0, topY, zb];
-  const supports: Vec3[] = shelfYs.flatMap((y) => [-1, 1].flatMap((sx) => [zb + 40, zf - 40].map((z) => [sx * xi, y - 8, z] as Vec3)));
+  // a support's cup sits in each corner post, its screw through the flange below it (kept apart so neither is nudged)
+  const corners = (sx: number, dx: number, dy: number) => shelfYs.flatMap((y) => [zb + 10, zf - 10].map((z) => [sx * (xi - dx), y + dy, z] as Vec3));
+  const supportFix = (sx: number): CustomFix[] => [
+    at("pin", corners(sx, 0, -10), [sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { name: "Shelf support", len: 20, dia: 15 }),
+    at("cap", corners(sx, 15, 0), [0, -1, 0], sx < 0 ? "SL" : "SR", undefined, { name: "Felt pad", len: 2, dia: 12 }),
+    at("screw", corners(sx, 3, -34), [sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, SCREW),
+  ];
   const hinges: Vec3[] = [220, 760, 1300].map((y) => [-W / 2 + 10, y, zf] as Vec3);
 
   const steps: CustomStep[] = [
@@ -98,7 +105,7 @@ function recipe(s: ProductSpec): CustomParams | null {
     {
       title: "Clip the back glass in at the top",
       detail: "One of you holds the case still. Hook the two clips over the top frame at the back and screw them on, not tight yet.",
-      fix: [at("clip", clips, [0, -1, 0], "TF", "BK", { name: "Back clip", len: 20, dia: 15 }), at("screw", clips, [0, 0, 1], "TF", undefined, SCREW)],
+      fix: [at("clip", clips, [0, -1, 0], "TF", "BK", { name: "Back clip", len: 20, dia: 15 }), at("screw", clipScrews, [0, 0, 1], "TF", undefined, SCREW)],
       tools: ["screwdriver"],
       people: 2,
     },
@@ -129,11 +136,10 @@ function recipe(s: ProductSpec): CustomParams | null {
       fix: [at("screw", [strapAt], [0, 0, 1], "TF", undefined, SCREW)],
       tools: ["screwdriver"],
     },
-    { title: "Stick a felt pad on each shelf support", detail: "Press one pad into the cup of each of the twelve supports.", fix: [at("glide", supports, [0, -1, 0], undefined, undefined, { len: 2, dia: 12 })] },
     {
-      title: "Screw the shelf supports into the sides",
-      detail: "Four at each shelf height, one in each corner post. A screw through each one.",
-      fix: [at("pin", supports, [1, 0, 0], undefined, undefined, { name: "Shelf support", len: 20, dia: 15 }), at("screw", supports, [1, 0, 0], undefined, undefined, SCREW)],
+      title: "Screw in the shelf supports with their felt pads",
+      detail: "Press a felt pad into the cup of each of the twelve supports, then screw them to the corner posts, four at each shelf height.",
+      fix: [...supportFix(-1), ...supportFix(1)],
       tools: ["screwdriver"],
     },
     { title: "Drop a ring onto each hinge pin", detail: "The three pins stick up on the front left post.", fix: [at("washer", hinges, [0, -1, 0], "SL", undefined, { len: 3, dia: 10 })] },
@@ -152,7 +158,7 @@ function recipe(s: ProductSpec): CustomParams | null {
     {
       title: "Screw on the knob",
       detail: "On the right edge of the door, with the screw from the inside.",
-      fix: [{ kind: "knob", count: 1, at: [[W / 2 - 12, 760, zf + DT]], dir: [0, 0, -1], on: "DOOR" }, at("screw", [[W / 2 - 12, 760, zf]], [0, 0, 1], "DOOR", undefined, { len: 25, dia: 4 })],
+      fix: [{ kind: "knob", count: 1, at: [[W / 2 - 12, 740, zf + DT]], dir: [0, 0, -1], on: "DOOR" }, at("screw", [[W / 2 - 12, 740, zf - 4]], [0, 0, 1], "DOOR", undefined, { len: 25, dia: 4 })],
       tools: ["screwdriver"],
     },
     { title: "Lay in the glass shelves", detail: "Open the door and set each shelf on its four supports.", add: shelfIds, from: Object.fromEntries(shelfIds.map((id) => [id, [0, 0, 380] as Vec3])) },

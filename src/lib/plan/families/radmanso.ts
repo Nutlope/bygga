@@ -214,7 +214,7 @@ function legSteps(k: Kit, f: LegFrame, bottom: Part, o: { pose: Pose; detail?: s
   k.step({
     title: "Bolt the leg frame to the bottom",
     detail: o.detail ?? "Line the frame up with the holes in the bottom panel. Four long Allen bolts down through the leg ends.",
-    fix: [L, R].map((p) => at("bolt", p, [-1, 1].map((g): Vec3 => [p.pos[0], f.y - 30, g * (f.zl - 50)]), [0, 1, 0], LEG_BOLT, bottom)),
+    fix: [L, R].map((p) => at("bolt", p, [-1, 1].map((g): Vec3 => [p.pos[0], f.y - 30, g * (f.zl - 90)]), [0, 1, 0], LEG_BOLT, bottom)),
     tools: ["allen"],
     pose: o.pose,
   });
@@ -425,7 +425,15 @@ function chest(b: PlanBuilder, s: ProductSpec, kind: "c3" | "c5") {
   if (!tall) {
     top = k.part("top", "Top panel", [W, T, D], [0, H - T / 2, 0]);
     yTop = H - T;
-    rail = k.part("rail", "Front rail", [2 * xi, 20, 20], [0, yTop - 10, D / 2 - 28], { material: "metal" });
+    // a steel bar with a flange at each end, screwed to the inside of the sides
+    rail = k.part("rail", "Front rail", [2 * xi, 40, 40], [0, yTop - 20, D / 2 - 38], {
+      material: "metal",
+      pieces: [
+        { shape: "box", size: [2 * xi - 4, 20, 20], pos: [0, 10, 10] },
+        { shape: "box", size: [2, 40, 40], pos: [-xi + 1, 0, 0] },
+        { shape: "box", size: [2, 40, 40], pos: [xi - 1, 0, 0] },
+      ],
+    });
   } else {
     // an open shelf at the top: a fixed shelf with a cable hole, an upper back, and a loose top on four connectors
     const yTray = H - 20;
@@ -451,7 +459,7 @@ function chest(b: PlanBuilder, s: ProductSpec, kind: "c3" | "c5") {
     k.step({ title: "Screw a wall bracket onto each side", detail: "Lay the sides on a rug, inside up. The bracket goes at the top of the back edge, two screws each.", add: ["L", "R"], fix: bracketFixes([L, R], yWall, zWall), tools: ["screwdriver"], pose: "-z", warnings: ["floor"] });
     k.step({ title: "Screw the runners onto the sides", detail: "The one marked CR on the right side, CL on the left. Three screws each, the wheel at the front.", fix: [...runners(L, 1, runY, D / 2, runLen), ...runners(R, -1, runY, D / 2, runLen)], tools: ["screwdriver"] });
     k.step({ title: "Click the sides onto the top", detail: "Lay the top on its front edge. Push the pins in a side into the slots in the top, then press the side down until it clicks.", add: ["top"], tools: [], from: { top: [0, 300, 0] } });
-    k.step({ title: "Screw in the front rail", detail: "The metal rail goes across the front, just under the top. Two screws at each end.", add: ["rail"], fix: [screws(rail!, L, [0.5], RAIL_SCREW, 0.3), screws(rail!, L, [0.5], RAIL_SCREW, 0.7), screws(rail!, R, [0.5], RAIL_SCREW, 0.3), screws(rail!, R, [0.5], RAIL_SCREW, 0.7)], tools: ["screwdriver"] });
+    k.step({ title: "Screw in the front rail", detail: "The metal rail goes across the front, just under the top. Two screws at each end.", add: ["rail"], fix: [L, R].map((p) => at("screw", rail!, [-12, 12].map((dz): Vec3 => [Math.sign(p.pos[0]) * (xi - 2), yTop - 28, D / 2 - 38 + dz]), [Math.sign(p.pos[0]), 0, 0], RAIL_SCREW, p)), tools: ["screwdriver"] });
     k.step({ title: "Tap the dowels into the back panels", detail: "Two in the long edge of each panel: they go into the top, and into the panel before.", fix: [dowels(backs[0], top, [0.25, 0.75]), dowels(backs[1], backs[0], [0.25, 0.75])], tools: ["hammer"] });
     k.step({ title: "Slide in the first back panel", detail: "Dowels first, down the grooves in the sides from the open end until it meets the top.", add: ["b0"], from: { b0: [0, -620, 0] } });
     k.step({ title: "Slide in the second back panel", detail: "Down the same grooves until its dowels go into the first panel.", add: ["b1"], from: { b1: [0, -420, 0] } });
@@ -466,7 +474,7 @@ function chest(b: PlanBuilder, s: ProductSpec, kind: "c3" | "c5") {
     k.step({ title: "Click the left side on", detail: "Lower it onto the shelf's pins and press down until it clicks." });
     k.step({ title: "Tap the dowels into a back panel", detail: "Two long dowels in one long edge: they join the two lower back panels.", fix: [dowels(backs[1], backs[0], [0.25, 0.75], { len: 60, dia: 8 })], tools: ["hammer"] });
     k.step({ title: "Slide in the lower back panels", detail: "Down the grooves from the open end, the plain one first, until they meet the shelf.", add: ["b0", "b1"], from: { b0: [0, -900, 0], b1: [0, -600, 0] } });
-    k.step({ title: "Click on the bottom and screw it tight", detail: "Prop the open end up on a book. Press the bottom onto the pins and dowels until it clicks, then four connector screws into the sides.", add: ["bot"], fix: [screws(bottom, L, [0.25, 0.75], CONNECTOR), screws(bottom, R, [0.25, 0.75], CONNECTOR)], tools: ["allen"], from: { bot: [0, -300, 0] } });
+    k.step({ title: "Click on the bottom and screw it tight", detail: "Prop the open end up on a book. Press the bottom onto the pins and dowels until it clicks, then four connector screws into the sides.", add: ["bot"], fix: [screws(bottom, L, [0.1, 0.9], CONNECTOR), screws(bottom, R, [0.1, 0.9], CONNECTOR)], tools: ["allen"], from: { bot: [0, -300, 0] } });
     k.step({ title: "Tap the dowels into the upper back panel", detail: "Two long dowels in its bottom edge.", fix: [dowels(upper!, shelf!, [0.25, 0.75], { len: 60, dia: 8 })], tools: ["hammer"] });
     k.step({ title: "Slide in the upper back panel", detail: "From the top end, down the grooves until it meets the shelf and the wire clips catch it.", add: ["ub"], from: { ub: [0, 400, 0] } });
     k.step({ title: "Screw the back panels tight", detail: "Two connector screws through the shelf into the upper back, two through the bottom into the lower back.", fix: [screws(shelf!, upper!, [0.25, 0.75], CONNECTOR), screws(bottom, backs[1], [0.25, 0.75], CONNECTOR)], tools: ["allen"] });
@@ -668,7 +676,7 @@ function cabinet(b: PlanBuilder, s: ProductSpec) {
   k.step({ title: "Put in the fixed shelves and lock them", detail: "Four cam locks in each shelf first. Slide each shelf in onto its bolts, then turn the eight cam locks.", add: ["shL", "shR"], fix: [cams(L, shL, [0.15, 0.85], 1), cams(div, shL, [0.15, 0.85], 1), cams(div, shR, [0.15, 0.85], 1), cams(R, shR, [0.15, 0.85], 1)], tools: ["screwdriver"] });
   k.step({ title: "Slide in the back panels", detail: "Blue side in, one each side of the divider, down the grooves from the open end. The one with the cable hole on the right.", add: backs.map((p) => p.id), from: Object.fromEntries(backs.map((p) => [p.id, [0, -800, 0] as Vec3])) });
   k.step({ title: "Tap the dowels into the sides", detail: "Two in the bottom edge of each side.", fix: [dowels(L, bottom, [0.25, 0.75]), dowels(R, bottom, [0.25, 0.75])], tools: ["hammer"] });
-  k.step({ title: "Put the bottom on and screw it tight", detail: "Onto the dowels and pins, then six connector screws up into the sides and the divider.", add: ["bot"], fix: [screws(bottom, L, [0.25, 0.75], CONNECTOR), screws(bottom, div, [0.25, 0.75], CONNECTOR), screws(bottom, R, [0.25, 0.75], CONNECTOR)], tools: ["allen"], from: { bot: [0, -300, 0] } });
+  k.step({ title: "Put the bottom on and screw it tight", detail: "Onto the dowels and pins, then six connector screws up into the sides and the divider.", add: ["bot"], fix: [screws(bottom, L, [0.1, 0.9], CONNECTOR), screws(bottom, div, [0.1, 0.9], CONNECTOR), screws(bottom, R, [0.1, 0.9], CONNECTOR)], tools: ["allen"], from: { bot: [0, -300, 0] } });
   k.step({ title: "Clip the backs to the frame", detail: "Twenty back clips through the holes round the back panels, each pair pressed together until it holds.", fix: backs.map((p) => at("clip", p, [...spread(p.pos[0] - p.size[0] / 2 + 60, p.pos[0] + p.size[0] / 2 - 60, 3).flatMap((x) => [[x, yTop - 20, zBack - BT / 2], [x, yb0 + 20, zBack - BT / 2]] as Vec3[]), ...[ySh - 100, ySh + 200].flatMap((y) => [[p.pos[0] - p.size[0] / 2 + 20, y, zBack - BT / 2], [p.pos[0] + p.size[0] / 2 - 20, y, zBack - BT / 2]] as Vec3[])], [0, 0, 1], { len: 12, dia: 14, name: "Back clip" })) });
   legSteps(k, legs, bottom, { pose: "-y" });
   k.step({ title: "Stand it up", detail: "With a helper, onto its feet.", pose: "+y", people: 2 });
@@ -720,7 +728,7 @@ function tvBench(b: PlanBuilder, s: ProductSpec) {
   k.step({ title: "Click a divider onto the top", detail: "The top lies on its front edge. Check which way up the divider goes, then push it on until it clicks.", add: ["top"], from: { top: [0, 300, 0] } });
   k.step({ title: "Click the other divider on", detail: "Runners facing the first one." });
   k.step({ title: "Click the bottom on", detail: "Onto the other ends of the dividers, until both click.", add: ["bot"], from: { bot: [0, -300, 0] } });
-  k.step({ title: "Tap the dowels into the back rails", detail: "Two in each rail, where it meets the dividers.", fix: rails.map((r) => at("dowel", r, divs.map((d): Vec3 => [d.pos[0], r.pos[1], zr]), [0, 0, -1], { len: 30, dia: 8 })), tools: ["hammer"] });
+  k.step({ title: "Tap the dowels into the back rails", detail: "Two in each rail, where it meets the dividers.", fix: rails.map((r) => at("dowel", r, divs.map((d): Vec3 => [d.pos[0], r.pos[1], zr]), [0, 0, -1], { len: 30, dia: 8 })), tools: ["hammer"], wait: ["rt", "rb"], from: { rt: [0, 0, -300], rb: [0, 0, -300] } });
   k.step({ title: "Lay the back rails on", detail: "Across the back edges of the dividers, one at the top and one at the bottom, onto the dowels.", add: ["rt", "rb"], from: { rt: [0, 0, -300], rb: [0, 0, -300] } });
   k.step({ title: "Screw the rails to the dividers", detail: "Eight connector screws with the Allen key, two at each crossing.", fix: rails.flatMap((r) => divs.map((d) => at("screw", r, [-20, 20].map((dy): Vec3 => [d.pos[0], r.pos[1] + dy, -D / 2]), [0, 0, 1], { len: 45, dia: 6, name: "Connector screw" }, d))), tools: ["allen"] });
   k.step({ title: "Tap the dowels into the ends", detail: "Two in each end of the top, the bottom and both rails.", fix: panels.flatMap((p) => [dowels(p, L, [0.5]), dowels(p, R, [0.5])]), tools: ["hammer"] });
@@ -785,16 +793,16 @@ function wardrobe(b: PlanBuilder, s: ProductSpec) {
   k.step({ title: "Tap the dowels into the sides and the divider", detail: "Lay them on a rug. Two in each end of all three.", add: ["L", "div", "R"], fix: uprights.flatMap((p) => [dowels(p, bottom, [0.25, 0.75]), dowels(p, top, [0.25, 0.75])]), tools: ["hammer"], pose: "+z", warnings: ["floor"] });
   k.step({ title: "Screw the runners onto the right side", detail: "Four marked CR, three screws each, the wheel at the front.", fix: runners(R, -1, runY, zf, 500), tools: ["screwdriver"] });
   k.step({ title: "Screw the runners onto the divider", detail: "Four marked CL on its right face, the same way.", fix: runners(div, 1, runY, zf, 500), tools: ["screwdriver"] });
-  k.step({ title: "Lay the bottom panel on the rug", detail: "Face down, its leg holes up.", add: ["bot"], from: { bot: [600, 0, 0] } });
-  legSteps(k, legs, bottom, { pose: "+z", detail: "Lay the frame on the bottom panel. Four long Allen bolts through the leg ends." });
-  k.step({ title: "Screw the bottom to the sides and divider", detail: "Stand the bottom on its edge against them, onto the dowels, then six connector screws with the Allen key.", fix: uprights.map((p) => screws(bottom, p, [0.25, 0.75], CONNECTOR)), tools: ["allen"], people: 2 });
+  k.step({ title: "Push the bottom panel onto the dowels", detail: "Its leg holes facing out. Press it onto the dowels at the bottom ends of the sides and the divider.", add: ["bot"], from: { bot: [0, -500, 0] } });
+  legSteps(k, legs, bottom, { pose: "+z", detail: "Lay the frame on the bottom panel, lined up with its holes. Four long Allen bolts through the leg ends." });
+  k.step({ title: "Screw the bottom to the sides and divider", detail: "Six connector screws through the bottom into the sides and the divider, with the Allen key.", fix: uprights.map((p) => screws(bottom, p, [0.1, 0.9], CONNECTOR)), tools: ["allen"], people: 2 });
   k.step({ title: "Screw in the cam bolts for the rails", detail: "Two in the divider and two in the right side, just above the drawers.", fix: [div, R].flatMap((p) => rails.map((r) => bolts(p, r, [0.5]))), tools: ["screwdriver"] });
   k.step({ title: "Fit the two rails", detail: "Cam locks in their ends, then push them onto the bolts between the divider and the right side, front and back.", add: ["rf", "rb"] });
   k.step({ title: "Lock the cam locks", detail: "Four, one at each end of the rails.", fix: rails.flatMap((r) => [cams(div, r, [0.5], 1), cams(R, r, [0.5], 1)]), tools: ["screwdriver"] });
   k.step({ title: "Slide in the right back panel", detail: "Blue side in, the cable hole at the top, along the grooves from the open end.", add: ["bR"], from: { bR: [0, 1400, 0] } });
   k.step({ title: "Slide in the left back panel", detail: "The same way, on the other side of the divider.", add: ["bL"], from: { bL: [0, 1400, 0] } });
   k.step({ title: "Push the wire clips into the sides", detail: "Two at the open end, so the back panels can't slide out.", fix: [L, R].map((p) => at("clip", p, [[p.pos[0] - Math.sign(p.pos[0]) * (T / 2), yTop - 20, zBack + 12]], [Math.sign(p.pos[0]), 0, 0], { len: 30, dia: 8, name: "Spring wire" })) });
-  k.step({ title: "Put the top on and screw it tight", detail: "Onto the dowels and pins, then six connector screws into the sides and the divider.", add: ["top"], fix: uprights.map((p) => screws(top, p, [0.25, 0.75], CONNECTOR)), tools: ["allen"], from: { top: [0, 300, 0] } });
+  k.step({ title: "Put the top on and screw it tight", detail: "Onto the dowels and pins, then six connector screws into the sides and the divider.", add: ["top"], fix: uprights.map((p) => screws(top, p, [0.1, 0.9], CONNECTOR)), tools: ["allen"], from: { top: [0, 300, 0] } });
   k.step({ title: "Stand it up", detail: "Two people: lift it by the top while the other steadies the legs. Don't drag it.", pose: "+y", people: 2, warnings: ["two"] });
   k.step({ title: "Clip the backs to the frame", detail: "Twenty back clips from behind, each pair pressed together until it holds.", fix: backs.map((p) => at("clip", p, [...spread(p.pos[0] - p.size[0] / 2 + 60, p.pos[0] + p.size[0] / 2 - 60, 2).flatMap((x) => [[x, yTop - 20, zBack - BT / 2], [x, yb0 + 20, zBack - BT / 2]] as Vec3[]), ...spread(yb0 + 300, yTop - 300, 3).flatMap((y) => [[p.pos[0] - p.size[0] / 2 + 20, y, zBack - BT / 2], [p.pos[0] + p.size[0] / 2 - 20, y, zBack - BT / 2]] as Vec3[])], [0, 0, 1], { len: 12, dia: 14, name: "Back clip" })) });
   k.step({ title: "Push in the wall fittings", detail: "One into the back edge of each side, near the top.", fix: wallFittings([L, R], yTop - 60) });
@@ -816,7 +824,7 @@ function wardrobe(b: PlanBuilder, s: ProductSpec) {
   k2.step({ title: "Hang the clothes rail", detail: "Screw a holder to the left side and one to the divider, one screw each, then drop the rail into them.", add: ["rod"], fix: [...[L, div].map((p) => at("hook", p, [[p.pos[0] + (p === L ? T / 2 : -T / 2), rod.pos[1] + 10, rod.pos[2]]], [p === L ? -1 : 1, 0, 0], { len: 40, dia: 22, name: "Rail holder" })), ...[L, div].map((p) => at("screw", p, [[p.pos[0] + (p === L ? T / 2 + 2 : -T / 2 - 2), rod.pos[1] + 24, rod.pos[2]]], [p === L ? -1 : 1, 0, 0], RUN_SCREW))], tools: ["screwdriver"] });
   k2.step({ title: "Screw in the cam bolts for the shelves", detail: "Eighteen, three at each end of each shelf, at the heights you want them.", fix: sh.flatMap((p) => walls(p).map((w) => bolts(w, p, [0.15, 0.5, 0.85]))), tools: ["screwdriver"] });
   k2.step({ title: "Push the cam locks into the shelves", detail: "Six in each shelf, the arrow pointing at the edge.", fix: sh.flatMap((p) => walls(p).map((w) => cams(w, p, [0.15, 0.5, 0.85], 1))), tools: ["screwdriver"] });
-  k2.step({ title: "Put the shelves in and lock them", detail: "Two over the drawers, one low on the left. Turn each cam lock clockwise.", add: sh.map((p) => p.id), from: Object.fromEntries(sh.map((p) => [p.id, [0, 0, 500] as Vec3])) });
+  k2.step({ title: "Put the shelves in and lock them", detail: "Two over the drawers, one low on the left. Turn each cam lock clockwise.", add: sh.map((p) => p.id) });
   k2.step({ title: "Fit the cable grommet", detail: "In the hole in the right back panel.", fix: [at("cap", backs[1], [[xi / 2, yTop - 120, zb]], [0, 0, -1], { len: 12, dia: 50, name: "Cable grommet" })] });
   buildCustom(b, { ...s, custom: k2.recipe });
   drawers(b, ds, { knobs: false });
@@ -888,10 +896,10 @@ function bed(b: PlanBuilder, s: ProductSpec, king: boolean) {
   k.step({ title: "Screw a foot into each headboard post", detail: "Lay the posts on a rug. A foot cup on the end of each, then turn the foot in.", add: ["pL", "pR"], fix: FEET(posts.map((p) => ({ p, at: [p.pos[0], 0, zp] }))), from: { pL: [0, 0, -400], pR: [0, 0, -400] } });
   k.step({ title: "Hang the head rail on the posts", detail: "Stand the posts up and drop the head rail onto the hooks, holes lined up.", add: ["head"], people: 2, from: { head: [0, 300, 0] } });
   k.step({ title: "Bolt the head rail to the posts", detail: "Two bolts through each post, a cap nut on the other side. Hold the nut with one Allen key, turn the bolt with the other.", fix: [...posts.map((p) => at("bolt", p, [0.3, 0.7].map((f): Vec3 => [p.pos[0], yR + rh * f, zp - 16]), [0, 0, 1], BOLT, head)), ...posts.map((p) => at("nut", head, [0.3, 0.7].map((f): Vec3 => [p.pos[0], yR + rh * f, zHi]), [0, 0, -1], CAP_NUT))], tools: ["allen"] });
-  k.step({ title: "Fit the connectors into the head rail", detail: "A barrel nut in each end hole, then screw a connector bolt into each one. Four in all.", fix: sides.flatMap((r) => [at("nut", head, joint(r, head, 0).map((v): Vec3 => [r.pos[0], v[1], zHi - 10]), [0, 0, 1], BARREL), at("camScrew", head, joint(r, head, 0).map((v): Vec3 => [r.pos[0], v[1], zHi]), [0, 0, 1], CONN, r)]), tools: ["allen"] });
+  k.step({ title: "Fit the connectors into the head rail", detail: "A barrel nut in each end hole, then screw a connector bolt into each one. Four in all.", fix: sides.flatMap((r) => [at("camScrew", head, joint(r, head, 0).map((v): Vec3 => [r.pos[0], v[1], zHi]), [0, 0, -1], CONN, r), at("nut", head, joint(r, head, 0).map((v): Vec3 => [r.pos[0], v[1], zHi - 10]), [0, 0, 1], BARREL)]), tools: ["allen"] });
   const railFix = (r: Part): CustomFix[] => [
-    dowels(r, head, [0.2, 0.5, 0.8]),
-    dowels(r, foot, [0.2, 0.5, 0.8]),
+    dowels(r, head, [0.1, 0.5, 0.9]),
+    dowels(r, foot, [0.1, 0.5, 0.9]),
     ...[head, foot].map((e) => at("cam", r, joint(r, e, 0).map((v): Vec3 => [r.pos[0] - Math.sign(r.pos[0]) * (rt / 2), v[1], e === head ? zHi + 40 : zFi - 40]), [Math.sign(r.pos[0]), 0, 0], BIG_CAM)),
   ];
   k.step({ title: "Join the first side rail to the head rail", detail: "Three dowels in each end of the rail and a cam lock near each bolt hole first. One holds the headboard, the other pushes the rail onto the bolts. Turn the two cam locks with the big Allen key.", add: ["sR"], fix: railFix(sides[1]), people: 2, tools: ["hammer", "allen"], from: { sR: [0, 0, 500] } });
@@ -912,14 +920,14 @@ function bed(b: PlanBuilder, s: ProductSpec, king: boolean) {
   k.step({ title: "Screw on the slat rails", detail: "One along the inside of each side rail, eight screws each.", add: ["rL", "rR"], fix: rails.map((r) => at("screw", r, spread(zHi + 80, zFi - 80, 8).map((z): Vec3 => [r.pos[0] + Math.sign(r.pos[0]) * 15, ySr - 20, z]), [Math.sign(r.pos[0]), 0, 0], WOOD)), tools: ["screwdriver"] });
   if (king) {
     k.step({ title: "Screw the beam brackets to the head and foot rails", detail: "One in the middle of each, two screws each.", fix: [head, foot].flatMap((e) => [at("bracket", e, [[0, ySr - 20, e === head ? zHi : zFi]], [0, 0, e === head ? -1 : 1], { len: 60, dia: 50, name: "Beam bracket" }), at("screw", e, [-30, 30].map((x): Vec3 => [x, ySr - 50, e === head ? zHi : zFi]), [0, 0, e === head ? -1 : 1], WOOD)]), tools: ["screwdriver"] });
-    k.step({ title: "Lay in the centre beam and stand the middle leg under it", detail: "Hook each half into its bracket, slide them together over the middle leg's hanger, and bolt the hanger.", add: ["cb0", "cb1", "ml"], fix: [at("bolt", mid!, [[-25, ySr - 20, zMid], [25, ySr - 20, zMid]], [1, 0, 0], { len: 30, dia: 6 })], tools: ["allen"] });
+    k.step({ title: "Lay in the centre beam and stand the middle leg under it", detail: "Hook each half into its bracket, slide them together over the middle leg's hanger, and bolt the hanger.", add: ["cb0", "cb1", "ml"], fix: [at("bolt", mid!, [[-30, ySr - 20, zMid - 40], [-30, ySr - 20, zMid + 40]], [1, 0, 0], { len: 30, dia: 6 })], tools: ["allen"] });
     k.step({ title: "Screw the beam halves in place", detail: "Two screws at each end.", fix: beams.map((p, i) => at("screw", p, [-1, 1].map((g): Vec3 => [g * 12, ySr, i ? zFi - 30 : zHi + 30]), [0, -1, 0], { len: 12, dia: 4 })), tools: ["screwdriver"] });
   } else {
     k.step({ title: "Lay in the centre beam", detail: "Pull it out to length and hook its ends over the head and foot rails, then one screw at each end.", add: ["cb0"], fix: [at("screw", beams[0], [[0, ySr, zHi + 20], [0, ySr, zFi - 20]], [0, -1, 0], { len: 12, dia: 4 })], tools: ["screwdriver"] });
     k.step({ title: "Screw the middle of the beam", detail: "One screw through the joint so it can't slide.", fix: [at("screw", beams[0], [[0, ySr, zMid]], [0, -1, 0], { len: 12, dia: 4 })], tools: ["screwdriver"] });
   }
   const holders = rails.flatMap((r) => (king ? [zHi + 40, zHi + Lin / 3, zFi - Lin / 3, zFi - 40] : [zHi + 40, zFi - 40]).map((z): Vec3 => [r.pos[0], ySr, z]));
-  k.step({ title: "Screw on the slat holders", detail: "They clip over the slat rails and stop the slats sliding. One small screw each.", fix: [at("clip", rails[0], holders, [0, -1, 0], { len: 20, dia: 16, name: "Slat holder" }), at("screw", rails[0], holders.map((v): Vec3 => [v[0], v[1] + 2, v[2]]), [0, -1, 0], { len: 8, dia: 4 })], tools: ["screwdriver"] });
+  k.step({ title: "Screw on the slat holders", detail: "They clip over the slat rails and stop the slats sliding. One small screw each.", fix: [at("clip", rails[0], holders, [0, -1, 0], { len: 20, dia: 16, name: "Slat holder" }), at("screw", rails[0], holders.map((v): Vec3 => [v[0], v[1] + 2, v[2] + (v[2] < zMid ? 24 : -24)]), [0, -1, 0], { len: 8, dia: 4 })], tools: ["screwdriver"] });
   k.step({ title: "Lay the strips on the rails", detail: `Peel off the backing and press them along the slat rails${king ? " and the centre beam" : ""}, cutting the tape between them with scissors.`, add: strips.map((p) => p.id) });
   k.step({ title: "Roll out the slatted base", detail: "Sold separately. Roll it out from the head end and hook its ends under the holders.", add: ["slats"], from: { slats: [0, 300, 0] } });
   buildCustom(b, { ...s, custom: k.recipe });

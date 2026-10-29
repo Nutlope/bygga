@@ -149,7 +149,7 @@ const GAP = 3; // the top halves ride on slide brackets just above the frame
 
 function extendableRecipe(s: ProductSpec): CustomParams {
   const f = frameOf(s, GAP);
-  const { W, D, H, yTop, zIn, xIn, Lx } = f;
+  const { W, D, H, yTop, zr, zIn, xIn, Lx } = f;
   const small = W < 1500; // the 120/170 table, with slide strips in its short rails too and four slide brackets
   const zInner = 2 * zIn;
   const yLeaf = H - T - GAP - LT / 2;
@@ -172,7 +172,9 @@ function extendableRecipe(s: ProductSpec): CustomParams {
     {
       title: "Lay the long rails on a rug",
       detail: "Inner faces up, as in the drawing. Keep the short rails beside them.",
-      add: ["R0", "R1"],
+      // they take their fittings lying apart and tip onto the cross bars later
+      wait: ["R0", "R1"],
+      from: { R0: [0, 0, -300], R1: [0, 0, 300] },
       warnings: ["floor"],
     },
     {
@@ -188,12 +190,6 @@ function extendableRecipe(s: ProductSpec): CustomParams {
       tools: ["screwdriver"],
     },
     {
-      title: "Screw the cam bolts into the long rails",
-      detail: "Two in each rail, where the cross bars will go. Screw them in until the collar stops at the surface.",
-      fix: [-1, 1].map((sz) => fx("camScrew", [-1, 1].map((sx) => [sx * XC, yBar, sz * zIn] as Vec3), [0, 0, sz], { on: sz < 0 ? "R0" : "R1" })),
-      tools: ["screwdriver"],
-    },
-    {
       title: "Push the slide strips into the long rails",
       detail: "Two in each rail, into the grooves along the top edge, all the way in.",
       fix: [-1, 1].map((sz) => fx("clip", [-1, 1].map((k) => [k * (Lx / 2 - 80), yTop - 10, sz * zIn] as Vec3), [0, 0, sz], { name: "Slide strip", len: 60, dia: 10, on: sz < 0 ? "R0" : "R1" })),
@@ -203,22 +199,35 @@ function extendableRecipe(s: ProductSpec): CustomParams {
           {
             title: "Push the slide strips into the short rails",
             detail: "Lay the short rails beside the frame, inner faces up. Two strips in each, into the grooves.",
-            add: ["E0", "E1"],
+            wait: ["E0", "E1"],
+            from: { E0: [-300, 0, 0], E1: [300, 0, 0] },
             fix: [-1, 1].map((sx) => fx("clip", [-1, 1].map((k) => [sx * xIn, yTop - 10, k * (zIn / 2)] as Vec3), [sx, 0, 0], { name: "Slide strip", len: 60, dia: 10, on: sx < 0 ? "E0" : "E1" })),
           } as CustomStep,
         ]
       : []),
     {
-      title: "Fit the cross bars between the long rails",
-      detail: "Tap a dowel into each end of both bars, then push them onto the cam bolts and dowels, with the big holes facing the ends of the table.",
-      add: ["C0", "C1"],
-      fix: [-1, 1].flatMap((sx, i) => [-1, 1].map((sz) => fx("dowel", [[sx * XC, yBar + 23, sz * zIn]], [0, 0, -sz], { on: `C${i}` }))),
+      title: "Screw the cam bolts into the cross bars",
+      detail: "One in each end of both bars, until the collar stops at the wood. Tap a dowel in beside each.",
+      fix: [-1, 1].flatMap((sx, i) =>
+        [-1, 1].flatMap((sz) => [
+          fx("camScrew", [[sx * XC, yBar - 10, sz * zIn]], [0, 0, -sz], { on: `C${i}` }),
+          fx("dowel", [[sx * XC, yBar + 18, sz * zIn]], [0, 0, -sz], { on: `C${i}` }),
+        ]),
+      ),
+      wait: ["C0", "C1"],
       from: { C0: [0, 260, 0], C1: [0, 260, 0] },
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Fit the cross bars between the long rails",
+      detail: "Lay the bars between the rails, big holes towards the ends of the table, then tip each rail onto their cam bolts and dowels.",
+      add: ["C0", "C1", "R0", "R1"],
+      from: { C0: [0, 260, 0], C1: [0, 260, 0], R0: [0, 0, -300], R1: [0, 0, 300] },
     },
     {
       title: "Lock the cam locks",
-      detail: "One in each end of the cross bars, arrow towards the bolt. Turn clockwise until it pulls tight.",
-      fix: [-1, 1].map((sx, i) => fx("cam", [-1, 1].map((sz) => [sx * (XC + AT / 2), yBar, sz * (zIn - 24)] as Vec3), [-sx, 0, 0], { on: `C${i}` })),
+      detail: "Two in each long rail, over the cross bars, arrow towards the bolt. Turn clockwise until it pulls tight.",
+      fix: [-1, 1].map((sz) => fx("cam", [-1, 1].map((sx) => [sx * XC, yTop, sz * zr] as Vec3), [0, -1, 0], { on: sz < 0 ? "R0" : "R1" })),
       tools: ["screwdriver"],
     },
     {
@@ -231,12 +240,12 @@ function extendableRecipe(s: ProductSpec): CustomParams {
           return fx("dowel", [-1, 1].map((k) => [x, yBar + k * 14, 0] as Vec3), [e < 0 ? sx : -sx, 0, 0], { on: `M${i}` });
         }),
       ),
-      from: { M0: [0, 240, 0], M1: [0, 240, 0] },
+      from: { M0: [-240, 0, 0], M1: [240, 0, 0] },
     },
     {
       title: "Fit the short rails and screw them to the brackets",
       detail: "Swing each short rail onto the dowels of its centre bar and into the brackets, then two screws at each end.",
-      add: small ? [] : ["E0", "E1"],
+      add: ["E0", "E1"],
       fix: f.endScrews(),
       tools: ["screwdriver"],
       check: "square",
@@ -305,13 +314,21 @@ function benchRecipe(s: ProductSpec): CustomParams {
     {
       title: "Screw a cam bolt into each long rail",
       detail: "Lay the long rails on a rug, inner faces up. One bolt in the middle hole of each.",
-      add: ["R0", "R1"],
+      // they lie apart for their fittings and are pushed onto the middle bar after
+      wait: ["R0", "R1"],
+      from: { R0: [0, 0, -300], R1: [0, 0, 300] },
       fix: [-1, 1].map((sz) => fx("camScrew", [[0, yA, sz * zIn]], [0, 0, sz], { on: sz < 0 ? "R0" : "R1" })),
       tools: ["screwdriver"],
       warnings: ["floor"],
     },
     { title: "Screw a corner bracket to each end", detail: "Two screws hold each bracket to the rail.", fix: [f.brackets(), ...f.longScrews()], tools: ["screwdriver"] },
-    { title: "Fit the middle bar between the rails", detail: "Push it onto the two cam bolts, the holes for the cam locks facing up.", add: ["C"], from: { C: [0, 240, 0] } },
+    { title: "Lay the middle bar between the rails", detail: "On the rug between them, the holes for the cam locks facing up.", add: ["C"], from: { C: [0, 240, 0] } },
+    {
+      title: "Push the rails onto the middle bar",
+      detail: "Stand the rails up either side of the bar and push them onto its ends over the cam bolts.",
+      add: ["R0", "R1"],
+      from: { R0: [0, 0, -300], R1: [0, 0, 300] },
+    },
     { title: "Screw on the short rails", detail: "Into the brackets at each end, two screws in each.", add: ["E0", "E1"], fix: f.endScrews(), tools: ["screwdriver"] },
     {
       title: "Lock the cam locks",

@@ -54,8 +54,8 @@ function storage(s: ProductSpec): CustomParams {
     P("DF", "Drawer front", -W / 2 + 6, W / 2 - 6, yB + 4, 410, zf, D / 2),
     P("DL", "Drawer side", -xd, -xd + 12, dy0, dy1 - 20, zb, zf),
     P("DR", "Drawer side", xd - 12, xd, dy0, dy1 - 20, zb, zf),
-    P("DT", "Drawer bottom", -xd + 12, xd - 12, dy0, dy0 + 4, zb, zf, "fiber"),
-    P("DB", "Drawer back", -xd + 12, xd - 12, dy0 + 4, dy1 - 20, zb, zb + 12),
+    P("DT", "Drawer bottom", -xd + 12, xd - 12, dy0, dy0 + 16, zb, zf),
+    P("DB", "Drawer back", -xd + 12, xd - 12, dy0 + 16, dy1 - 20, zb, zb + 12),
     { id: "TRAY", name: "Tray", size: [2 * xd - 40, 60, 160], pos: [0, dy1 - 60, zb + 110], material: "soft", pieces: [{ shape: "box", size: [2 * xd - 40, 4, 160], pos: [0, -28, 0] }, { shape: "box", size: [2 * xd - 40, 60, 4], pos: [0, 0, -78] }, { shape: "box", size: [2 * xd - 40, 60, 4], pos: [0, 0, 78] }] },
   );
   const end = (y: number) => posts.map(([, sx, sz]): Vec3 => [sx * px, y, sz * pz]);
@@ -70,10 +70,11 @@ function storage(s: ProductSpec): CustomParams {
     const [, x, z] = posts.find(([p]) => p === id)!;
     return at("clip", [[x * px, yT, z * pz]], [0, 1, 0], id, "TOP", { len: 14, dia: 20, name: "Post clip" });
   };
-  const meshScrews = (y: number): CustomFix[] => [
-    at("screw", [[-W / 2, y, -120], [-W / 2, y, 120]], [1, 0, 0], "ML", undefined, SCREW),
-    at("screw", [[-100, y, -D / 2], [100, y, -D / 2]], [0, 0, 1], "MB", undefined, SCREW),
-    at("screw", [[W / 2, y, -120], [W / 2, y, 120]], [-1, 0, 0], "MR", undefined, SCREW),
+  // through the mesh panel's bent edge into the top (going up) or the bottom board (going down)
+  const meshScrews = (y: number, up: boolean): CustomFix[] => [
+    at("screw", [[-W / 2 + 2, y, -120], [-W / 2 + 2, y, 120]], [0, up ? 1 : -1, 0], "ML", undefined, SCREW),
+    at("screw", [[-100, y, -D / 2 + 2], [100, y, -D / 2 + 2]], [0, up ? 1 : -1, 0], "MB", undefined, SCREW),
+    at("screw", [[W / 2 - 2, y, -120], [W / 2 - 2, y, 120]], [0, up ? 1 : -1, 0], "MR", undefined, SCREW),
   ];
   const castorAt = (sz: number) => [-1, 1].map((x): Vec3 => [x * (px - 10), C, sz * (pz - 10)]);
   const runnerX = xd + 6;
@@ -99,7 +100,7 @@ function storage(s: ProductSpec): CustomParams {
     { title: "Slide the last mesh panel in", detail: "Into the third post's free groove, then swing it straight.", add: ["MR"], from: { MR: [0, 0, 300] } },
     { title: "Slide the last post onto it", add: ["PRF"], from: { PRF: [0, 0, 300] } },
     { title: "Click the last post into the top", fix: [click("PRF")] },
-    { title: "Screw the mesh panels to the top", detail: "Six screws, two through the top edge of each panel.", fix: meshScrews(yT - 15), tools: ["screwdriver"] },
+    { title: "Screw the mesh panels to the top", detail: "Six screws, two through the top edge of each panel.", fix: meshScrews(yT - 2, true), tools: ["screwdriver"] },
     {
       title: "Screw the drawer runners onto the bottom board",
       detail: "The left and right runners are marked. Two screws in each, along the side edges.",
@@ -114,7 +115,11 @@ function storage(s: ProductSpec): CustomParams {
       title: "Bolt the bottom board onto the posts",
       detail: "Lower it onto the upside-down frame, cut-out edge at the front. A plate and a bolt into each corner.",
       add: ["BOT"],
-      fix: [at("plate", end(C), [0, 1, 0], "BOT", undefined, { len: 50, dia: 25, name: "Corner plate" }), at("bolt", end(C), [0, 1, 0], "BOT", undefined, { len: 30, dia: 6 })],
+      fix: [
+        at("plate", posts.map(([, sx, sz]): Vec3 => [sx * (px - 25), C, sz * (pz - 25)]), [0, 1, 0], "BOT", undefined, { len: 50, dia: 25, name: "Corner plate" }),
+        // up through the plate and the board into the corner connector in the post
+        at("bolt", end(C - 5), [0, 1, 0], "BOT", undefined, { len: 30, dia: 6 }),
+      ],
       tools: ["allen"],
       from: { BOT: [0, -300, 0] },
     },
@@ -122,7 +127,7 @@ function storage(s: ProductSpec): CustomParams {
     { title: "Screw in the two other castors", detail: "At the back, the same way.", fix: [at("castor", castorAt(-1), [0, 1, 0], "BOT", undefined, { len: C, dia: 60 })], tools: ["wrench"] },
     { title: "Tighten the four corner bolts", detail: "Go round each one again with the Allen key. The key clips into the cable strip for keeping.", tools: ["allen"] },
     { title: "Click the cable ring into its hole", detail: "Push the two halves together through the hole in the bottom board.", fix: [at("cap", [[0, C, -D / 2 + 90]], [0, 1, 0], "BOT", undefined, { len: 15, dia: 60, name: "Cable ring" })] },
-    { title: "Stand it up and screw the mesh to the bottom", detail: "Six more screws, two low down through each panel.", fix: meshScrews(yB + 15), pose: "+y", tools: ["screwdriver"], people: 2, warnings: ["two"] },
+    { title: "Stand it up and screw the mesh to the bottom", detail: "Six more screws, two low down through each panel.", fix: meshScrews(yB + 2, false), pose: "+y", tools: ["screwdriver"], people: 2, warnings: ["two"] },
     { title: "Put in the lower shelf", detail: "Smooth side up, sloping edge at the front.", add: ["SH0"], from: { SH0: [0, 0, 400] } },
     { title: "Press it down onto the posts", detail: "The four clips under it click onto the posts." },
     { title: "Turn the shelf supports round", detail: "The four supports on the posts above, so they point into the unit." },
@@ -137,11 +142,11 @@ function storage(s: ProductSpec): CustomParams {
     { title: "Turn the four cam locks", detail: "Two in each side, clockwise until the front sits tight.", fix: [-1, 1].map((x) => at("cam", [[x * (xd - 12), 160, zf - 34], [x * (xd - 12), 330, zf - 34]], [-x, 0, 0], x < 0 ? "DL" : "DR", undefined, { len: 13, dia: 15 })), tools: ["screwdriver"] },
     { title: "Slide the bottom into the grooves", add: ["DT"], from: { DT: [0, 0, -400] } },
     { title: "Push the back in", detail: "Its four tabs drop into the slots in the sides.", add: ["DB"], from: { DB: [0, 250, 0] } },
-    { title: "Turn the drawer over and screw on the guide rail", detail: "Two screws, along the bottom edge of the front.", fix: [at("clip", [[0, dy0, zf - 20]], [0, 1, 0], "DT", undefined, { len: 12, dia: 40, name: "Guide rail" }), at("screw", [[-100, dy0, zf - 20], [100, dy0, zf - 20]], [0, 1, 0], "DT", undefined, CHIP)], pose: "-y", tools: ["screwdriver"] },
+    { title: "Turn the drawer over and screw on the guide rail", detail: "Two screws, along the bottom edge of the front.", fix: [at("clip", [[0, yB + 4, zf + 9]], [0, 1, 0], "DF", undefined, { len: 12, dia: 40, name: "Guide rail" }), at("screw", [[-100, yB + 4, zf + 9], [100, yB + 4, zf + 9]], [0, 1, 0], "DF", undefined, CHIP)], pose: "-y", tools: ["screwdriver"] },
     { title: "Click the small castor into its leg", fix: [at("castor", [[0, 0, zf - 60]], [0, 1, 0], "DT", undefined, { len: 50, dia: 45, name: "Small castor" })] },
     { title: "Screw the leg under the drawer", detail: "Four screws through its plate, near the front.", fix: [at("plate", [[0, dy0, zf - 60]], [0, 1, 0], "DT", undefined, { len: 80, dia: 30, name: "Castor leg" }), at("screw", [-1, 1].flatMap((x) => [-1, 1].map((z): Vec3 => [x * 30, dy0, zf - 60 + z * 15])), [0, 1, 0], "DT", undefined, SCREW)], tools: ["screwdriver"] },
-    { title: "Screw on the first runner catch", detail: "Under the drawer side, two screws.", fix: [at("clip", [[-xd + 6, dy0, zf - 50]], [0, 1, 0], "DL", undefined, { len: 60, dia: 20, name: "Runner catch" }), at("screw", [[-xd + 6, dy0, zf - 30], [-xd + 6, dy0, zf - 70]], [0, 1, 0], "DL", undefined, SCREW)], tools: ["screwdriver"] },
-    { title: "Screw on the other runner catch", detail: "Under the other side, the same way.", fix: [at("clip", [[xd - 6, dy0, zf - 50]], [0, 1, 0], "DR", undefined, { len: 60, dia: 20, name: "Runner catch" }), at("screw", [[xd - 6, dy0, zf - 30], [xd - 6, dy0, zf - 70]], [0, 1, 0], "DR", undefined, SCREW)], tools: ["screwdriver"] },
+    { title: "Screw on the first runner catch", detail: "Under the drawer side, two screws.", fix: [at("clip", [[-xd + 6, dy0, zf - 50]], [0, 1, 0], "DL", undefined, { len: 60, dia: 20, name: "Runner catch" }), at("screw", [[-xd + 6, dy0, zf - 24], [-xd + 6, dy0, zf - 76]], [0, 1, 0], "DL", undefined, SCREW)], tools: ["screwdriver"] },
+    { title: "Screw on the other runner catch", detail: "Under the other side, the same way.", fix: [at("clip", [[xd - 6, dy0, zf - 50]], [0, 1, 0], "DR", undefined, { len: 60, dia: 20, name: "Runner catch" }), at("screw", [[xd - 6, dy0, zf - 24], [xd - 6, dy0, zf - 76]], [0, 1, 0], "DR", undefined, SCREW)], tools: ["screwdriver"] },
     { title: "Turn it over and screw on the handle bar", detail: "Along the top of the front, three screws from inside.", fix: [at("handle", [[0, 395, D / 2]], [0, 0, -1], "DF", undefined, { len: 300, dia: 20, name: "Handle bar" }), at("screw", [-120, 0, 120].map((x): Vec3 => [x, 395, zf]), [0, 0, 1], "DF", undefined, CHIP)], pose: "+y", tools: ["screwdriver"] },
     { title: "Fold the tray", detail: "Bend both ends up along the creases until they stand square." },
     { title: "Clip the tray's ends", detail: "Hook the folded ends over its sides so it holds its shape." },

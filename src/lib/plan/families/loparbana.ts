@@ -98,7 +98,7 @@ function recipe(s: ProductSpec): CustomParams {
   });
   const castors = angles.map((a, i) => fx("castor", [[dirOf(a)[0] * (R - 15), castor, dirOf(a)[1] * (R - 15)]], [0, 1, 0], `A${i + 1}`, { len: castor, dia: 50 }));
   const mechBolts = [-1, 1].flatMap((sx) => [zs - 90, zs + 70].map((z): Vec3 => [sx * 75, yMech0 + 50, z]));
-  const bracket: Vec3[] = [-1, 1].flatMap((sx) => [zs - 170, zs - 120].map((z): Vec3 => [sx * 25, yMech0, z]));
+  const bracket: Vec3[] = [-1, 1].flatMap((sx) => [zs - 120, zs - 75].map((z): Vec3 => [sx * 25, yMech0, z]));
   const BIG = { name: "Allen bolt", len: 20, dia: 8 };
   const steps: CustomStep[] = [
     {
@@ -129,7 +129,8 @@ function recipe(s: ProductSpec): CustomParams {
       title: "Bolt the back frame to the mechanism",
       detail: "Slide the frame's bracket into the back of the mechanism. Four bolts, each with a lock washer under its head.",
       add: ["FRAME"],
-      fix: [fx("washer", bracket, [0, 1, 0], "FRAME", { len: 2, dia: 14 }), fx("bolt", bracket, [0, 1, 0], "FRAME", { ...BIG, mate: "MECH" })],
+      // the lock washers stack on the bolts, so the bolts are listed first
+      fix: [fx("bolt", bracket, [0, 1, 0], "FRAME", { ...BIG, mate: "MECH" }), fx("washer", bracket, [0, 1, 0], "FRAME", { len: 2, dia: 14 })],
       tools: ["allen"],
       from: { FRAME: [0, 0, -360] },
     },

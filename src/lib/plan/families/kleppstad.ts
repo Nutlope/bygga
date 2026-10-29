@@ -14,7 +14,10 @@ import { buildCustom } from "../custom";
  * take dowels and door stops, and long Allen screws pull the sides onto them. Two plinth rails slide in at the foot,
  * the hardboard back is nailed on, glides go under the sides, and it's stood up and fixed to the wall before the rail
  * and the doors go on. The 3-door wardrobe has a divider: two doors over the hanging side, one over three shelves.
- * The wardrobe with sliding doors has its own, quite different manual and keeps its old guide for now.
+ * The wardrobe with sliding doors is built lying on its back: the divider stands on the bottom, a low shelf goes
+ * each side of it, the top and the sides are pulled on with long screws, the plinth and back rail are screwed in, the
+ * back is nailed on with it lying on its front, and once it's up and fixed to the wall the rails and the two sliding
+ * doors (guides on top, wheels underneath) go in.
  */
 
 const put = (b: PlanBuilder, def: HwDef, pts: Vec3[], dir: Vec3, on?: string, gap = 0.08) => b.fits(def, pts.map((at) => ({ at, dir, on, hole: false })), gap);
@@ -48,6 +51,7 @@ function bed(b: PlanBuilder, s: ProductSpec) {
     { id: "SL", name: "Slatted bed base (sold separately)", size: [mW, 20, mL], pos: [0, 260, 0], material: "wood", extra: true },
   ];
   const yTop = railY + railH / 2;
+  const sx0 = (sx: number) => (sx < 0 ? "HP-1" : "HP1");
   const steps: CustomStep[] = [
     {
       title: "Unroll the headboard fabric",
@@ -78,30 +82,30 @@ function bed(b: PlanBuilder, s: ProductSpec) {
     {
       title: "Screw a bolt into each post for the side rails",
       detail: "Prop the headboard up on a stack of books first so you can reach under it. The rails hang on these.",
-      fix: [at("bolt", [-1, 1].map((sx) => [sx * xS, railY, zH + P / 2] as Vec3), [0, 0, -1], STUD)],
+      fix: [-1, 1].map((sx) => at("bolt", [[sx * xS, railY, zH + P / 2 + 12]], [0, 0, -1], { ...STUD, on: sx0(sx) })),
       tools: ["allen"],
       pose: "+z",
     },
-    { title: "Bolt a leg to the footboard bar", detail: "Lay the bar on a rug. A long bolt through the end of the bar into the top of the leg.", add: ["FB", "FL-1"], fix: [at("bolt", [[-xS, 270 - P, zF]], [0, 1, 0], { ...STUD, on: "FL-1" })], tools: ["allen"], pose: "+y" },
-    { title: "Bolt on the other footboard leg", detail: "The same on the other end.", add: ["FL1"], fix: [at("bolt", [[xS, 270 - P, zF]], [0, 1, 0], { ...STUD, on: "FL1" })], tools: ["allen"] },
+    { title: "Bolt a leg to the footboard bar", detail: "Lay the bar on a rug. A long bolt through the end of the bar into the top of the leg.", add: ["FB", "FL-1"], fix: [at("bolt", [[-xS, 270, zF]], [0, -1, 0], { ...STUD, on: "FB" })], tools: ["allen"], pose: "+y" },
+    { title: "Bolt on the other footboard leg", detail: "The same on the other end.", add: ["FL1"], fix: [at("bolt", [[xS, 270, zF]], [0, -1, 0], { ...STUD, on: "FB" })], tools: ["allen"] },
     {
       title: "Bolt a side rail to the footboard",
       detail: "Stand the footboard up. Two bolts through the leg into the end of the rail.",
       add: ["SR-1"],
-      fix: [at("bolt", [railY - 15, railY + 15].map((y) => [-xS, y, zF - P / 2] as Vec3), [0, 0, 1], STUD)],
+      fix: [at("bolt", [railY - 15, railY + 15].map((y) => [-xS, y, zF + P / 2] as Vec3), [0, 0, -1], { ...STUD, on: "FL-1" })],
       tools: ["allen"],
     },
     {
       title: "Bolt the other side rail to the footboard",
       detail: "The same on the other leg.",
       add: ["SR1"],
-      fix: [at("bolt", [railY - 15, railY + 15].map((y) => [xS, y, zF - P / 2] as Vec3), [0, 0, 1], STUD)],
+      fix: [at("bolt", [railY - 15, railY + 15].map((y) => [xS, y, zF + P / 2] as Vec3), [0, 0, -1], { ...STUD, on: "FL1" })],
       tools: ["allen"],
     },
     {
       title: "Bolt the rails to the headboard",
       detail: "One of you holds the headboard up while the other hooks the rails onto the bolts in the posts, then adds two more bolts on each side.",
-      fix: [at("bolt", [-1, 1].flatMap((sx) => [railY - 26, railY + 26].map((y) => [sx * xS, y, zH + P / 2] as Vec3)), [0, 0, 1], STUD)],
+      fix: [-1, 1].map((sx) => at("bolt", [railY - 15, railY + 15].map((y) => [sx * xS, y, zH - P / 2] as Vec3), [0, 0, 1], { ...STUD, on: sx0(sx) })),
       tools: ["allen"],
       people: 2,
       warnings: ["two"],
@@ -119,7 +123,7 @@ function bed(b: PlanBuilder, s: ProductSpec) {
     {
       title: "Screw the centre beam into the frame",
       detail: "Its ends sit on the brackets at the head and the foot. Two screws at each end.",
-      fix: [-1, 1].map((sz) => at("screw", [-12, 12].map((x) => [x, 220, sz * (L / 2 - P)] as Vec3), [0, 0, sz], { len: 12, dia: 6 })),
+      fix: [-1, 1].map((sz) => at("screw", [-12, 12].map((x) => [x, 220, sz * (L / 2 - P)] as Vec3), [0, 0, -sz], { len: 12, dia: 6, on: "CB" })),
       tools: ["allen"],
     },
     { title: "Tighten all the bolts", detail: "Go round the four corners with the Allen key now that the frame stands square.", tools: ["allen"], check: "square" },
@@ -259,7 +263,7 @@ function wardrobe(b: PlanBuilder, s: ProductSpec, three: boolean) {
         pose: "-z",
       },
       { title: "Tap the dowels into the shelves", detail: "Three in each end of all three shelves, then push them onto the divider.", fix: shelfIds.flatMap((id) => shelfDowels(id, 3)), add: shelfIds, tools: ["hammer"], pose: "-z" },
-      { title: "Screw the top onto the divider", detail: "Two Allen screws down through the top into the divider's end.", add: ["TP"], fix: [at("bolt", [-1, 1].map((t) => [divX, H, ZC + t * 150] as Vec3), [0, -1, 0], ALLEN)], tools: ["allen"], pose: "-z" },
+      { title: "Screw the top onto the divider", detail: "Two Allen screws down through the top into the divider's end.", add: ["TP"], fix: [at("bolt", [-1, 1].map((t) => [divX, H, ZC + t * 60] as Vec3), [0, -1, 0], ALLEN)], tools: ["allen"], pose: "-z" },
     );
   }
   steps.push(
@@ -279,7 +283,7 @@ function wardrobe(b: PlanBuilder, s: ProductSpec, three: boolean) {
   );
   if (three) {
     steps.push(
-      { title: "Screw the bottom onto the divider", detail: "Two Allen screws up through the bottom into the divider's end.", add: ["BT"], fix: [at("bolt", [-1, 1].map((t) => [divX, bot, ZC + t * 150] as Vec3), [0, 1, 0], ALLEN)], tools: ["allen"], pose: "-z" },
+      { title: "Screw the bottom onto the divider", detail: "Two Allen screws up through the bottom into the divider's end.", add: ["BT"], fix: [at("bolt", [-1, 1].map((t) => [divX, bot, ZC + t * 60] as Vec3), [0, 1, 0], ALLEN)], tools: ["allen"], pose: "-z" },
       { title: "Screw the right side to the top", detail: "Two Allen screws through the side into the top's end.", fix: [sideScrews(1, yT, zPair)], tools: ["allen"], pose: "-z" },
       { title: "Screw the right side to the bottom", detail: "Two more into the bottom.", fix: [sideScrews(1, yB, zPair)], tools: ["allen"], pose: "-z" },
       { title: "Screw on the left side", detail: "Four Allen screws, two into the top and two into the bottom.", fix: [sideScrews(-1, yT, zPair), sideScrews(-1, yB, zPair)], tools: ["allen"], pose: "-z" },
@@ -446,6 +450,167 @@ function wardrobe(b: PlanBuilder, s: ProductSpec, three: boolean) {
     );
 }
 
+
+/* ---------- the wardrobe with sliding doors ---------- */
+
+function sliding(b: PlanBuilder, s: ProductSpec) {
+  const W = 1170, H = 1760, D = 550, PL = 70;
+  const xo = W / 2 - T / 2, xi = W / 2 - T;
+  const yb = PL + T, yt = H - T;
+  const zDoor = [D / 2 - 15, D / 2 - 45]; // front and back door
+  const dd = D - 70; // the divider and shelves stop short of the doors
+  const zc = -D / 2 + dd / 2;
+  const zPF = D / 2 - 30 - T / 2, zPB = -D / 2 + 10 + T / 2;
+  const ys = 420;
+  const hw = (W - 3 * T) / 2;
+  const hx = T / 2 + hw / 2;
+  const dw = (W - 2 * T) / 2 + 20, dh = yt - 20 - (yb + 8);
+  const parts: CustomPart[] = [
+    { id: "BT", name: "Bottom", size: [W - 2 * T, T, D], pos: [0, PL + T / 2, 0] },
+    { id: "DV", name: "Divider", size: [T, yt - yb, dd], pos: [0, (yt + yb) / 2, zc] },
+    { id: "LS", name: "Shelf", size: [hw, T, dd], pos: [-hx, ys + T / 2, zc] },
+    { id: "RS", name: "Shelf", size: [hw, T, dd], pos: [hx, ys + T / 2, zc] },
+    { id: "LT", name: "Lower door track", size: [W - 2 * T, 8, 60], pos: [0, yb + 4, D / 2 - 32], material: "metal" },
+    { id: "TP", name: "Top", size: [W - 2 * T, T, D], pos: [0, H - T / 2, 0] },
+    { id: "UT", name: "Upper door track", size: [W - 2 * T, 20, 60], pos: [0, yt - 10, D / 2 - 32], material: "metal" },
+    { id: "SL", name: "Side", size: [T, H, D], pos: [-xo, H / 2, 0] },
+    { id: "SR", name: "Side", size: [T, H, D], pos: [xo, H / 2, 0] },
+    { id: "PF", name: "Plinth", size: [W - 2 * T, PL, T], pos: [0, PL / 2, zPF] },
+    { id: "PB", name: "Back rail", size: [W - 2 * T, PL, T], pos: [0, PL / 2, zPB] },
+    ...S2.map((sx, i): CustomPart => ({ id: `B${i}`, name: "Back panel", size: [W / 2 - 1, H - PL, 3], pos: [sx * (W / 4), (H + PL) / 2, -D / 2 - 1.5], material: "fiber" })),
+    ...S2.map((sx, i): CustomPart => ({ id: `R${i}`, name: "Clothes rail", size: [hw - 6, 25, 25], pos: [sx * hx, yt - 80, zc], shape: "cyl", material: "metal" })),
+    { id: "DB", name: "Sliding door", size: [dw, dh, T], pos: [-(W / 4 - T / 2 - 10), yb + 8 + dh / 2, zDoor[1]] },
+    { id: "DF", name: "Sliding door", size: [dw, dh, T], pos: [W / 4 - T / 2 - 10, yb + 8 + dh / 2, zDoor[0]] },
+  ];
+  const SCREW = { len: 110, dia: 6, name: "Connecting screw" };
+  const through = (sx: number, list: [number, number][]) => at("bolt", list.map(([y, z]) => [sx * (W / 2), y, z] as Vec3), [-sx, 0, 0], SCREW);
+  const ends = (y: number) => [-150, 150].map((z): [number, number] => [y, z]);
+  const doorPt = (id: string, top: boolean) => {
+    const p = parts.find((x) => x.id === id)!;
+    return [-1, 1].map((g) => [p.pos[0] + g * (dw / 2 - 70), p.pos[1] + ((top ? 1 : -1) * dh) / 2, p.pos[2]] as Vec3);
+  };
+  const steps: CustomStep[] = [
+    {
+      title: "Tap the dowels into the bottom and the shelves",
+      detail: "Lay the panels on a rug. Two in each end and two in the middle of the bottom, three in each shelf.",
+      add: ["BT"],
+      fix: [
+        ...S2.map((sx) => at("dowel", [-180, 180].map((z) => [sx * xi, PL + T / 2, z] as Vec3), [-sx, 0, 0], { ...DOWEL, on: "BT" })),
+        at("dowel", [-150, 100].map((z) => [0, yb, zc + z] as Vec3), [0, -1, 0], { ...DOWEL, on: "BT" }),
+        ...S2.map((sx, i) => at("dowel", [[sx * xi, ys + T / 2, zc - 150], [sx * xi, ys + T / 2, zc + 150]], [-sx, 0, 0], { ...DOWEL, on: i ? "RS" : "LS" })),
+        ...S2.map((sx, i) => at("dowel", [[sx * (T / 2), ys + T / 2, zc]], [sx, 0, 0], { ...DOWEL, on: i ? "RS" : "LS" })),
+      ],
+      wait: ["LS", "RS"],
+      tools: ["hammer"],
+      pose: "+z",
+      warnings: ["floor"],
+    },
+    { title: "Screw two cam bolts into the divider", detail: "In its bottom end.", fix: [at("camScrew", [-60, 190].map((z) => [0, yb, zc + z] as Vec3), [0, 1, 0], { on: "DV" })], wait: ["DV"], tools: ["screwdriver"] },
+    { title: "Stand the divider on the bottom", detail: "Onto the dowels in the middle.", add: ["DV"] },
+    { title: "Lock the divider", detail: "Two cam locks in the bottom.", fix: [at("cam", [-60, 190].map((z) => [34, yb, zc + z] as Vec3), [0, -1, 0], { on: "BT" })], tools: ["screwdriver"] },
+    { title: "Push a shelf onto each side of the divider", detail: "Low down, onto the dowel in the divider.", add: ["LS", "RS"] },
+    { title: "Lock the shelves", detail: "One cam lock in each, next to the divider.", fix: S2.map((sx, i) => at("cam", [[sx * (T / 2 + 34), ys + T, zc - 60]], [0, -1, 0], { on: i ? "RS" : "LS" })), tools: ["screwdriver"] },
+    { title: "Press the lower door track into the bottom", detail: "Along the front, both grooves facing out, all the way along.", add: ["LT"] },
+    { title: "Tap four dowels into the top", detail: "In the middle of its underside, for the divider. Press the upper track into its front edge.", fix: [at("dowel", [-150, -50, 50, 150].map((z) => [0, yt, zc + z] as Vec3), [0, 1, 0], { ...DOWEL, on: "TP" })], wait: ["TP"], tools: ["hammer"] },
+    { title: "Put on the top", detail: "Onto the divider's dowels, track at the front.", add: ["TP", "UT"] },
+    {
+      title: "Screw on the left side",
+      detail: "Onto the dowels of the bottom and the shelf, then four long screws: two into the bottom, two into the top. The handle tool makes it quicker.",
+      add: ["SL"],
+      fix: [through(-1, [...ends(PL + T / 2), ...ends(H - T / 2)])],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Screw on the right side",
+      detail: "Together. Five long screws: two into the bottom, two into the top and one into the shelf.",
+      add: ["SR"],
+      fix: [through(1, [...ends(PL + T / 2), ...ends(H - T / 2), [ys + T / 2, zc + 60]])],
+      tools: ["screwdriver"],
+      people: 2,
+    },
+    { title: "Tap the dowels into the plinth and the back rail", detail: "Two in the top edge of each.", fix: [at("dowel", [-300, 300].map((x) => [x, PL, zPF] as Vec3), [0, -1, 0], { ...DOWEL, on: "PF" }), at("dowel", [-300, 300].map((x) => [x, PL, zPB] as Vec3), [0, -1, 0], { ...DOWEL, on: "PB" })], wait: ["PF", "PB"], tools: ["hammer"] },
+    { title: "Fit the plinth", detail: "Under the bottom at the front, onto its dowels. Three long screws: one through each side and one down through the bottom.", add: ["PF"], fix: [through(-1, [[PL / 2, zPF]]), through(1, [[PL / 2, zPF]]), at("bolt", [[0, PL + T, zPF]], [0, -1, 0], SCREW)], tools: ["screwdriver"] },
+    { title: "Fit the back rail", detail: "The same at the back: three long screws.", add: ["PB"], fix: [through(-1, [[PL / 2, zPB]]), through(1, [[PL / 2, zPB]]), at("bolt", [[0, PL + T, zPB]], [0, -1, 0], SCREW)], tools: ["screwdriver"] },
+    {
+      title: "Screw the corner brackets in",
+      detail: "One inside each front corner of the plinth, one screw into the side and one into the plinth.",
+      fix: [at("angle", S2.map((sx) => [sx * (xi - 12), PL / 2, zPF - T / 2] as Vec3), [0, 0, 1], { len: 30, dia: 24, on: "PF" }), at("screw", S2.map((sx) => [sx * (xi - 20), PL / 2, zPF - T / 2] as Vec3), [0, 0, 1], { len: 12, dia: 4, on: "PF" })],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Turn it over and lay the back panels on",
+      detail: "Lying on its front now. Measure both diagonals: when they're equal it's square. The panels meet over the divider.",
+      add: ["B0", "B1"],
+      pose: "-z",
+      check: "square",
+    },
+    {
+      title: "Nail the back on",
+      detail: "Two nails at the top corners first, then along the divider and the shelves, then all round about every 10 cm.",
+      fix: [
+        at("nail", [[-W / 2 + 20, H - 8, -D / 2 - 3], [W / 2 - 20, H - 8, -D / 2 - 3]], [0, 0, 1], NAIL),
+        at("nail", [...Array.from({ length: 8 }, (_, k) => [0, yb + 100 + k * 200, -D / 2 - 3] as Vec3), ...S2.flatMap((sx) => [-1, 1].map((g) => [sx * hx + g * 150, ys + T / 2, -D / 2 - 3] as Vec3))], [0, 0, 1], NAIL),
+        at("nail", [...S2.flatMap((sx) => Array.from({ length: 15 }, (_, k) => [sx * xo, PL + 60 + k * 110, -D / 2 - 3] as Vec3)), ...Array.from({ length: 7 }, (_, k) => [-W / 2 + 100 + k * 160, H - 8, -D / 2 - 3] as Vec3), ...Array.from({ length: 7 }, (_, k) => [-W / 2 + 100 + k * 160, PL + T / 2, -D / 2 - 3] as Vec3)], [0, 0, 1], NAIL),
+      ],
+      tools: ["hammer"],
+    },
+    {
+      title: "Push in the foot strips",
+      detail: "Six, under the bottom edges of the sides, the plinth and the back rail.",
+      fix: [at("glide", [...S2.flatMap((sx) => [-200, 200].map((z) => [sx * xo, 0, z] as Vec3)), [0, 0, zPF], [0, 0, zPB]], [0, 1, 0], { len: 8, dia: 40, name: "Foot strip" })],
+    },
+    { title: "Stand it up", detail: "Together, lifting from the top end so it doesn't bend.", pose: "+y", people: 2, warnings: ["two"] },
+    {
+      title: "Fix it to the wall",
+      detail: "Screw the two angle brackets to the top at the back, mark and drill the wall, then screw them to the wall. Pick plugs and screws made for your wall.",
+      fix: [
+        at("angle", [-350, 350].map((x) => [x, H, -D / 2 + 10] as Vec3), [0, -1, 0], { len: 80, dia: 30, name: "Wall bracket", on: "TP" }),
+        at("screw", [-350, 350].map((x) => [x, H, -D / 2 + 40] as Vec3), [0, -1, 0], { len: 12, dia: 4, on: "TP" }),
+        at("plug", [-350, 350].map((x) => [x, H + 20, -D / 2 - 30] as Vec3), [0, 0, -1]),
+        at("washer", [-350, 350].map((x) => [x, H + 20, -D / 2 + 2] as Vec3), [0, 0, -1], { included: true }),
+        at("screw", [-350, 350].map((x) => [x, H + 20, -D / 2 + 4] as Vec3), [0, 0, -1], { len: 50, dia: 5 }),
+      ],
+      tools: ["drill", "screwdriver", "pencil"],
+      wall: true,
+      warnings: ["wall", "tip"],
+    },
+    {
+      title: "Screw in the rail holders",
+      detail: "Four, near the top: one on each side and one on each face of the divider.",
+      fix: [...S2.map((sx, i) => at("clip", [[sx * xi, yt - 80, zc]], [sx, 0, 0], { len: 30, dia: 30, name: "Rail holder", on: i ? "SR" : "SL" })), ...S2.map((sx) => at("clip", [[sx * (T / 2), yt - 80, zc]], [-sx, 0, 0], { len: 30, dia: 30, name: "Rail holder", on: "DV" })), ...S2.map((sx, i) => at("screw", [[sx * xi, yt - 60, zc]], [sx, 0, 0], { len: 12, dia: 4, on: i ? "SR" : "SL" })), ...S2.map((sx) => at("screw", [[sx * (T / 2), yt - 60, zc]], [-sx, 0, 0], { len: 12, dia: 4, on: "DV" }))],
+      tools: ["screwdriver"],
+    },
+    { title: "Drop the clothes rails in", detail: "One in each half.", add: ["R0", "R1"] },
+    {
+      title: "Screw the runners onto the doors",
+      detail: "Lay the doors on a rug, face down. Two guides on the top edge and two wheels on the bottom edge of each, two screws each.",
+      fix: [
+        ...["DB", "DF"].map((id) => at("clip", doorPt(id, true), [0, -1, 0], { len: 20, dia: 40, name: "Top guide", on: id })),
+        ...["DB", "DF"].map((id) => at("castor", doorPt(id, false), [0, 1, 0], { len: 20, dia: 40, name: "Door wheel", on: id })),
+        ...["DB", "DF"].flatMap((id) => [true, false].map((top) => at("screw", doorPt(id, top).flatMap((p) => [-28, 28].map((d) => [p[0] + d, p[1], p[2]] as Vec3)), [0, top ? -1 : 1, 0], { len: 13, dia: 4, on: id }))),
+      ],
+      wait: ["DB", "DF"],
+      tools: ["screwdriver"],
+      warnings: ["floor"],
+    },
+    { title: "Hang the back door", detail: "Top into the back groove of the upper track, then swing the bottom in and press it down into the lower track until it clicks.", add: ["DB"], from: { DB: [0, 0, 400] } },
+    { title: "Hang the front door", detail: "The same in the front grooves.", add: ["DF"], from: { DF: [0, 0, 400] } },
+    { title: "Line up the doors", detail: "Turn the screws in the wheels until both doors hang straight and close evenly against the sides.", tools: ["screwdriver"], check: "square" },
+    {
+      title: "Screw on the knobs",
+      detail: "One on each door, near the edge that meets the side, with a screw from the back.",
+      fix: [
+        ...[["DB", -1], ["DF", 1]].map(([id, sx]) => at("knob", [[(sx as number) * (W / 2 - T - 60), 1000, zDoor[id === "DF" ? 0 : 1] + T / 2 + 8]], [0, 0, -1], { len: 25, dia: 28, on: id as string })),
+        ...[["DB", -1], ["DF", 1]].map(([id, sx]) => at("screw", [[(sx as number) * (W / 2 - T - 60), 1000, zDoor[id === "DF" ? 0 : 1] - T / 2]], [0, 0, 1], { len: 30, dia: 4, on: id as string })),
+      ],
+      tools: ["screwdriver"],
+    },
+  ];
+  custom(b, s, parts, steps);
+}
+
+const S2 = [-1, 1];
+
 const family: Family = {
   names: ["KLEPPSTAD"],
   build(b, s) {
@@ -454,7 +619,10 @@ const family: Family = {
       bed(b, s);
       return true;
     }
-    if (/sliding/.test(text)) return false;
+    if (/sliding/.test(text)) {
+      sliding(b, s);
+      return true;
+    }
     if (/wardrobe/.test(text) && /3 doors|3-doors/.test(text)) {
       wardrobe(b, s, true);
       return true;

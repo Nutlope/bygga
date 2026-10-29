@@ -263,8 +263,9 @@ function four(): CustomParams {
   boxes.forEach((b, k) => parts.push(...compartment(k, b, D, -D / 2 + T, false)));
 
   const ends = boxes.flatMap((b) => [
-    { x: b.x0, dir: b.x0 < 0 && b.x0 < -100 ? -1 : 1, on: b.x0 < -100 ? "LS" : "DV", y0: b.y0, h: hRow },
-    { x: b.x1, dir: b.x1 > 100 ? 1 : -1, on: b.x1 > 100 ? "RS" : "DV", y0: b.y0, h: hRow },
+    // the left end screws into the panel on its left (a side or the divider), the right end into the one on its right
+    { x: b.x0, dir: -1, on: b.x0 < -100 ? "LS" : "DV", y0: b.y0, h: hRow },
+    { x: b.x1, dir: 1, on: b.x1 > 100 ? "RS" : "DV", y0: b.y0, h: hRow },
   ]);
   const gp = guidesAndPivots(ends, D);
   const zc = 25, zw = 55; // cam bolts and dowels this far either side of the middle of an edge
@@ -279,6 +280,7 @@ function four(): CustomParams {
       tools: ["hammer"],
       pose: "-z",
       warnings: ["floor"],
+      from: { BT: [0, -250, 0] },
     },
     {
       title: "Screw the bottom to the divider",
@@ -287,11 +289,11 @@ function four(): CustomParams {
       tools: ["allen"],
     },
     {
-      title: "Screw twelve cam bolts into the top and the sides",
-      detail: "Six along the inside of the top, three in each side: two at the bottom end and one for the back rail.",
-      fix: [fx("camScrew", [-xi - T / 2, 0, xi + T / 2].flatMap((x) => S.map((k) => pt(x, yT, (x ? 0 : zd) + k * zc))), [0, 1, 0], { on: "TP" }), sideCams(-1), sideCams(1)],
+      title: "Screw six cam bolts into the sides",
+      detail: "Three in each side: two at the bottom end and one for the back rail.",
+      fix: [sideCams(-1), sideCams(1)],
       tools: ["screwdriver"],
-      wait: ["TP", "LS", "RS"],
+      wait: ["LS", "RS"],
     },
     {
       title: "Screw on the eight rack guides",
@@ -345,10 +347,10 @@ function four(): CustomParams {
       tools: ["allen"],
     },
     {
-      title: "Tap five dowels into the top and fit it",
-      detail: "Two over each side and one over the divider, then press it onto the frame.",
+      title: "Fit the top",
+      detail: "Six cam bolts along its inside and five dowels (two over each side, one over the divider), then press it onto the frame.",
       add: ["TP"],
-      fix: [fx("dowel", [...S.flatMap((sx) => S.map((k) => pt(sx * (W / 2 - T / 2), yT, k * zw))), pt(0, yT, zd)], [0, 1, 0], { on: "TP" })],
+      fix: [fx("camScrew", [-xi - T / 2, 0, xi + T / 2].flatMap((x) => S.map((k) => pt(x, yT, (x ? 0 : zd) + k * zc))), [0, 1, 0], { on: "TP" }), fx("dowel", [...S.flatMap((sx) => S.map((k) => pt(sx * (W / 2 - T / 2), yT, k * zw))), pt(0, yT, zd)], [0, 1, 0], { on: "TP" })],
       tools: ["hammer"],
     },
     {
@@ -478,20 +480,13 @@ function three(): CustomParams {
       fix: [topLocks(1), ...railLocks(1)],
       tools: ["screwdriver"],
     },
+    { title: "Lay it on its front", detail: "Turn it over onto the rug so the bottom ends of the sides face you.", pose: "-z", warnings: ["floor"] },
     {
-      title: "Screw four cam bolts into the bottom",
-      detail: "Two near each end, on the inside face.",
-      fix: [fx("camScrew", S.flatMap((sx) => S.map((k) => pt(sx * (W / 2 - T / 2), ySide, k * zc))), [0, -1, 0], { on: "BT" })],
-      tools: ["screwdriver"],
-      wait: ["BT"],
-    },
-    {
-      title: "Lay it on its front and fit the bottom",
-      detail: "Six dowels in the bottom, three at each end, then press it onto the ends of the sides.",
+      title: "Fit the bottom",
+      detail: "Four cam bolts near its ends and six dowels, three at each end, then press it onto the ends of the sides.",
       add: ["BT"],
-      fix: [fx("dowel", S.flatMap((sx) => [-1, 0, 1].map((k) => pt(sx * (W / 2 - T / 2), ySide, k * zw))), [0, -1, 0], { on: "BT" })],
-      tools: ["hammer"],
-      pose: "-z",
+      fix: [fx("camScrew", S.flatMap((sx) => S.map((k) => pt(sx * (W / 2 - T / 2), ySide, k * zc))), [0, -1, 0], { on: "BT" }), fx("dowel", S.flatMap((sx) => [-1, 0, 1].map((k) => pt(sx * (W / 2 - T / 2), ySide, k * zw))), [0, -1, 0], { on: "BT" })],
+      tools: ["screwdriver", "hammer"],
     },
     {
       title: "Lock the bottom",

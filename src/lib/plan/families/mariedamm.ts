@@ -107,9 +107,11 @@ function recipe(s: ProductSpec): (CustomParams & { legs: CustomPart[]; first: nu
 
   // fittings
   const mount = (l: Leg) => {
-    // four screws through the bent end into the top, two each side of the middle line
+    // four screws through the bent end into the top, two each side of the middle line; the round table's short
+    // screws start from inside the tube (through the access holes underneath), the oval's long ones from below it
+    const y0 = round ? yTop - 20 : yTop - lh;
     const pts: Vec3[] = [];
-    for (const t of [l.r1 - 35, l.r1 - l.flange + 40]) for (const sd of [-1, 1]) pts.push(add(add(scale(l.u, t), scale(l.n, l.off + (sd * lw) / 4)), [0, yTop - lh, 0]));
+    for (const t of [l.r1 - 35, l.r1 - l.flange + 40]) for (const sd of [-1, 1]) pts.push(add(add(scale(l.u, t), scale(l.n, l.off + sd * 12)), [0, y0, 0]));
     return pts;
   };
   const sideOf = (l: Leg, k: number[]): Vec3[] => k.map((dy) => add(scale(l.n, l.off - lw / 2), [0, yc + dy, 0]));

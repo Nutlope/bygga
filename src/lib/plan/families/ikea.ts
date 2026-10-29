@@ -5,7 +5,7 @@ import { buildCustom } from "../custom";
 /**
  * Products whose name starts with "IKEA" (IKEA PS, IKEA PS 2026, IKEA PS LÖMSK): unrelated designs that share only
  * the brand word, so each one is its own recipe, read from its own manual and picked by its slug. Products with no
- * manual (the folding chair, the side table, the rattan footstool) keep their old guides.
+ * manual (the folding chair, the side table, the rattan footstool) come assembled: their guides only unpack them.
  */
 
 /** Parts built on their own (a drawer, a seat, a side laid out on the rug): shown moved by `off` until recipe step `until`, where they move into place from `from`. */
@@ -424,8 +424,10 @@ function bedside(s: ProductSpec): R {
       detail: "Into its back edge.",
       fix: [fix("dowel", [-1, 1].map((sx) => [sx * (iw / 4), yb + t / 2, -D / 2 + t] as Vec3), [0, 0, -1], "F", "B", 30, 8)],
       tools: ["hammer"],
+      wait: ["F"],
     },
-    { title: "Fit the shelf and lock it", detail: "Onto the cam pins and the dowels in the back, then turn its two cam locks.", add: ["F"], fix: [shelfCams(-1)], tools: ["screwdriver"] },
+    // it goes in at a slant: down onto the cam pins and back onto the dowels at once
+    { title: "Fit the shelf and lock it", detail: "Onto the cam pins and the dowels in the back, then turn its two cam locks.", add: ["F"], fix: [shelfCams(-1)], tools: ["screwdriver"], from: { F: [220, 0, 220] } },
     {
       title: "Push a pin and washer in for the door",
       detail: "Into the hole at the front of the side, just above the shelf.",
@@ -530,15 +532,15 @@ function shelving(s: ProductSpec): R {
       title: "Bolt one rail to a ladder",
       detail: "Stand the ladder on its edge. One bolt through the back upright into the end of the rail.",
       add: ["L0", "R0"],
-      fix: [fix("bolt", [[-xl - uw / 2, yr[0], -zu]], [1, 0, 0], "L0", "R0", 90, 6)],
+      fix: [fix("bolt", [[-xl - uw / 2, yr[0] - 12, -zu]], [1, 0, 0], "L0", "R0", 90, 6)],
       tools: ["allen"],
     },
-    { title: "Bolt on the second rail", detail: "At the other end of the same ladder.", add: ["R1"], fix: [fix("bolt", [[-xl - uw / 2, yr[1], -zu]], [1, 0, 0], "L0", "R1", 90, 6)], tools: ["allen"] },
+    { title: "Bolt on the second rail", detail: "At the other end of the same ladder.", add: ["R1"], fix: [fix("bolt", [[-xl - uw / 2, yr[1] - 12, -zu]], [1, 0, 0], "L0", "R1", 90, 6)], tools: ["allen"] },
     {
       title: "Bolt the second ladder onto the rails",
       detail: "Holes facing the first ladder. One bolt into each rail.",
       add: ["L1"],
-      fix: [fix("bolt", [0, 1].map((ri) => [xl + uw / 2, yr[ri], -zu] as Vec3), [-1, 0, 0], "L1", undefined, 90, 6)],
+      fix: [fix("bolt", [0, 1].map((ri) => [xl + uw / 2, yr[ri] - 12, -zu] as Vec3), [-1, 0, 0], "L1", undefined, 90, 6)],
       tools: ["allen"],
     },
     {
@@ -558,7 +560,7 @@ function shelving(s: ProductSpec): R {
       detail: "Through the back uprights: one screw into each shelf and one more into each rail end.",
       fix: [
         ...[-1, 1].map((sx, i) => fix("screw", tops.map((y) => [sx * (xl + uw / 2), y - st / 2, -zu] as Vec3), [-sx, 0, 0], `L${i}`, undefined, 60, 5)),
-        ...[-1, 1].map((sx, i) => fix("screw", [0, 1].map((ri) => [sx * (xl + uw / 2), yr[ri] + 14, -zu] as Vec3), [-sx, 0, 0], `L${i}`, undefined, 60, 5)),
+        ...[-1, 1].map((sx, i) => fix("screw", [0, 1].map((ri) => [sx * (xl + uw / 2), yr[ri] + 12, -zu] as Vec3), [-sx, 0, 0], `L${i}`, undefined, 60, 5)),
       ],
       tools: ["allen"],
     },
@@ -609,11 +611,12 @@ function stool(s: ProductSpec): R {
   const parts: CustomPart[] = [
     disc("S", "Seat", Dd, st, [0, ys + st / 2, 0], "wood"),
     part("U", "Seat post", [pw, 250, pd], [-pw / 2, ys - 125, 0], "wood"),
-    part("C", "Clamp strap", [2 * pw + 16, 60, pd + 12], [0, 250, 0], "soft", {
+    // the strap wraps both posts, its two ends running on past them to hold the lever's pivot bolt
+    part("C", "Clamp strap", [2 * pw + 56, 60, pd + 12], [20, 250, 0], "soft", {
       pieces: [
-        { shape: "box", size: [2 * pw + 16, 60, 5], pos: [0, 0, pd / 2 + 3] },
-        { shape: "box", size: [2 * pw + 16, 60, 5], pos: [0, 0, -pd / 2 - 3] },
-        { shape: "box", size: [5, 60, pd + 12], pos: [pw + 5, 0, 0] },
+        { shape: "box", size: [2 * pw + 56, 60, 5], pos: [0, 0, pd / 2 + 3] },
+        { shape: "box", size: [2 * pw + 56, 60, 5], pos: [0, 0, -pd / 2 - 3] },
+        { shape: "box", size: [5, 60, pd + 12], pos: [pw - 15, 0, 0] },
       ],
     }),
     part("V", "Lever", [26, 110, 34], [pw + 22, 240, 12], "wood"),
@@ -659,7 +662,7 @@ function stool(s: ProductSpec): R {
       title: "Fix the base plate to the base post",
       detail: "One bolt and two screws through the plate into the end of the post. Use a hand screwdriver, not a drill.",
       add: ["L", "P"],
-      fix: [fix("bolt", [[pw / 2, bt, 0]], UP, "P", "L", 50, 8), fix("screw", [-1, 1].map((sz) => [pw / 2, bt, sz * 22] as Vec3), UP, "P", "L", 30, 4)],
+      fix: [fix("bolt", [[pw / 2, bt, 0]], UP, "P", "L", 50, 8), fix("screw", [-1, 1].map((sz) => [pw / 2, bt, sz * 26] as Vec3), UP, "P", "L", 30, 4)],
       tools: ["allen", "screwdriver"],
       pose: "+y",
     },
@@ -955,20 +958,20 @@ function sofaBed(s: ProductSpec): R {
   const xi = xe - bw / 2;
   const railL = 2 * xi;
   const zr = ze - 20;
-  const slatZ = [-0.37, -0.12, 0.12, 0.37].map((f) => Math.round(f * 2 * ze));
+  const slatZ = [-0.33, -0.11, 0.11, 0.33].map((f) => Math.round(f * 2 * ze));
   const parts: CustomPart[] = [
     end(-1, 0),
     end(1, 1),
     ...[-1, 1].map((sz, i) => part(`R${i}`, "Long rail", [railL, bh, 40], [0, yBeam, sz * zr], "wood")),
     part("M", "Middle rail", [bw, bh, 2 * zr - 40], [0, yBeam, 0], "wood"),
-    ...slatZ.map((z, i) => part(`S${i}`, "Slat", [W - 2 * ld, slatT, 180], [0, yS + slatT / 2, z], "wood")),
+    ...slatZ.map((z, i) => part(`S${i}`, "Slat", [2 * xe + 30, slatT, 180], [0, yS + slatT / 2, z], "wood")),
     part("K", "Backrest", [W - 40, 170, 25], [0, 640, -ze - 52], "wood"),
     part("T", "Mattress", [W - 2 * ld - 20, seatTop - yS - slatT, 2 * ze + ld - 20], [0, (seatTop + yS + slatT) / 2, 0], "soft"),
     ...[-1, 1].map((sx, i) => part(`C${i}`, "Back cushion", [W / 2 - ld - 40, 260, 200], [sx * (W / 4 - ld / 2 + 10), seatTop + 130, -ze + 80], "soft", { shape: "cyl" })),
   ];
   const corners = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx, sz] as const));
   const slatScrews = (ids: number[]) =>
-    ids.map((i) => fix("screw", [-1, 1].flatMap((sx) => [-50, 50].map((dz) => [sx * (xi - 20), yS + slatT, slatZ[i] + dz] as Vec3)), DOWN, `S${i}`, undefined, 40, 5));
+    ids.map((i) => fix("screw", [-1, 1].flatMap((sx) => [-50, 50].map((dz) => [sx * xe, yS + slatT, slatZ[i] + dz] as Vec3)), DOWN, `S${i}`, undefined, 40, 5));
   const steps: CustomStep[] = [
     {
       title: "Tap the dowels into the end frames",
@@ -1484,7 +1487,83 @@ function glassCabinet(s: ProductSpec): R {
   return { parts, steps, aside: [{ ids: ["S1"], until: 3, off: [-2 * xs, 0, D + 150], rot: [0, Math.PI, 0], from: [300, 0, 0] }] };
 }
 
+/* ---------- sold assembled (no manual): the folding chair, the rattan footstool and the side table ---------- */
+
+/** A round rod from a to b (mm, relative to its part's centre), drawn as one cylinder. */
+function rod(a: Vec3, b: Vec3, d: number): PartPiece {
+  const v: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len = Math.hypot(...v);
+  return { shape: "cyl", size: [d, len, d], pos: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], rot: [Math.atan2(v[2], v[1]), 0, Math.asin(-v[0] / len)] };
+}
+
+/** The folding chair: birch back legs with the backrest across their tops, black front legs, the seat hinged between. */
+function psFoldingChair(s: ProductSpec): R {
+  const W = mm(s.size.w), H = mm(s.size.h), D = mm(s.size.d);
+  const yS = mm(s.seat?.seatH ?? 46), xb = W / 2 - 15, xf = xb - 30;
+  const back = (sx: number): PartPiece => ({ shape: "box", size: [28, Math.hypot(H, 70), 36], pos: [sx * xb, 0, -D / 2 + 70], rot: [-Math.atan2(70, H), 0, 0] });
+  const front = (sx: number): PartPiece => {
+    const a: Vec3 = [sx * xf, -H / 2, D / 2 - 40], b: Vec3 = [sx * xf, yS - 30 - H / 2, -D / 2 + 110];
+    return { shape: "box", size: [24, Math.hypot(b[1] - a[1], b[2] - a[2]), 30], pos: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], rot: [Math.atan2(b[2] - a[2], b[1] - a[1]), 0, 0] };
+  };
+  const parts: CustomPart[] = [
+    part("F", "Back frame", [W, H, D], [0, H / 2, 0], "wood", { pieces: [back(-1), back(1), { shape: "box", size: [2 * xb - 28, 40, 24], pos: [0, 140 - H / 2, -D / 2 + 100] }] }),
+    part("K", "Backrest", [2 * xb + 28, 120, 22], [0, H - 70, -D / 2 + 50], "board"),
+    part("L", "Front legs", [2 * xf + 24, yS, D], [0, yS / 2, 0], "metal", { pieces: ([front(-1), front(1), { shape: "box", size: [2 * xf - 24, 24, 24], pos: [0, 140 - H / 2, D / 2 - 40 - ((D - 150) * 140) / (yS - 30)] }] as PartPiece[]).map((p) => ({ ...p, pos: [p.pos[0], p.pos[1] + H / 2 - yS / 2, p.pos[2]] as Vec3 })) }),
+    part("S", "Seat", [2 * xf - 30, 20, D - 150], [0, yS - 10, 10], "board"),
+  ];
+  const steps: CustomStep[] = [
+    { title: "Take the folded chair out of the box", detail: "It comes assembled, with nothing to screw together. Stand it on its feet, still folded.", add: ["F", "K", "L"], from: { F: [0, 300, 0], K: [0, 300, 0], L: [0, 300, 0] } },
+    { title: "Unfold it and press the seat down", detail: "Pull the front legs away from the back, then push the seat down until it lies flat and the frame locks.", add: ["S"], from: { S: [0, 260, -200] } },
+    { title: "Check it stands steady", detail: "All four feet should touch the floor. To fold it, lift the front edge of the seat." },
+  ];
+  return { parts, steps };
+}
+
+/** The rattan footstool comes made: a woven drum and its domed lid, with room to store things inside. */
+function psOttoman(s: ProductSpec): R {
+  const Dd = mm(s.size.w), H = mm(s.size.h);
+  const hb = Math.round(H * 0.45);
+  const parts: CustomPart[] = [
+    part("B", "Woven base", [Dd - 60, hb, Dd - 60], [0, hb / 2, 0], "wood", { pieces: [{ shape: "cyl", size: [Dd - 110, 30, Dd - 110], pos: [0, 15 - hb / 2, 0] }, { shape: "cyl", size: [Dd - 60, hb - 30, Dd - 60], pos: [0, 15, 0] }] }),
+    part("T", "Lid", [Dd, H - hb, Dd], [0, (H + hb) / 2, 0], "wood", { pieces: [{ shape: "cyl", size: [Dd, (H - hb) * 0.6, Dd], pos: [0, -(H - hb) * 0.2, 0] }, { shape: "cyl", size: [Dd - 120, (H - hb) * 0.4, Dd - 120], pos: [0, (H - hb) * 0.3, 0] }] }),
+  ];
+  const steps: CustomStep[] = [
+    { title: "Unpack the footstool", detail: "It comes ready made, so there is nothing to put together. Take the lid off and remove the packing from inside.", add: ["B"] },
+    { title: "Put the lid back on", detail: "Lower it straight down so it sits evenly on the woven rim.", add: ["T"], from: { T: [0, 300, 0] } },
+  ];
+  return { parts, steps };
+}
+
+/** The side table folds flat: a split top with a carrying handle, on two tube leg frames that swing out. */
+function psSideTable(s: ProductSpec): R {
+  const W = mm(s.size.w), D = mm(s.size.d), H = mm(s.size.h);
+  const t = 4, yT = H - t, hh = 200, tube = 14;
+  const frame = (id: string, sx: number) =>
+    part(id, "Leg frame", [W, yT, D], [0, yT / 2, 0], "metal", {
+      pieces: [
+        ...[-1, 1].map((sz) => rod([sx * 40, yT / 2, sz * (D / 2 - 40)], [sx * (W / 2 - 10), -yT / 2 + tube / 2, sz * (D / 2 - 20)], tube)),
+        rod([sx * (W / 2 - 10), -yT / 2 + tube / 2, -(D / 2 - 20)], [sx * (W / 2 - 10), -yT / 2 + tube / 2, D / 2 - 20], tube),
+        rod([sx * 40, yT / 2 - 8, -(D / 2 - 40)], [sx * 40, yT / 2 - 8, D / 2 - 40], tube),
+      ],
+    });
+  const parts: CustomPart[] = [
+    frame("A", -1),
+    frame("B", 1),
+    part("T", "Top", [W, t, D], [0, H - t / 2, 0], "metal", { pieces: [-1, 1].map((sx) => ({ shape: "box", size: [W / 2 - 3, t, D], pos: [sx * (W / 4 + 1.5), 0, 0] })) }),
+    part("G", "Handle", [160, hh, tube], [0, H + hh / 2, 0], "metal", { pieces: [rod([-70, -hh / 2, 0], [-30, hh / 2 - tube / 2, 0], tube), rod([70, -hh / 2, 0], [30, hh / 2 - tube / 2, 0], tube), rod([-30, hh / 2 - tube / 2, 0], [30, hh / 2 - tube / 2, 0], tube)] }),
+  ];
+  const steps: CustomStep[] = [
+    { title: "Take the folded table out of the box", detail: "It comes assembled. Hold it by the handle, the legs folded together under the top.", add: ["T", "G", "A"], from: { T: [0, 300, 0], G: [0, 300, 0], A: [0, 300, 0] } },
+    { title: "Swing the legs apart", detail: "Pull the two leg frames away from each other until the top halves lie flat and level.", add: ["B"], from: { B: [-180, 0, 0] } },
+    { title: "Check it stands steady", detail: "Both feet rest flat on the floor. To carry it, lift it by the handle and the legs fold together." },
+  ];
+  return { parts, steps };
+}
+
 const BY_SLUG: Record<string, (s: ProductSpec) => R | null> = {
+  "ikea-ps-2026-folding-chair": psFoldingChair,
+  "ikea-ps-2026-ottoman-storage": psOttoman,
+  "ikea-ps-2026-side-table-50-x-40": psSideTable,
   "ikea-ps-2026-chair": chair,
   "ikea-ps-2026-table-96": roundTable,
   "ikea-ps-2026-table-156-x-75": foldingTable,

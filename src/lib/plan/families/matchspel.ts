@@ -57,7 +57,8 @@ function chair(s: ProductSpec): CustomParams {
   const parts: CustomPart[] = [
     { id: "BASE", name: "Star base", size: [2 * R, 70, 2 * R], pos: [0, baseY, 0], pieces: [{ shape: "cyl", size: [70, 70, 70], pos: [0, 0, 0] }, ...angles.map(arm)], material: "board" },
     { id: "GAS", name: "Gas lift", shape: "cyl", size: [50, mech0 - baseY - 35 + 20, 50], pos: [0, (mech0 + 20 + baseY + 35) / 2, 0], material: "metal" },
-    part("HBAR", "Headrest bar", [{ shape: "box", size: [50, 220, 16], pos: [0, hy0 + 40, hz - 30], rot: [0.15, 0, 0] }], [-25, hy0 - 70, hz - 50], [25, hy0 + 150, hz - 10], "metal"),
+    // the bar lies flat against the back of the backrest where its two bolts go in
+    part("HBAR", "Headrest bar", [{ shape: "box", size: [50, 220, 16], pos: [0, hy0 + 40, hz + 15], rot: [0.15, 0, 0] }], [-25, hy0 - 70, hz - 10], [25, hy0 + 150, hz + 40], "metal"),
     { id: "HPAD", name: "Headrest", size: [290, 120, 70], pos: [0, H - 60, hz - 5], material: "soft" },
     part("BACK", "Backrest", backAbs, [-245, mech0 + 10, zTop - 25], [245, yB1, zSeat - 90], "soft"),
     { id: "SEAT", name: "Seat", size: [seatW, seatT, seatD], pos: [0, yS + seatT / 2, zSeat], material: "soft" },
@@ -94,7 +95,7 @@ function chair(s: ProductSpec): CustomParams {
     {
       title: "Bolt the headrest on",
       detail: "Hook its bar over the two bolts, then fit two button bolts through the bar.",
-      fix: [fx("bolt", [[-15, hy0 - 20, hz - 38], [15, hy0 - 20, hz - 38]], [0, 0, 1], "HBAR", { ...SHORT, mate: "BACK" })],
+      fix: [fx("bolt", [[-15, hy0 - 20, hz - 2], [15, hy0 - 20, hz - 2]], [0, 0, 1], "HBAR", { ...SHORT, mate: "BACK" })],
       tools: ["allen"],
     },
     { title: "Tighten the first two bolts", detail: "Now turn them in fully with the Allen key.", tools: ["allen"] },

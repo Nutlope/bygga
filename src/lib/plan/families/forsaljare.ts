@@ -90,7 +90,7 @@ function recipe(s: ProductSpec): CustomParams {
       {
         title: "Screw the brackets to the rails",
         detail: "Four screws in each bracket, two into each rail.",
-        fix: [fx("screw", { ...at(corner.flatMap((p) => [-1, 1].flatMap((a) => [[p[0] + Math.sign(p[0]) * 28, p[1], p[2] + a * 8] as Vec3, [p[0] + a * 8, p[1], p[2] + Math.sign(p[2]) * 28] as Vec3])), [0, 1, 0]), len: 16, dia: 4 })],
+        fix: [fx("screw", { ...at(corner.flatMap((p) => [-1, 1].flatMap((a) => [[p[0] + Math.sign(p[0]) * 28, p[1], p[2] + a * 12] as Vec3, [p[0] + a * 12, p[1], p[2] + Math.sign(p[2]) * 28] as Vec3])), [0, 1, 0]), len: 16, dia: 4 })],
         tools: ["screwdriver"],
       },
       {

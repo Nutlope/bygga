@@ -125,26 +125,35 @@ function recipe(s: ProductSpec) {
     return [p[0], Y0 - 4, p[2]] as Vec3;
   };
   const legTop = (c: [number, number, string]): Vec3 => [c[0] * legX, Y0 - 4, legZ(c[1])];
+  // the side rails wait beyond the foot end and the foot rail (with its bracket and legs) further out, so each
+  // slides in along its dowels when it is joined; a waiting part stands 1.6 times its offset away
+  const SIDE_OFF: Vec3 = [0, 0, 700], FOOT_OFF: Vec3 = [0, 0, 900];
+  const SIDE_IN: Vec3 = [0, 0, 1120], FOOT_IN: Vec3 = [0, 0, 1440];
   const socketPts: Vec3[] = parts.filter((p) => p.id.startsWith("HT")).map((p) => [p.pos[0], Y1, zH]);
 
   const steps: CustomStep[] = [
     {
       title: "Hang the slat rails on the side rails",
       detail: "Their keyhole slots go over the screws inside each rail. For a mattress thicker than 24 cm, move the screws to the lower holes first.",
-      add: ["S0", "S1", "R0", "R1"],
+      wait: ["S0", "S1", "R0", "R1"],
+      from: { S0: SIDE_OFF, S1: SIDE_OFF, R0: SIDE_OFF, R1: SIDE_OFF },
       warnings: ["floor"],
     },
     {
       title: "Lock the slat rails with inserts and pins",
       detail: "Push an insert into each hole, then press its pin in until it's flush.",
-      fix: [named("cap", "Insert", railPts(3, yRail - 14, 15), [0, 1, 0]), named("pin", "Locking pin", railPts(3, yRail - 12, 15), [0, 1, 0])],
+      fix: sides.flatMap((sx, i) => {
+        const pts = (y: number) => railPts(3, y, 15).filter((p) => Math.sign(p[0]) === sx);
+        return [named("cap", "Insert", pts(yRail - 14), [0, 1, 0], { on: `R${i}` }), named("pin", "Locking pin", pts(yRail - 12), [0, 1, 0], { on: `R${i}` })];
+      }),
       warnings: ["hand"],
     },
     {
       title: "Tighten the screws along the slat rails",
       detail: "Eight in each rail. Snug them up so the rail sits tight against the fabric.",
-      fix: [named("screw", "Rail screw", railPts(8, yRail + 8, 30), [sides[0], 0, 0], { len: 16, dia: 5, included: true })].flatMap((f) =>
-        sides.map((sx) => ({ ...f, count: 8, at: f.at!.filter((p) => Math.sign(p[0]) === sx), dir: [sx, 0, 0] as Vec3 })),
+      // through the slat rail's upright web into the side rail behind it
+      fix: [named("screw", "Rail screw", railPts(8, yRail + 8, 3), [sides[0], 0, 0], { len: 16, dia: 5, included: true })].flatMap((f) =>
+        sides.map((sx, i) => ({ ...f, count: 8, at: f.at!.filter((p) => Math.sign(p[0]) === sx), dir: [sx, 0, 0] as Vec3, on: `R${i}`, mate: `S${i}` })),
       ),
       tools: ["screwdriver"],
     },
@@ -156,21 +165,27 @@ function recipe(s: ProductSpec) {
     {
       title: "Set a beam bracket in the middle of each end rail",
       detail: "Its pegs drop into the holes on the inside of the rail.",
-      add: ["EH", "EF", "U0", "U1"],
+      add: ["EH", "U0"],
+      wait: ["EF", "U1"],
+      from: { EH: [0, 0, -400], U0: [0, 0, -400], EF: FOOT_OFF, U1: FOOT_OFF },
     },
     {
       title: "Fix the brackets with inserts and pins",
       detail: "Two in each bracket: insert, pin, then a quarter turn with the screwdriver.",
       fix: [
-        named("cap", "Insert", [-1, 1].flatMap((ex) => [zi0 + 20, zi1 - 20].map((z) => [ex * 25, 260, z] as Vec3)), [0, 1, 0]),
-        named("pin", "Locking pin", [-1, 1].flatMap((ex) => [zi0 + 20, zi1 - 20].map((z) => [ex * 25, 262, z] as Vec3)), [0, 1, 0]),
+        ...[zi0 + 20, zi1 - 20].flatMap((z, i) => [
+          named("cap", "Insert", [-1, 1].map((ex) => [ex * 25, 260, z] as Vec3), [0, 1, 0], { on: `U${i}` }),
+          named("pin", "Locking pin", [-1, 1].map((ex) => [ex * 25, 262, z] as Vec3), [0, 1, 0], { on: `U${i}` }),
+        ]),
       ],
       tools: ["screwdriver"],
     },
     {
       title: "Press a glide onto the end of each leg",
       detail: "Push it on firmly, all four legs.",
-      add: corners.map((c) => `L${c[2]}`),
+      add: head.map((c) => `L${c[2]}`),
+      wait: foot.map((c) => `L${c[2]}`),
+      from: Object.fromEntries(foot.map((c) => [`L${c[2]}`, FOOT_OFF])),
       fix: corners.map((c) => named("glide", "Glide", [[c[0] * legX, 0, legZ(c[1])]], [0, 1, 0], { on: `L${c[2]}` })),
       warnings: ["hand"],
     },
@@ -183,22 +198,25 @@ function recipe(s: ProductSpec) {
     {
       title: "Push a side rail onto the head rail and bolt the corner",
       detail: "One of you holds the rails while the other sets the corner post in and bolts it up through the plate, with the small washer.",
-      add: ["PH0", "CH0"],
-      fix: [named("washer", "Washer", [postBolt(head[0])], [0, 1, 0], { dia: 16, len: 2 }), named("bolt", "Bolt", [postBolt(head[0])], [0, 1, 0], { len: 20, dia: 8 })],
+      add: ["S0", "R0", "PH0", "CH0"],
+      from: { S0: SIDE_IN, R0: SIDE_IN },
+      fix: [named("bolt", "Bolt", [postBolt(head[0])], [0, 1, 0], { len: 20, dia: 8 }), named("washer", "Washer", [postBolt(head[0])], [0, 1, 0], { dia: 16, len: 2 })],
       people: 2,
       tools: ["allen"],
     },
     {
       title: "Do the same with the other side rail",
-      add: ["PH1", "CH1"],
-      fix: [named("washer", "Washer", [postBolt(head[1])], [0, 1, 0], { dia: 16, len: 2 }), named("bolt", "Bolt", [postBolt(head[1])], [0, 1, 0], { len: 20, dia: 8 })],
+      add: ["S1", "R1", "PH1", "CH1"],
+      from: { S1: SIDE_IN, R1: SIDE_IN },
+      fix: [named("bolt", "Bolt", [postBolt(head[1])], [0, 1, 0], { len: 20, dia: 8 }), named("washer", "Washer", [postBolt(head[1])], [0, 1, 0], { dia: 16, len: 2 })],
       people: 2,
       tools: ["allen"],
     },
     {
       title: "Fit the foot rail and screw in the last two legs",
       detail: "Corner posts in, plates under, then each leg goes up through its plate with a big washer.",
-      add: ["PF0", "PF1", "CF0", "CF1"],
+      add: ["EF", "U1", ...foot.map((c) => `L${c[2]}`), "PF0", "PF1", "CF0", "CF1"],
+      from: Object.fromEntries(["EF", "U1", ...foot.map((c) => `L${c[2]}`)].map((id) => [id, FOOT_IN])),
       fix: [named("washer", "Big washer", foot.map(legTop), [0, 1, 0], { dia: 40, len: 6 })],
       people: 2,
       check: "square",

@@ -111,7 +111,8 @@ function chair(b: PlanBuilder, s: ProductSpec, g: Dims, cushions: boolean): bool
   const back = backrest(b, g, inner - 10, g.SH - 60, zB0);
   const sideScrews = (f: (typeof frames)[number]): FitOpts[] => [zs0 + 90, zs1 - 90].map((z) => ({ on: f.key, at: [f.sx * (g.W / 2), g.SH - 25, z] as Vec3, dir: [-f.sx, 0, 0] as Vec3, mate: sk }));
   const cups = (list: FitOpts[]) => list.map((o) => ({ ...o, mate: undefined, hole: false as const }));
-  const shortPts: FitOpts[] = frames.map((f) => ({ on: f.key, at: [f.x, g.SH - 60, f.backZ(g.SH - 60) - R / 2] as Vec3, dir: [0, 0, 1] as Vec3, mate: back }));
+  // sideways through the back leg; its tip stands out inside, where the backrest's side slots drop over it later
+  const shortPts: FitOpts[] = frames.map((f) => ({ on: f.key, at: [f.sx * (g.W / 2), g.SH - 40, (f.backZ(g.SH - 40) + backZ(g, g.SH - 60, zB0, g.SH - 40)) / 2] as Vec3, dir: [-f.sx, 0, 0] as Vec3, mate: back }));
   const lowPts: FitOpts[] = frames.map((f) => ({ on: f.key, at: [f.sx * (g.W / 2), 130, zc] as Vec3, dir: [-f.sx, 0, 0] as Vec3, mate: sk }));
   const yArm = g.armH - 40;
   const armPts: FitOpts[] = frames.map((f) => ({ on: f.key, at: [f.sx * (g.W / 2), yArm, backZ(g, g.SH - 60, zB0, yArm) + 10] as Vec3, dir: [-f.sx, 0, 0] as Vec3, mate: back }));
@@ -130,7 +131,7 @@ function chair(b: PlanBuilder, s: ProductSpec, g: Dims, cushions: boolean): bool
   );
   st({ title: "Screw the frame to the seat", detail: "Two long screws, each through a cup washer. The cup's round side goes into the hole.", tools: ["allen"], kind: "screws" }, () => both(sideScrews(Rt)));
   st({ title: "Set it down onto the other side frame", detail: "Lay that frame on the rug and lower the seat onto its pegs.", kind: "join" }, () => b.add(L.key, [-300, 0, 0]));
-  st({ title: "Screw the back legs to the seat", detail: "One short screw through each back leg, no cup washer.", tools: ["allen"], kind: "screws" }, () => b.fits(SHORT, shortPts, 0.2));
+  st({ title: "Turn a short screw into each back leg", detail: "From the outside, no cup washer. Its point stands out on the inside, ready for the backrest.", tools: ["allen"], kind: "screws" }, () => b.fits(SHORT, shortPts, 0.2));
   st({ title: "Turn it over and screw the second frame", detail: "Two more long screws with cup washers.", tools: ["allen"], kind: "screws", pose: "-x" }, () => both(sideScrews(L)));
   st({ title: "Stand it up and screw the low stretcher", detail: "One long screw with a cup washer through each side into the ends of the stretcher.", tools: ["allen"], kind: "screws", pose: "+y" }, () => both(lowPts));
   st({ title: "Loosen the two short screws a little", detail: "Back each one out about 2 cm, so the backrest can slide down behind them.", tools: ["allen"], kind: "general" });
@@ -186,11 +187,11 @@ function bench(b: PlanBuilder, s: ProductSpec): boolean {
     { material: "wood" },
   );
   const sk = b.place(seat.type, seat.mid);
-  // the middle leg: two legs under the middle of the seat, joined by a bar under it
+  // the middle leg: two legs under the middle of the seat, joined by a bar under it and a low bar that rests on the stretcher
   const mz = [g.zf - 20, g.zb + 30];
   const midC = b.compound(
     "Middle leg",
-    [tube([0, 0, mz[0]], [0, g.SH - 45, mz[0]]), tube([0, 0, mz[1]], [0, g.SH - 45, mz[1]]), tube([0, g.SH - 45, mz[0] + 15], [0, g.SH - 45, mz[1] - 15])],
+    [tube([0, 0, mz[0]], [0, g.SH - 45, mz[0]]), tube([0, 0, mz[1]], [0, g.SH - 45, mz[1]]), tube([0, g.SH - 45, mz[0] + 15], [0, g.SH - 45, mz[1] - 15]), tube([0, 130 + R, mz[0] + 15], [0, 130 + R, mz[1] - 15])],
     { material: "wood" },
   );
   const mid = b.place(midC.type, midC.mid);

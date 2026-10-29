@@ -147,7 +147,7 @@ function table(s: ProductSpec): CustomParams {
         title: "Slot the leg bars together into two Xs",
         detail: "Lay them flat. Push the notches into each other, then turn one bolt into each crossing with the Allen key.",
         add: ["A0", "B0", "A1", "B1"],
-        fix: ends.map((ex, i) => fx("bolt", [[ex * xl - bt / 2, crossY, 0]], { len: 40, dia: 6, dir: [ex, 0, 0], on: `A${i}`, mate: `B${i}` })),
+        fix: ends.map((ex, i) => fx("bolt", [[ex * (xl - bt / 2), crossY, 0]], { len: 40, dia: 6, dir: [ex, 0, 0], on: `A${i}`, mate: `B${i}` })),
         tools: ["allen"],
         pose: "+x",
       },

@@ -60,13 +60,18 @@ function recipe(s: ProductSpec): CustomParams {
   tubePart("EL2", "Leg tube", [xe, 0, zf], [xe, yLow, zf], 30);
 
   // the bed frame: long rails at the back, middle and front, three middle legs along the back, cross tubes
-  const yR = 400, xr = xe - 30;
-  const zR = { b: zb + 40, m: 0, f: zf - 40 };
+  // the back rail sits against the back frame's lower rail, so the short bolt goes through one into the other
+  const yR = 415, xr = xe - 30;
+  const zR = { b: zb + 28, m: 0, f: zf - 40 };
   tubePart("RB", "Long rail", [-xr, yR, zR.b], [xr, yR, zR.b], 30);
   tubePart("RF", "Long rail", [-xr, yR, zR.f], [xr, yR, zR.f], 30);
   tubePart("RM", "Long rail", [-xr, yR, zR.m], [xr, yR, zR.m], 30);
   const legX = [-640, 0, 640];
-  legX.forEach((x, i) => tubePart(`ML${i + 1}`, "Middle leg", [x, 0, zR.b - 30], [x, yR - 15, zR.b - 30], 30));
+  // each middle leg has a plate on top that screws up into the back rail
+  legX.forEach((x, i) => {
+    const c: Vec3 = [x, (yR - 15) / 2, zR.b];
+    part(`ML${i + 1}`, "Middle leg", [rod([x, 0, zR.b], [x, yR - 19, zR.b], c, 30), { shape: "box", size: [80, 4, 30], pos: [0, (yR - 17) - c[1], 0] }], c, [80, yR - 15, 30]);
+  });
   legX.forEach((x, i) => tubePart(`C${i + 1}`, "Cross tube", [x, yR - 30, zR.b + 15], [x, yR - 30, zR.f - 15], 22));
   // the pull-out frame under it, and its cross tubes
   const yP = 200, zP = 440, xP = xr - 60;
@@ -104,12 +109,12 @@ function recipe(s: ProductSpec): CustomParams {
       },
       { title: "Screw the tubes to the back", detail: "One screw in each, through the hole on top.", fix: [screw(undefined, [-1, 1].map((sx): Vec3 => [sx * xe, yLow - 30, zb + 15]), [0, 0, -1])], tools: ["allen"] },
       { title: "Push the leg tubes into the end frames", detail: "One into the front post of each frame, holes lined up.", wait: ["E1", "E2", "EL1", "EL2"] },
-      { title: "Screw them to the end frames", detail: "One screw in each.", fix: [screw(undefined, [-1, 1].map((sx): Vec3 => [sx * xe, yLow - 30, zf + 15]), [0, 0, -1])], wait: ["E1", "E2", "EL1", "EL2"], tools: ["allen"] },
+      { title: "Screw them to the end frames", detail: "One screw in each.", fix: [...[-1, 1].map((sx) => screw(sx < 0 ? "EL1" : "EL2", [[sx * xe, yLow - 30, zf + 15]], [0, 0, -1]))], wait: ["E1", "E2", "EL1", "EL2"], tools: ["allen"] },
       {
         title: "Bolt the end frames to the back",
         detail: "Stand the back up. Two long bolts join each end frame to a back post; the holes with flat sides face in.",
         add: ["E1", "E2", "EL1", "EL2"],
-        fix: [-1, 1].map((sx) => longBolts([yLow + 40, yArm - 40].map((y): Vec3 => [sx * (xe - 2), y, zb + TUBE]), [0, 0, -1], sx < 0 ? "E1" : "E2", "BK")),
+        fix: [-1, 1].map((sx) => longBolts([yLow, yArm].map((y): Vec3 => [sx * (xe - 2), y, zb + TUBE + 30]), [0, 0, -1], sx < 0 ? "E1" : "E2", "BK")),
         pose: "+y",
         people: 2,
       },
@@ -122,8 +127,8 @@ function recipe(s: ProductSpec): CustomParams {
         detail: "Plate flat on the back rail, two screws each, then turn a glide into the foot of the outer two.",
         add: ["ML1", "ML2", "ML3"],
         fix: [
-          { kind: "screw", count: 6, len: 12, dia: 6, at: legX.flatMap((x) => [-1, 1].map((e): Vec3 => [x + e * 25, yR - 15, zR.b - 30])), dir: [0, 1, 0], mate: "RB" },
-          { kind: "foot", count: 2, len: 15, dia: 30, name: "Glide", at: [legX[0], legX[2]].map((x): Vec3 => [x, 0, zR.b - 30]), dir: [0, 1, 0] },
+          { kind: "screw", count: 6, len: 12, dia: 6, at: legX.flatMap((x) => [-1, 1].map((e): Vec3 => [x + e * 28, yR - 19, zR.b])), dir: [0, 1, 0], mate: "RB" },
+          { kind: "foot", count: 2, len: 15, dia: 30, name: "Glide", at: [legX[0], legX[2]].map((x): Vec3 => [x, 0, zR.b]), dir: [0, 1, 0] },
         ],
         tools: ["allen"],
       },
@@ -147,9 +152,9 @@ function recipe(s: ProductSpec): CustomParams {
         title: "Bolt the frame to the back and ends",
         detail: "One short bolt and one screw at the middle, then two long bolts through each end frame into the rails.",
         fix: [
-          { kind: "bolt", count: 1, len: 20, dia: 8, name: "Short bolt", at: [[0, yR, zb]], dir: [0, 0, 1], on: "BK", mate: "RB" },
+          { kind: "bolt", count: 1, len: 20, dia: 8, name: "Short bolt", at: [[0, yLow - 6, zb - 2]], dir: [0, 0, 1], on: "BK", mate: "RB" },
           screw("RM", [[0, yR + 15, 0]]),
-          ...[-1, 1].flatMap((sx) => (["RB", "RF"] as const).map((r) => longBolts([[sx * xe, yR, r === "RB" ? zR.b : zR.f]], [-sx, 0, 0], sx < 0 ? "E1" : "E2", r))),
+          ...[-1, 1].flatMap((sx) => (["RB", "RF"] as const).map((r) => longBolts([[sx * xe, yR + 3, r === "RB" ? zR.b : zR.f]], [-sx, 0, 0], sx < 0 ? "E1" : "E2", r))),
         ],
         tools: ["allen"],
       },
@@ -158,7 +163,7 @@ function recipe(s: ProductSpec): CustomParams {
         detail: "Snap one onto each end of the middle rail until it clicks, then a screw in each. Two countersunk screws fix the front rail's ends.",
         fix: [
           { kind: "clip", count: 2, len: 40, dia: 30, name: "Slat bracket", at: [-1, 1].map((sx): Vec3 => [sx * (xr - 40), yR + 15, 0]), dir: [0, -1, 0], on: "RM" },
-          { kind: "screw", count: 2, len: 12, dia: 6, at: [-1, 1].map((sx): Vec3 => [sx * (xr - 40), yR + 15, 0]), dir: [0, -1, 0], on: "RM" },
+          { kind: "screw", count: 2, len: 12, dia: 6, at: [-1, 1].map((sx): Vec3 => [sx * (xr - 66), yR + 15, 0]), dir: [0, -1, 0], on: "RM" },
           { kind: "screw", count: 2, len: 20, dia: 5, name: "Countersunk screw", at: [-1, 1].map((sx): Vec3 => [sx * (xr - 10), yR + 15, zR.f]), dir: [0, -1, 0], on: "RF" },
         ],
         tools: ["allen"],

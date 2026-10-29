@@ -102,7 +102,7 @@ function recipe(s: ProductSpec): CustomParams {
     },
     { title: "Lock them with two cam locks", detail: "Arrow towards the bolt, then turn clockwise.", fix: camLocks(-1, ["BA", "BR"]), tools: ["screwdriver"] },
     { title: "Slide the shelf into the rail's groove", detail: "Smooth side up, all the way to the back rail.", add: ["SH"], from: { SH: [0, 0, 400] } },
-    { title: "Fit the front rail", detail: "One dowel in each end, then press it onto the frame and over the shelf's edge.", add: ["FR"], fix: dowels("FR", [yR], zR) },
+    { title: "Fit the front rail", detail: "One dowel in each end, then press it onto the frame and over the shelf's edge.", add: ["FR"], fix: dowels("FR", [yR], zR), from: { FR: [300, 0, 0] } },
     { title: "Lock the front rail", detail: "One cam lock.", fix: camLocks(-1, ["FR"]), tools: ["screwdriver"] },
     { title: "Lower the right frame on top", detail: "Its bolts go into the holes in the apron and rails, the runner on the inside.", add: ["SR"] },
     { title: "Lock the right frame", detail: "Three cam locks.", fix: camLocks(1, ["BA", "BR", "FR"]), tools: ["screwdriver"] },

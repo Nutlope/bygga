@@ -60,7 +60,7 @@ function armchair(s: ProductSpec): CustomParams {
         title: "Bolt the leg frame to the seat",
         detail: "Set the frame's four plates over the holes. Start each bolt by hand with its square washer sitting flat in the recess, then tighten with the Allen key.",
         add: ["LEGS"],
-        fix: [{ kind: "bolt", count: 4, len: 16, dia: 6, at: tops.map((t): Vec3 => [t[0], t[1] - TUBE / 2, t[2]]), dir: [0, 1, 0], on: "LEGS", mate: "SEAT" }],
+        fix: [{ kind: "bolt", count: 4, len: 16, dia: 6, at: tops.map((t): Vec3 => [t[0], under(t[2]) - 4, t[2]]), dir: [0, 1, 0], on: "LEGS", mate: "SEAT" }],
       },
       { title: "Stand the chair up", detail: "Lift it by the frame and set it on its feet.", pose: "+y" },
     ],

@@ -10,7 +10,8 @@ import { buildCustom } from "../custom";
  * four pins in the open space at the top. The beds are built from their manuals too: the queen and 160 from the
  * queen's, the twin with storage boxes from its own (a one-panel headboard on double cam bolts, side rails on round
  * connectors, a ready-made footboard, a top cap, a centre bar) and the box set's (two boxes built on their fronts).
- * The chests and the wardrobe have no manual we could find and keep their old guides.
+ * The chests of 4 and 6 drawers follow the US 4- and 6-drawer dressers' manuals. The wardrobe has no manual we
+ * could find and keeps its old guide.
  */
 
 type Fx = Omit<CustomFix, "count" | "at"> & { at: Vec3[] };
@@ -322,7 +323,8 @@ function bed(s: ProductSpec): CustomParams {
         ...conn(L / 2 - PS - 40),
       ],
       people: 2,
-      from: { sideL: [-400, 0, 0], sideR: [400, 0, 0] },
+      // they go on along their dowels, from the foot end towards the posts
+      from: { sideL: [0, 0, 400], sideR: [0, 0, 400] },
     },
     {
       title: "Bolt the side rails to the headboard",
@@ -390,7 +392,7 @@ function bed(s: ProductSpec): CustomParams {
       title: "Roll out the slats",
       detail: "Across the supports and the beam, then fix the end slats with a screw at each end so they can't move.",
       add: slats,
-      fix: [fx({ kind: "screw", len: 16, dia: 4, at: [slatZ(0), slatZ(1), slatZ(nSlats - 2), slatZ(nSlats - 1)].flatMap((z) => sx2.map((sx) => [sx * (slatL / 2 - 20), ySl + 10, z] as Vec3)), dir: [0, -1, 0] })],
+      fix: [fx({ kind: "screw", len: 16, dia: 4, at: [slatZ(0), slatZ(1), slatZ(nSlats - 2), slatZ(nSlats - 1)].flatMap((z) => sx2.map((sx) => [sx * (xRail - 11 - 12.5), ySl + 10, z] as Vec3)), dir: [0, -1, 0] })],
       tools: ["screwdriver"],
       people: 2,
     },
@@ -719,9 +721,297 @@ function twinBoxes(b: PlanBuilder) {
   });
 }
 
+/** The chests' sizes, shared by the carcass recipe and the drawers. */
+function chestGeo(s: ProductSpec) {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const cols = W > 1200 ? 2 : 1;
+  const n = cols === 2 ? 3 : 4; // drawers in a column
+  const T = 16, TT = 20, P = 70, RT = 60, RM = cols === 2 ? 64 : 40; // panels, top, plinth, top rail, rails between drawers
+  const hs = H - TT;
+  const Dc = D - 20, zc = -10; // the carcass under the top's overhang at the front
+  const zF = zc + Dc / 2, zB = zc - Dc / 2;
+  const colW = (W - 2 * T - (cols - 1) * T) / cols;
+  const cx = (c: number) => -W / 2 + T + colW / 2 + c * (colW + T);
+  const oh = (hs - RT - P - (n - 1) * RM) / n; // drawer opening
+  const yOpen = (r: number) => P + r * (oh + RM); // bottom of opening r, from the floor up
+  return { W, H, D, cols, n, T, TT, P, RT, RM, hs, Dc, zc, zF, zB, colW, cx, oh, yOpen };
+}
+
+/**
+ * The chests' drawers, built on the floor beside it: a front lying face down takes four cam bolts, the sides stand
+ * on it and lock with cams, the bottom slides down the grooves, the back swings in onto dowels and is held with
+ * cam bolts and cams, then the runners and the handle. One is shown; the rest are built the same way.
+ */
+function chestDrawers(b: PlanBuilder, s: ProductSpec) {
+  const { cols, n, colW, cx, oh, yOpen, zF, Dc } = chestGeo(s);
+  const dd = Dc - 70, st = 12, sh = Math.round(oh - 50);
+  const zs = zF - 18 - dd / 2, zBk = zF - 18 - dd + 6, bw = colW - 26 - 2 * st;
+  const frontT = b.part("Drawer front", [colW - 4, oh - 4, 18]);
+  const sideT = b.part("Drawer side", [st, sh, dd]);
+  const bottomT = b.part("Drawer bottom", [bw + 10, 3, dd - 20], { material: "fiber" });
+  const backT = b.part("Drawer back", [bw, sh - 22, st]);
+  const drs: { x: number; yb: number }[] = [];
+  for (let c = 0; c < cols; c++) for (let r = 0; r < n; r++) drs.push({ x: cx(c), yb: yOpen(r) });
+  const sideX = (x: number, g: number) => x + g * (colW / 2 - 13 - st / 2);
+  const all = drs.map((d) => ({
+    d,
+    front: b.place(frontT, [d.x, d.yb + oh / 2, zF - 9]),
+    sides: [-1, 1].map((g) => b.place(sideT, [sideX(d.x, g), d.yb + 10 + sh / 2, zs])),
+    bottom: b.place(bottomT, [d.x, d.yb + 20, zs + 2]),
+    back: b.place(backT, [d.x, d.yb + 32 + (sh - 22) / 2, zBk]),
+  }));
+  type One = (typeof all)[number];
+  const yLo = (d: One["d"]) => d.yb + 35, yHi = (d: One["d"]) => d.yb + 10 + sh - 25;
+  const yB1 = (d: One["d"]) => d.yb + 47, yB2 = (d: One["d"]) => d.yb + 32 + sh - 22 - 30; // back dowels
+  const yC1 = (d: One["d"]) => d.yb + 74, yC2 = (d: One["d"]) => d.yb + 32 + sh - 22 - 5; // back cam bolts
+  const runY = (d: One["d"]) => d.yb + 22;
+  const CB: HwDef = { kind: "camScrew", len: 34, dia: 7 };
+  const CAM: HwDef = { kind: "cam", len: 12, dia: 15 };
+  const DW: HwDef = { kind: "dowel", len: 30, dia: 8 };
+  const RUN: HwDef = { kind: "runner", len: dd - 20, dia: 20, name: "Drawer runner" };
+  const SCR: HwDef = { kind: "screw", len: 12, dia: 4 };
+  const HSCR: HwDef = { kind: "screw", len: 25, dia: 4 };
+  const HANDLE: HwDef = { kind: "handle", len: 128, dia: 12 };
+  const fits = (x: One) => ({
+    frontBolts: [-1, 1].flatMap((g) => [yLo(x.d), yHi(x.d)].map((y): FitOpts => ({ on: x.front, at: [sideX(x.d.x, g), y, zF - 18], dir: [0, 0, 1], mate: x.sides[g < 0 ? 0 : 1] }))),
+    frontCams: [-1, 1].flatMap((g) => [yLo(x.d), yHi(x.d)].map((y): FitOpts => ({ on: x.sides[g < 0 ? 0 : 1], at: [sideX(x.d.x, g) - (g * st) / 2, y, zF - 48], dir: [g, 0, 0] }))),
+    dowels: [-1, 1].flatMap((g) => [yB1(x.d), yB2(x.d)].map((y): FitOpts => ({ on: x.sides[g < 0 ? 0 : 1], at: [sideX(x.d.x, g) - (g * st) / 2, y, zBk], dir: [g, 0, 0], mate: x.back }))),
+    backBolts: [-1, 1].flatMap((g) => [yC1(x.d), yC2(x.d)].map((y): FitOpts => ({ on: x.sides[g < 0 ? 0 : 1], at: [sideX(x.d.x, g) - (g * st) / 2, y, zBk], dir: [g, 0, 0], mate: x.back }))),
+    backCams: [-1, 1].flatMap((g) => [yC1(x.d), yC2(x.d)].map((y): FitOpts => ({ on: x.back, at: [x.d.x + g * (bw / 2 - 30), y, zBk + st / 2], dir: [0, 0, -1] }))),
+    runners: [-1, 1].map((g): FitOpts => ({ on: x.sides[g < 0 ? 0 : 1], at: [sideX(x.d.x, g) + g * 7, runY(x.d), zs], dir: [-g, 0, 0], hole: false })),
+    runnerScrews: [-1, 1].flatMap((g) => [-1, 1].map((e): FitOpts => ({ on: x.sides[g < 0 ? 0 : 1], at: [sideX(x.d.x, g) + g * 10, runY(x.d), zs + e * (dd / 2 - 80)], dir: [-g, 0, 0] }))),
+    handle: [{ on: x.front, at: [x.d.x, x.d.yb + oh / 2, zF], dir: [0, 0, -1], hole: false } as FitOpts],
+    handleScrews: [-64, 64].map((dx): FitOpts => ({ on: x.front, at: [x.d.x + dx, x.d.yb + oh / 2, zF - 18], dir: [0, 0, 1] })),
+  });
+  const x0 = all[0], f0 = fits(x0);
+  const c0: Vec3 = [x0.d.x, x0.d.yb + oh / 2, zs];
+  const stage = (k: string, from: Vec3) => {
+    const it = b.partItem(k);
+    b.stage(k, [it.final.pos[0] - c0[0], it.final.pos[1] - c0[1], it.final.pos[2] - c0[2]], it.final.rot, from);
+  };
+  const N = all.length;
+  const st2 = (title: string, detail: string, kind: "cams" | "dowels" | "drawer" | "screws" | "join", body: () => void, tools?: ("screwdriver" | "hammer")[]) =>
+    b.step({ title, detail, kind, tools, scene: "drawer", pose: "-z" }, body);
+  st2("Screw the cam bolts into a drawer front", "Lay it face down on a rug. Four bolts into its back, by hand.", "cams", () => {
+    stage(x0.front, [0, 0, 200]);
+    b.then(0.15);
+    b.fits(CB, f0.frontBolts, 0.08);
+  }, ["screwdriver"]);
+  st2("Stand the sides on and lock them", "Grooves facing in, onto the bolts. Turn two cam locks in each side.", "cams", () => {
+    b.stagger(0.2);
+    for (const k of x0.sides) stage(k, [0, 0, -260]);
+    b.then(0.15);
+    b.fits(CAM, f0.frontCams, 0.08);
+  }, ["screwdriver"]);
+  st2("Slide the bottom in", "Down the grooves in the sides until it reaches the front.", "drawer", () => stage(x0.bottom, [0, 0, -420]));
+  st2("Tap dowels into the sides", "Two into the inside of each side at the open end.", "dowels", () => b.fits(DW, f0.dowels, 0.08), ["hammer"]);
+  st2("Swing the back in", "Hook one end onto its dowels, swing the other in, then push two cam bolts through each side into it.", "join", () => {
+    stage(x0.back, [220, 0, -220]);
+    b.then(0.15);
+    b.fits(CB, f0.backBolts, 0.08);
+  }, ["screwdriver"]);
+  st2("Lock the back", "Four cam locks in it, turned clockwise.", "cams", () => b.fits(CAM, f0.backCams, 0.08), ["screwdriver"]);
+  st2("Screw the runners on", "One along the bottom of each side, two screws each, wheel at the back.", "screws", () => {
+    b.fits(RUN, f0.runners, 0.15);
+    b.then(0.1);
+    b.fits(SCR, f0.runnerScrews, 0.06);
+  }, ["screwdriver"]);
+  b.step({ title: "Screw on the handle", detail: "Stand the drawer on its bottom. Two screws from the inside of the front.", kind: "screws", tools: ["screwdriver"], scene: "drawer", pose: "+y" }, () => {
+    b.fits(HANDLE, f0.handle, 0.15);
+    b.then(0.1);
+    b.fits(HSCR, f0.handleScrews, 0.08);
+  });
+  // the rest, finished beside the first one
+  b.step({ title: `Build the other ${N - 1} drawers the same way`, detail: "Front, sides, bottom, back, runners and handle, in the same order.", kind: "drawer", scene: "drawer", pose: "+y" }, () => {
+    all.slice(1).forEach((x, j) => {
+      const i = j + 1;
+      const off: Vec3 = [(i % 2) * (colW + 80), Math.floor(i / 2) * (oh + 40), 0];
+      b.stagger(0);
+      for (const k of [x.front, ...x.sides, x.bottom, x.back]) {
+        const it = b.partItem(k);
+        b.stage(k, [it.final.pos[0] - x.d.x + off[0], it.final.pos[1] - x.d.yb - oh / 2 + off[1], it.final.pos[2] - zs + off[2]], it.final.rot);
+      }
+      const f = fits(x);
+      const list: [HwDef, FitOpts[]][] = [[CB, [...f.frontBolts, ...f.backBolts]], [CAM, [...f.frontCams, ...f.backCams]], [DW, f.dowels], [RUN, f.runners], [SCR, f.runnerScrews], [HANDLE, f.handle], [HSCR, f.handleScrews]];
+      for (const [def, l] of list) for (const op of l) b.preset(def, op);
+      b.wait(0.15);
+    });
+  });
+  b.step({ title: "Slide the drawers in", detail: "Onto the runners, all the way in until they click. Fill the bottom drawers first.", kind: "drawer" }, () => {
+    for (const x of all) {
+      b.stagger(0);
+      for (const k of [x.front, ...x.sides, x.bottom, x.back]) b.add(k, [0, 0, 600]);
+      b.wait(0.2);
+    }
+  });
+}
+
+/**
+ * The chests of 4 and 6 drawers (US manuals of the 4- and 6-drawer dressers): built lying on the left side. Runners
+ * and cam bolts go into the sides (and the 6's middle divider) first, the rails stand on the lying side on a dowel
+ * and a cam lock at each end, the back panels (the 4's) drop in between, the other side goes on top, then it is
+ * stood up, the top goes on dowels and cam locks with the wall brackets under it. Each drawer is a front with cam
+ * bolts, two sides on cams, a bottom slid in, a back on dowels and cams, runners and a handle.
+ */
+function chest(s: ProductSpec): CustomParams {
+  const { W, H, D, cols, n, T, TT, P, RT, RM, hs, Dc, zc, zF, zB, colW, cx, oh, yOpen } = chestGeo(s);
+  const walls = cols === 2 ? ["L", "V", "R"] : ["L", "R"];
+  const wallX = (i: number) => (i === 0 ? -W / 2 + T / 2 : i === walls.length - 1 ? W / 2 - T / 2 : 0);
+  const zBR = zB + 10 + T / 2; // back rails stand in front of the back
+  const parts: CustomPart[] = [];
+  const add = (id: string, name: string, size: Vec3, pos: Vec3, o: Partial<CustomPart> = {}) => parts.push({ id, name, size, pos, ...o });
+  add("L", "Side panel", [T, hs, Dc], [wallX(0), hs / 2, zc]);
+  add("R", "Side panel", [T, hs, Dc], [wallX(walls.length - 1), hs / 2, zc]);
+  if (cols === 2) add("V", "Divider", [T, hs, Dc - 10], [0, hs / 2, zc + 5]);
+  add("top", "Top", [W, TT, D], [0, H - TT / 2, 0]);
+  // rails: for each column, a top rail, rails between the drawers and a plinth at the front, a top and a bottom rail at the back
+  type Rail = { id: string; c: number; y: number; h: number; z: number; front: boolean; under?: boolean };
+  const rails: Rail[] = [];
+  for (let c = 0; c < cols; c++) {
+    rails.push({ id: `ft${c}`, c, y: hs - RT / 2, h: RT, z: zF - T / 2, front: true });
+    for (let r = 1; r < n; r++) rails.push({ id: `fm${c}${r}`, c, y: yOpen(r) - RM / 2, h: RM, z: zF - T / 2, front: true, under: true });
+    rails.push({ id: `fp${c}`, c, y: P / 2, h: P, z: zF - T / 2, front: true, under: true });
+    rails.push({ id: `bt${c}`, c, y: hs - RT / 2, h: RT, z: zBR, front: false });
+    rails.push({ id: `bb${c}`, c, y: P / 2, h: P, z: zBR, front: false });
+  }
+  for (const r of rails) add(r.id, r.front ? (r.id.startsWith("fp") ? "Plinth" : "Front rail") : "Back rail", [colW, r.h, T], [cx(r.c), r.y, r.z]);
+  // the 4's back is four panels on dowels between the sides, the 6's one hardboard slid down grooves
+  const nb = cols === 1 ? 4 : 0;
+  const bh = (hs - RT - P) / Math.max(1, nb);
+  for (let i = 0; i < nb; i++) add(`bk${i}`, "Back panel", [colW, bh - 2, 10], [cx(0), P + bh * (i + 0.5), zB + 5]);
+  if (cols === 2) add("back", "Back panel", [W - 2 * T + 16, hs - 10, 3], [0, (hs - 10) / 2 + 5, zB + 6], { material: "fiber" });
+
+  // drawers (built in their own scene, see chestDrawers)
+  const dd = Dc - 70;
+  type Dr = { i: number; c: number; r: number; x: number; yb: number };
+  const drs: Dr[] = [];
+  for (let c = 0; c < cols; c++) for (let r = 0; r < n; r++) drs.push({ i: drs.length, c, r, x: cx(c), yb: yOpen(r) });
+
+  // ---------- fittings ----------
+  const wallOf = (c: number, g: number) => walls[g < 0 ? c : c + 1];
+  const faceX = (c: number, g: number) => cx(c) + g * (colW / 2); // the inner face of a column's wall
+  // a rail end: a dowel above the middle, the cam bolt below it in the wall, the cam lock in the rail beside it
+  // the dowel above the middle of a rail end, the cam bolt below; the right column's sit further out where both
+  // columns meet the divider, so the two faces' fittings don't share a spot
+  const off = (r: Rail, g: number) => (cols === 2 && r.c === 1 && g < 0 ? 27.5 : 11.5);
+  const railDowels = (list: Rail[]): CustomFix[] => list.flatMap((r) => [-1, 1].map((g) => fx({ kind: "dowel", at: [[faceX(r.c, g), r.y + off(r, g), r.z]], dir: [-g, 0, 0], on: r.id, mate: wallOf(r.c, g) })));
+  const railBolts = (wall: string, list: Rail[]): CustomFix => {
+    const at: Vec3[] = [];
+    for (const r of list) for (const g of [-1, 1]) if (wallOf(r.c, g) === wall) at.push([faceX(r.c, g), r.y - off(r, g), r.z]);
+    const x = at[0][0], g = x < wallX(walls.indexOf(wall)) ? 1 : -1;
+    return fx({ kind: "camScrew", at, dir: [g, 0, 0], on: wall });
+  };
+  const railCams = (wall: string, list: Rail[]): CustomFix[] =>
+    list.flatMap((r) => [-1, 1].filter((g) => wallOf(r.c, g) === wall).map((g) => fx({ kind: "cam", dia: 15, at: [[faceX(r.c, g) - g * 30, r.y - off(r, g), r.front ? r.z - T / 2 : r.z + T / 2]], dir: [0, 0, r.front ? 1 : -1], on: r.id })));
+  const panelDowels = (): CustomFix[] => range(nb).flatMap((i) => [-1, 1].map((g) => fx({ kind: "dowel", at: [[faceX(0, g), P + bh * (i + 0.5), zB + 5]], dir: [-g, 0, 0], on: `bk${i}`, mate: g < 0 ? "L" : "R" })));
+  const runnerY = (d: Dr) => d.yb + 22;
+  const zRun = zF - Dc / 2 - 15, runLen = Dc - 60;
+  const carcassRunners = (wall: string, only?: number): CustomFix[] => {
+    const pts: { x: number; g: number; y: number }[] = [];
+    for (const d of drs) for (const g of [-1, 1]) if (wallOf(d.c, g) === wall && (only === undefined || g === only)) pts.push({ x: faceX(d.c, g), g, y: runnerY(d) });
+    return [
+      fx({ kind: "runner", name: "Drawer runner", len: runLen, dia: 20, at: pts.map((p) => [p.x - p.g * 5, p.y, zRun] as Vec3), dir: [pts[0].g, 0, 0], on: wall }),
+      fx({ kind: "screw", len: 12, dia: 4, at: pts.flatMap((p) => [-1, 0, 1].map((e) => [p.x - p.g * 8, p.y, zRun + e * (runLen / 2 - 40)] as Vec3)), dir: [pts[0].g, 0, 0], on: wall }),
+    ];
+  };
+  const wallRails = (wall: string) => rails.filter((r) => wallOf(r.c, -1) === wall || wallOf(r.c, 1) === wall);
+  const front = rails.filter((r) => r.front), back = rails.filter((r) => !r.front);
+  const stops = rails.filter((r) => r.under || r.id.startsWith("bb")).map((r) => [cx(r.c), r.y + r.h / 2, r.front ? r.z - 20 : r.z] as Vec3);
+  const xT = (W / 2 - T / 2);
+  const topXs = cols === 2 ? [-xT, 0, xT] : [-xT, xT];
+  const topDowels = fx({ kind: "dowel", at: [...topXs.flatMap((x) => [-1, 1].map((k) => [x, hs, zc + k * (Dc / 2 - 50)] as Vec3)), ...(cols === 1 ? [-1, 1].map((k) => [k * colW / 4, hs, zBR] as Vec3) : [])], dir: [0, -1, 0] });
+  const topBolts = fx({ kind: "camScrew", at: topXs.flatMap((x) => [-1, 1].map((k) => [x, hs, zc + k * (Dc / 2 - 110)] as Vec3)), dir: [0, 1, 0], on: "top" });
+  const topCams = topXs.flatMap((x, i) =>
+    (x === 0 ? [-1] : [Math.sign(x)]).map((g) => fx({ kind: "cam", dia: 15, at: [-1, 1].map((k) => [x - g * T / 2, hs - 30, zc + k * (Dc / 2 - 110)] as Vec3), dir: [g, 0, 0], on: walls[i] })),
+  );
+  const bx = [-1, 1].map((g) => g * (W / 2 - 120));
+  const brackets: Vec3[] = bx.map((x) => [x, H - TT, -D / 2 + 6]);
+  const sides2 = ["L", "R"];
+  const steps: CustomStep[] = [];
+  const push = (st: CustomStep) => steps.push(st);
+  const inner = cols === 2;
+
+  push({
+    title: "Screw the runners onto a side",
+    detail: `Lay the left side on a rug, inside up. ${n} runners, three screws each. They are marked CL and CR: keep them to the side shown.`,
+    add: ["L"],
+    fix: carcassRunners("L"),
+    tools: ["screwdriver"],
+    pose: "+x",
+    warnings: ["floor"],
+  });
+  push({
+    title: "Screw the cam bolts into the sides",
+    detail: inner ? "By hand until they stop, into both sides and both faces of the divider. Screw the runners onto the right side and both faces of the divider the same way." : `${front.length + back.length} in each side, by hand until they stop. Screw the runners onto the right side the same way.`,
+    fix: [railBolts("L", rails), railBolts("R", rails), ...(inner ? [railBolts("V", rails.filter((r) => r.c === 0)), railBolts("V", rails.filter((r) => r.c === 1))] : []), ...carcassRunners("R"), ...(inner ? [...carcassRunners("V", 1), ...carcassRunners("V", -1)] : [])],
+    wait: inner ? ["R", "V"] : ["R"],
+    tools: ["screwdriver"],
+  });
+  const col0 = rails.filter((r) => r.c === 0), col1 = rails.filter((r) => r.c === 1);
+  push({
+    title: "Tap dowels into the rails" + (nb ? " and back panels" : ""),
+    detail: `One into each end${nb ? " of every rail and back panel" : ""}.`,
+    fix: [...railDowels(rails), ...panelDowels()],
+    wait: [...rails.map((r) => r.id), ...range(nb).map((i) => `bk${i}`)],
+    tools: ["hammer"],
+  });
+  push({ title: inner ? "Stand the left column's rails on the side" : "Stand the front rails on the side", detail: "Dowel ends down into the holes, the plinth at the bottom.", add: (inner ? col0 : front).filter((r) => r.front).map((r) => r.id) });
+  push({ title: "Stand the back rails on", detail: "One at the top and one at the bottom, behind the front ones.", add: (inner ? col0 : back).filter((r) => !r.front).map((r) => r.id) });
+  push({ title: "Lock the rails to the side", detail: "One cam lock in the end of each rail, arrow towards the bolt, turned clockwise.", fix: railCams("L", rails), tools: ["screwdriver"] });
+  if (nb) push({ title: "Drop the back panels in", detail: "Four of them, between the back rails, onto the dowel holes.", add: range(nb).map((i) => `bk${i}`) });
+  if (inner) {
+    push({ title: "Lay the divider on", detail: "Runners facing up, onto the rails' dowels. Then turn its cam locks.", add: ["V"], fix: railCams("V", col0), tools: ["screwdriver"] });
+    push({ title: "Stand the right column's rails on the divider", detail: "The same way as the first column.", add: col1.map((r) => r.id) });
+  }
+  push({ title: "Lay the other side on top", detail: "Runners facing down, onto all the dowels. Then lock every rail with its cam lock.", add: ["R"], fix: railCams("R", rails), tools: ["screwdriver"], people: 2, warnings: ["two"] });
+  if (inner) push({ title: "Lock the right column's rails to the divider", detail: "Its cam locks, turned clockwise.", fix: railCams("V", col1), tools: ["screwdriver"] });
+  const corner = range(cols).flatMap((c) => [-1, 1].map((g) => ({ x: faceX(c, g) - g * 20, g, c })));
+  push({
+    title: "Screw the corner brackets on",
+    detail: "Inside, where the bottom back rail meets each wall: one screw into the rail and one into the wall.",
+    fix: [
+      fx({ kind: "angle", name: "Corner bracket", len: 30, dia: 24, at: corner.map((p) => [p.x, P, zBR] as Vec3), dir: [0, -1, 0] }),
+      fx({ kind: "screw", len: 12, dia: 4, at: corner.map((p) => [p.x - p.g * 25, P + 2, zBR] as Vec3), dir: [0, -1, 0] }),
+      ...corner.map((p) => fx({ kind: "screw", len: 12, dia: 4, at: [[faceX(p.c, p.g) - p.g * 2, P + 25, zBR]], dir: [p.g, 0, 0], on: wallOf(p.c, p.g) })),
+    ],
+    tools: ["screwdriver"],
+  });
+  push({ title: "Stand it up together", detail: "Lift it onto its plinth, don't drag it by one corner.", pose: "+y", people: 2, warnings: ["two"] });
+  push({ title: "Push in the drawer stops", detail: "One on the rail under each drawer and one on each bottom back rail, pegs into the holes.", fix: [fx({ kind: "clip", name: "Drawer stop", len: 20, dia: 12, at: stops, dir: [0, -1, 0] })] });
+  if (inner) {
+    push({ title: "Slide the back down into the grooves", detail: "From the top, smooth side facing in, all the way down.", add: ["back"], from: { back: [0, 500, 0] } });
+    push({ title: "Clip the back on", detail: "Clips through the back into the rails and the divider, then press a wedge into each.", fix: [fx({ kind: "clip", name: "Back clip", len: 14, dia: 12, at: [...range(cols).flatMap((c) => [cx(c) - colW / 4, cx(c) + colW / 4].flatMap((x) => [P / 2, hs - RT / 2].map((y) => [x, y, zB + 7] as Vec3))), ...[-1, 1].flatMap((g) => [0.3, 0.6].map((f) => [g * 2, hs * f, zB + 7] as Vec3))], dir: [0, 0, 1] })] });
+  }
+  push({
+    title: "Prepare the top",
+    detail: `Upside down on the rug: the two wall brackets at the back, one screw each, then ${topBolts.at!.length} cam bolts.`,
+    fix: [fx({ kind: "angle", name: "Wall bracket", len: 80, dia: 30, at: brackets, dir: [0, 1, 0], on: "top" }), fx({ kind: "screw", len: 12, dia: 4, at: brackets.map((p) => [p[0], p[1], p[2] + 25] as Vec3), dir: [0, 1, 0], on: "top" }), topBolts],
+    wait: ["top"],
+    tools: ["screwdriver"],
+  });
+  push({ title: "Tap dowels into the top edges", detail: `${topDowels.at!.length} of them, into the tops of the sides${inner ? " and the divider" : " and the back rail"}.`, fix: [topDowels], tools: ["hammer"] });
+  push({ title: "Put the top on and lock it", detail: "Down onto the dowels and bolts, then turn the cam locks inside.", add: ["top"], fix: topCams, tools: ["screwdriver"] });
+  const wall: Vec3[] = bx.map((x) => [x, H - TT - 30, -D / 2 - 2]);
+  push({
+    title: "Screw it to the wall",
+    detail: "Push it against the wall, mark through the brackets, drill and fix them. Screws and plugs for your wall aren't included.",
+    fix: [fx({ kind: "plug", len: 35, dia: 8, at: wall.map((p) => [p[0], p[1], p[2] - 40] as Vec3), dir: [0, 0, -1] }), fx({ kind: "screw", len: 50, dia: 5, at: wall, dir: [0, 0, -1] })],
+    tools: ["drill", "screwdriver", "pencil"],
+    wall: true,
+    warnings: ["wall", "tip"],
+  });
+
+  return { parts, steps: splitSides(steps) };
+}
+
 const family: Family = {
   names: ["SONGESAND"],
   build(b, s) {
+    if (/songesand-chest-[46]-drawers/.test(s.slug ?? "")) {
+      buildCustom(b, { ...s, custom: chest(s) });
+      chestDrawers(b, s);
+      return true;
+    }
     if (!/songesand-bed-frame-2-storage-boxes-twin/.test(s.slug ?? "")) return false;
     buildCustom(b, { ...s, custom: twinBed(s) });
     twinBoxes(b);

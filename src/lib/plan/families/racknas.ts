@@ -41,11 +41,11 @@ const side = (sx: number) => (sx < 0 ? "SL" : "SR");
 function drawerParts(i: number): CustomPart[] {
   const f0 = FRONTS[i], b0 = f0 + 15, b1 = f0 + 165, xo = 315, t = 12, zb = -175, zf = ZF - T;
   return [
-    panel(`F${i}`, "Drawer front", [-XI + 2, f0, zf], [XI - 2, f0 + FH, ZF]),
-    panel(`L${i}`, "Drawer side", [-xo, b0, zb], [-xo + t, b1, zf]),
-    panel(`R${i}`, "Drawer side", [xo - t, b0, zb], [xo, b1, zf]),
-    panel(`B${i}`, "Drawer bottom", [-xo + 6, b0 + 10, zb + 15], [xo - 6, b0 + 13, zf], "fiber"),
-    panel(`K${i}`, "Drawer back", [-xo + t, b0, zb], [xo - t, b1, zb + 15]),
+    panel(`DF${i}`, "Drawer front", [-XI + 2, f0, zf], [XI - 2, f0 + FH, ZF]),
+    panel(`DL${i}`, "Drawer side", [-xo, b0, zb], [-xo + t, b1, zf]),
+    panel(`DR${i}`, "Drawer side", [xo - t, b0, zb], [xo, b1, zf]),
+    panel(`DB${i}`, "Drawer bottom", [-xo + 6, b0 + 10, zb + 15], [xo - 6, b0 + 13, zf], "fiber"),
+    panel(`DK${i}`, "Drawer back", [-xo + t, b0, zb], [xo - t, b1, zb + 15]),
   ];
 }
 
@@ -74,7 +74,7 @@ function chest(): CustomParams {
     fx("screw", [0, 1, 2].flatMap((i) => [-120, 120].map((z): Vec3 => [sx * XI, runY(i), z])), [sx, 0, 0], side(sx), { len: 12, dia: 4 }),
   ];
   const conn = (sx: number, pts: [string, number, number][]) => pts.map(([id, y, z]) => fx("screw", [[sx * (W / 2), y, z]], [-sx, 0, 0], side(sx), { ...CONN, mate: id }));
-  const topPts = (): [string, number, number][] => [["TOP", yTop + 9, -60], ["TOP", yTop + 9, 120]];
+  const topPts = (): [string, number, number][] => [["TOP", yTop + 9, -60], ["TOP", yTop + 9, 60]];
   const railPts = (): [string, number, number][] => [["R2", 121, 160], ["R3", 440, ZB + 9]];
   const dowelEnds = (id: string, yz: [number, number][]) => [-1, 1].map((sx) => fx("dowel", yz.map(([y, z]): Vec3 => [sx * XI, y, z]), [sx, 0, 0], id, { len: 30, dia: 8, mate: side(sx) }));
   const camR1 = (sx: number) => fx("cam", [[sx * (XI - 30), 170, ZB + T]], [0, 0, -1], "R1");
@@ -84,44 +84,44 @@ function chest(): CustomParams {
     {
       title: "Screw the cam bolts into the drawer fronts",
       detail: "Lay each front face down on a rug, four bolts into the holes on the back. Build all three drawers the same way.",
-      fix: [0, 1, 2].map((i) => fx("camScrew", [-1, 1].flatMap((sx) => [FRONTS[i] + 50, FRONTS[i] + 130].map((y): Vec3 => [sx * 309, y, ZF - T])), [0, 0, 1], `F${i}`)),
-      add: ids("F"),
+      fix: [0, 1, 2].map((i) => fx("camScrew", [-1, 1].flatMap((sx) => [FRONTS[i] + 50, FRONTS[i] + 130].map((y): Vec3 => [sx * 309, y, ZF - T])), [0, 0, 1], `DF${i}`)),
+      add: ids("DF"),
       tools: ["screwdriver"],
       pose: "-z",
       warnings: ["floor"],
     },
-    { title: "Slide the sides onto the fronts", detail: "Grooves facing in, onto the bolts.", add: [...ids("L"), ...ids("R")] },
+    { title: "Slide the sides onto the fronts", detail: "Grooves facing in, onto the bolts.", add: [...ids("DL"), ...ids("DR")] },
     {
       title: "Lock the sides with cams",
       detail: "Four per drawer, arrow towards the bolt, turned clockwise.",
-      fix: [0, 1, 2].flatMap((i) => [-1, 1].map((sx) => fx("cam", [FRONTS[i] + 50, FRONTS[i] + 130].map((y): Vec3 => [sx * 303, y, ZF - T - 30]), [sx, 0, 0], sx < 0 ? `L${i}` : `R${i}`))),
+      fix: [0, 1, 2].flatMap((i) => [-1, 1].map((sx) => fx("cam", [FRONTS[i] + 50, FRONTS[i] + 130].map((y): Vec3 => [sx * 303, y, ZF - T - 30]), [sx, 0, 0], sx < 0 ? `DL${i}` : `DR${i}`))),
       tools: ["screwdriver"],
     },
-    { title: "Slide the bottoms down the grooves", detail: "Smooth side in, all the way to the front.", add: ids("B") },
+    { title: "Slide the bottoms down the grooves", detail: "Smooth side in, all the way to the front.", add: ids("DB") },
     {
       title: "Knock the stiffeners into the back boards",
       detail: "The wire goes into the holes along the back board's bottom edge, hooks down. Tap it in with a hammer.",
-      fix: [0, 1, 2].map((i) => fx("clip", [[0, FRONTS[i] + 15, -168]], [0, 1, 0], `K${i}`, { name: "Bottom stiffener", len: 300, dia: 4 })),
+      fix: [0, 1, 2].map((i) => fx("clip", [[0, FRONTS[i] + 15, -168]], [0, 1, 0], `DK${i}`, { name: "Bottom stiffener", len: 300, dia: 4 })),
       tools: ["hammer"],
-      wait: ids("K"),
-      from: Object.fromEntries(ids("K").map((k) => [k, [0, 0, -420] as Vec3])),
+      wait: ids("DK"),
+      from: Object.fromEntries(ids("DK").map((k) => [k, [0, 0, -420] as Vec3])),
     },
-    { title: "Put the back boards on", detail: "Over the ends of the sides, with the bottom's edge in the groove.", add: ids("K") },
+    { title: "Put the back boards on", detail: "Over the ends of the sides, with the bottom's edge in the groove.", add: ids("DK") },
     {
       title: "Push in the plastic plugs",
       detail: "Four per drawer, through the sides into the back board.",
-      fix: [0, 1, 2].flatMap((i) => [-1, 1].map((sx) => fx("dowel", [FRONTS[i] + 50, FRONTS[i] + 130].map((y): Vec3 => [sx * 315, y, -167]), [-sx, 0, 0], sx < 0 ? `L${i}` : `R${i}`, { name: "Plastic plug", len: 30, dia: 8, mate: `K${i}` }))),
+      fix: [0, 1, 2].flatMap((i) => [-1, 1].map((sx) => fx("dowel", [FRONTS[i] + 50, FRONTS[i] + 130].map((y): Vec3 => [sx * 315, y, -167]), [-sx, 0, 0], sx < 0 ? `DL${i}` : `DR${i}`, { name: "Plastic plug", len: 30, dia: 8, mate: `DK${i}` }))),
     },
     {
       title: "Lock the back boards",
       detail: "Four cams per drawer into the back board, turned until they grip.",
-      fix: [0, 1, 2].map((i) => fx("cam", [-1, 1].flatMap((sx) => [FRONTS[i] + 50, FRONTS[i] + 130].map((y): Vec3 => [sx * 280, y, -175])), [0, 0, 1], `K${i}`)),
+      fix: [0, 1, 2].map((i) => fx("cam", [-1, 1].flatMap((sx) => [FRONTS[i] + 50, FRONTS[i] + 130].map((y): Vec3 => [sx * 280, y, -175])), [0, 0, 1], `DK${i}`)),
       tools: ["screwdriver"],
     },
     {
       title: "Fit the pull rings",
       detail: "Push the two halves of a ring into each front's hole from both sides and twist them together.",
-      fix: [0, 1, 2].map((i) => fx("knob", [[0, FRONTS[i] + FH / 2, ZF]], [0, 0, -1], `F${i}`, { name: "Pull ring", len: 18, dia: 40 })),
+      fix: [0, 1, 2].map((i) => fx("knob", [[0, FRONTS[i] + FH / 2, ZF]], [0, 0, -1], `DF${i}`, { name: "Pull ring", len: 18, dia: 40 })),
       pose: "+y",
     },
   ];
@@ -130,7 +130,7 @@ function chest(): CustomParams {
     {
       title: "Screw in its two stop screws",
       detail: "Into the holes at the back of the drawer sides, so it can't be pulled all the way out.",
-      fix: [-1, 1].map((sx) => fx("screw", [[sx * 309, FRONTS[i] + 165, -150]], [0, -1, 0], sx < 0 ? `L${i}` : `R${i}`, { name: "Stop screw", len: 12, dia: 8 })),
+      fix: [-1, 1].map((sx) => fx("screw", [[sx * 309, FRONTS[i] + 165, -150]], [0, -1, 0], sx < 0 ? `DL${i}` : `DR${i}`, { name: "Stop screw", len: 12, dia: 8 })),
       tools: ["screwdriver"],
     },
   ];
@@ -242,7 +242,7 @@ const family: Family = {
     const until = r.steps.findIndex((x) => /top drawer in/.test(x.title));
     ["top", "middle", "bottom"].forEach((name, i) => {
       const join = r.steps.findIndex((x) => x.title === `Slide the ${name} drawer in`);
-      apart(b, r, ["F", "L", "R", "B", "K"].map((k) => `${k}${i}`), "drawers", from, until, join, [0, 0, 420]);
+      apart(b, r, ["F", "L", "R", "B", "K"].map((k) => `D${k}${i}`), "drawers", from, until, join, [0, 0, 420]);
     });
     return true;
   },

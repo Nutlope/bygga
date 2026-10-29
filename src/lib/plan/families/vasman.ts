@@ -6,7 +6,8 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Produc
  * the two side rails, the rails are bolted under the fixed top, one leg frame is screwed onto their ends, then
  * the pull-out runners and the leaf rails slide in through the blocks and are stopped and bolted, and the other
  * leg frame goes on the runners' ends. The leaf and the sliding end top get their guide plates, and the table is
- * turned over with the leaf stored under the end top. The garden armchair has no manual: it keeps its old guide.
+ * turned over with the leaf stored under the end top. The garden armchair comes assembled (IKEA has only a care sheet
+ * for it, which says to tighten its screws again each season), so its guide unpacks it and checks the screws.
  */
 
 const TUBE = 25;
@@ -47,6 +48,7 @@ function table(s: ProductSpec): CustomParams {
     return { id, name: "Leg frame", size: [TUBE, top, 2 * zp + TUBE], pos, pieces: segs.map(([a, b]) => tube(rel(a), rel(b))), material: "metal" };
   };
   const yLr = yR - 5;
+  const leafLo = yLr - 51 - 11; // underside of the stored leaf
   const parts: CustomPart[] = [
     { id: "RA", name: "Side rail", size: [xR + xs - 40, rh, rw], pos: [(-xR + xs - 40) / 2, yR, -zr], material: "metal" },
     { id: "RB", name: "Side rail", size: [xR + xs - 40, rh, rw], pos: [(-xR + xs - 40) / 2, yR, zr], material: "metal" },
@@ -106,8 +108,9 @@ function table(s: ProductSpec): CustomParams {
       title: "Bolt the leaf rails to the runners",
       detail: "A bolt through each with a spacer tube between rail and runner. The spacer sits square, not tilted.",
       fix: [
-        fx("spacer", [-1, 1].map((sz): Vec3 => [xR - 40, yLr - 30, sz * (zr - 60)]), [0, 0, 1], { name: "Spacer tube", len: 50, dia: 14 }),
-        fx("bolt", [-1, 1].map((sz): Vec3 => [xR - 40, yLr - 30, sz * (zr - 80)]), [0, 0, 1], { len: 70, dia: 6 }),
+        // from the outside of the rail, through the spacer, into the leaf rail
+        ...[-1, 1].map((sz) => fx("bolt", [[xR - 40, yLr - 30, sz * (zr - 10)]], [0, 0, -sz], { len: 70, dia: 6 })),
+        ...[-1, 1].map((sz) => fx("spacer", [[xR - 40, yLr - 30, sz * (zr - 36)]], [0, 0, -sz], { name: "Spacer tube", len: 50, dia: 14 })),
       ],
       tools: ["allen"],
     },
@@ -128,33 +131,73 @@ function table(s: ProductSpec): CustomParams {
     { title: "Tighten every bolt", detail: "Go round all eight bolts under the top and tighten them now.", tools: ["allen"], check: "square" },
     {
       title: "Screw the guide plates under the leaf",
-      detail: "Leaf face down. One plate at each end of a batten, two screws in each.",
-      add: ["F"],
+      detail: "Lay the leaf face down on the rug. One plate at each end of a batten, two screws in each.",
+      wait: ["F"],
       fix: [
-        fx("plate", [-1, 1].map((sz): Vec3 => [xs + 40, yLr - 40, sz * (zr - 70)]), [0, 1, 0], { name: "Leaf guide plate", len: 8, dia: 40 }),
-        fx("screw", [-1, 1].flatMap((sz) => [-14, 14].map((dx): Vec3 => [xs + 40 + dx, yLr - 40, sz * (zr - 70)])), [0, 1, 0], { len: 14, dia: 4 }),
+        // screws first, so each plate sits between its own two
+        fx("screw", [-1, 1].flatMap((sz) => [-24, 24].map((dx): Vec3 => [xs + 45 + dx, leafLo - 8, sz * (zr - 70)])), [0, 1, 0], { len: 14, dia: 4, on: "F" }),
+        fx("plate", [-1, 1].map((sz): Vec3 => [xs + 45, leafLo - 4, sz * (zr - 70)]), [0, 1, 0], { name: "Leaf guide plate", len: 8, dia: 40, on: "F" }),
       ],
       tools: ["allen"],
     },
     {
       title: "Screw the guide plates under the end top",
-      detail: "The other plates, the ones with a raised block. Two screws in each.",
-      add: ["E"],
+      detail: "The end top face down too, and the other plates, the ones with a raised block. Two screws in each.",
+      wait: ["E"],
       fix: [
-        fx("plate", [-1, 1].map((sz): Vec3 => [xs + 60, H - tt - 14, sz * (zr - 40)]), [0, 1, 0], { name: "End guide plate", len: 14, dia: 40 }),
-        fx("screw", [-1, 1].flatMap((sz) => [-14, 14].map((dx): Vec3 => [xs + 60 + dx, H - tt - 14, sz * (zr - 40)])), [0, 1, 0], { len: 14, dia: 4 }),
+        fx("screw", [-1, 1].flatMap((sz) => [-24, 24].map((dx): Vec3 => [xs + 60 + dx, H - tt - 8, sz * (zr - 40)])), [0, 1, 0], { len: 14, dia: 4, on: "E" }),
+        fx("plate", [-1, 1].map((sz): Vec3 => [xs + 60, H - tt - 7, sz * (zr - 40)]), [0, 1, 0], { name: "End guide plate", len: 14, dia: 40, on: "E" }),
       ],
       tools: ["allen"],
     },
     {
       title: "Turn the table over together",
-      detail: "The end top rides on the runners, the leaf stays stored under it. To extend, pull the end out, lift the leaf in and push it closed.",
+      detail: "Lift it by the fixed top, not by the runners.",
       pose: "+y",
       people: 2,
       warnings: ["two"],
     },
+    {
+      title: "Put the leaf and the end top on",
+      detail: "The leaf rests on the leaf rails, stored under the end top, and the end top rides on the runners. To extend, pull the end out, lift the leaf in and push it closed.",
+      add: ["F", "E"],
+      from: { F: [0, 400, 0], E: [0, 500, 0] },
+    },
   ];
   return { parts, steps };
+}
+
+function armchair(s: ProductSpec): CustomParams {
+  // IKEA: 54 wide, 92 high, 59 deep, seat 45 high; one cantilever frame with cord woven over the seat and back
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const X = W / 2 - 40, zf = D / 2 - 30, zb = D / 2 - 30, seatY = 450, armY = 650;
+  const c: Vec3 = [0, H / 2, 0];
+  const rel = (p: PartPiece): PartPiece => ({ ...p, pos: [p.pos[0] - c[0], p.pos[1] - c[1], p.pos[2] - c[2]] });
+  const backLo: Vec3 = [0, seatY - 20, -zb + 40], backHi: Vec3 = [0, H - 10, -zb - 15];
+  const side = (x: number): PartPiece[] => [
+    tube([x, TUBE / 2, -zb], [x, TUBE / 2, zf]),
+    tube([x, TUBE / 2, zf], [x, seatY, zf - 40]),
+    tube([x, seatY, zf - 40], [x, backLo[1], backLo[2]]),
+    tube([x, backLo[1], backLo[2]], [x, backHi[1], backHi[2]]),
+    tube([x, armY, -zb + 20], [x, armY, zf - 70]),
+    tube([x, armY, zf - 70], [x, seatY, zf - 70]),
+  ];
+  const lean = Math.atan2(backHi[2] - backLo[2], backHi[1] - backLo[1]);
+  const raw: PartPiece[] = [
+    ...side(-X),
+    ...side(X),
+    tube([-X, TUBE / 2, -zb], [X, TUBE / 2, -zb]),
+    { shape: "box", size: [2 * X - 10, 8, zf - 40 - backLo[2]], pos: [0, seatY - 12, (zf - 40 + backLo[2]) / 2], rot: [-0.04, 0, 0], material: "fiber" },
+    { shape: "box", size: [2 * X - 10, backHi[1] - backLo[1] - 30, 8], pos: [0, (backLo[1] + backHi[1]) / 2 + 10, (backLo[2] + backHi[2]) / 2], rot: [lean, 0, 0], material: "fiber" },
+  ];
+  const pieces = raw.map(rel);
+  return {
+    parts: [{ id: "CH", name: "Armchair", size: [2 * X + TUBE, H, D], pos: c, pieces, material: "metal" }],
+    steps: [
+      { title: "Unpack the chair", detail: "It comes ready assembled, so there is nothing to put together. Cut the wrapping open carefully so the knife can't catch the cord.", add: ["CH"] },
+      { title: "Check the screws are tight", detail: "Do it again at least once a season: it keeps the chair steady." },
+    ],
+  };
 }
 
 const family: Family = {
@@ -162,7 +205,8 @@ const family: Family = {
   recipe(s) {
     const t = `${s.slug ?? ""} ${s.variant}`.toLowerCase();
     if (/table/.test(t)) return table(s);
-    return null; // the armchair: no manual
+    if (/chair/.test(t)) return armchair(s);
+    return null;
   },
 };
 export default family;

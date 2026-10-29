@@ -323,7 +323,8 @@ function island(s: ProductSpec): CustomParams {
     detail,
     add: [`F${i}`],
     fix: endDowels(`F${i}`, [[yF[i], zF]]),
-    from: { [`F${i}`]: [0, 0, 320] },
+    // slid in from the open end, along its dowels and onto the frame's cam bolt
+    from: { [`F${i}`]: [-320, 0, 0] },
     tools: ["hammer"],
   });
   const brackets: Vec3[] = yS.flatMap((y) => [-300, 300].map((x) => [x, y - 9 - 15, zF - 10 - 12] as Vec3));
@@ -428,7 +429,7 @@ function island(s: ProductSpec): CustomParams {
         fx("dowel", [-300, 300].map((x) => [x, yBB, zK - KT / 2] as Vec3), [0, 0, -1], { len: 20, dia: 8, name: "Short dowel", on: "BB", mate: "K" }),
         fx("screw", [-400, 0, 400].map((x) => [x, yBB, zBB - 10] as Vec3), [0, 0, 1], { len: 30, dia: 5, on: "BB", mate: "K" }),
       ],
-      from: { BB: [-300, 0, 0] },
+      from: { BB: [0, 0, -300] },
       tools: ["hammer", "screwdriver"],
     },
     front(2, "Push in the top front rail", "Turn it round so the shelves face you. A dowel in each end of the rail, then push it in level with the top."),

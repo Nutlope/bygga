@@ -15,9 +15,10 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Produc
  * turn, the back riveted on standing, a wall fitting, then the door on a pivot and two glass shelves.
  */
 
-const metal = (W: number, D: number, P: number, y: number, id: string): CustomPart => {
+// the shelf runs right into the corners, inside the posts' 2 mm flanges, so each corner screw goes through both
+const metal = (W: number, Dout: number, y: number, id: string): CustomPart => {
   const lip = 22, t = 2;
-  const w = W - 2 * P;
+  const w = W - 4, D = Dout - 4;
   const pieces: PartPiece[] = [
     { shape: "box", size: [w, t, D - 2], pos: [0, lip / 2 - t / 2, 0] },
     { shape: "box", size: [w, lip, t], pos: [0, 0, D / 2 - t / 2] },
@@ -49,17 +50,18 @@ function metalUnit(s: ProductSpec): CustomParams {
   });
   const parts: CustomPart[] = [post(-1, 1, "pFL"), post(1, 1, "pFR"), post(-1, -1, "pBL"), post(1, -1, "pBR")];
   const shelves = Array.from({ length: n }, (_, i) => `S${i}`);
-  shelves.forEach((id, i) => parts.push(metal(W, D, P, shelfY(i), id)));
+  shelves.forEach((id, i) => parts.push(metal(W, D, shelfY(i), id)));
   // the perforated panel across one compartment at the back: the top one on the low unit, the second from the top on the tall one
   const k = tall ? n - 2 : n - 1;
-  const y0 = shelfY(k - 1), y1 = shelfY(k) - 22;
+  // it overlaps the back lips of the shelves above and below it, where its screws go
+  const y0 = shelfY(k - 1) - 22, y1 = shelfY(k);
   const pw = Math.round(W * (tall ? 0.32 : 0.4)), px = Math.round(W * (tall ? 0.1 : 0.17));
-  parts.push({ id: "mesh", name: "Perforated panel", size: [pw, y1 - y0, 3], pos: [px, (y0 + y1) / 2, -D / 2 + 4], material: "metal" });
+  parts.push({ id: "mesh", name: "Perforated panel", size: [pw, y1 - y0, 2], pos: [px, (y0 + y1) / 2, -D / 2 + 1], material: "metal" });
 
   // two screws at each corner of a shelf, through the post's two flanges
   const corner = (sx: number, sz: number, y: number): Vec3[] => [
-    [sx * W / 2, y - 11, sz * (D / 2 - P / 2 - 2)],
-    [sx * (W / 2 - P / 2 - 4), y - 11, sz * D / 2],
+    [sx * W / 2, y - 11, sz * (D / 2 - 16)],
+    [sx * (W / 2 - 16), y - 11, sz * D / 2],
   ];
   const cornerFix = (sx: number, sz: number, ids: number[], on: string): CustomFix[] => {
     const pts = ids.map((i) => corner(sx, sz, shelfY(i)));
@@ -74,7 +76,7 @@ function metalUnit(s: ProductSpec): CustomParams {
     count: 4,
     len: 10,
     dia: 6,
-    at: [y0 + 12, y1 - 12].flatMap((y) => [-1, 1].map((sx) => [px + sx * (pw / 2 - 25), y, -D / 2 + 2] as Vec3)),
+    at: [y0 + 11, y1 - 11].flatMap((y) => [-1, 1].map((sx) => [px + sx * (pw / 2 - 25), y, -D / 2] as Vec3)),
     dir: [0, 0, 1],
     on: "mesh",
   };
@@ -85,7 +87,7 @@ function metalUnit(s: ProductSpec): CustomParams {
     title: "Screw the wall brackets to the top shelf",
     detail: "One at each end of the back edge, a washer under the screw. The slotted leg stands up behind the top.",
     fix: [
-      { kind: "angle", name: "Wall bracket", count: 2, len: 50, dia: 24, at: bracketAt.map((p) => [p[0], p[1] + 20, p[2] - 2] as Vec3), dir: [0, 0, 1], on: "S" + (n - 1) },
+      { kind: "angle", name: "Wall bracket", count: 2, len: 50, dia: 24, at: bracketAt.map((p) => [p[0], p[1] + 26, p[2] - 2] as Vec3), dir: [0, 0, 1], on: "S" + (n - 1) },
       { kind: "washer", count: 2, len: 1.5, dia: 16, at: bracketAt.map((p) => [p[0], p[1], p[2] - 4] as Vec3), dir: [0, 0, 1] },
       { kind: "screw", count: 2, len: 10, dia: 6, at: bracketAt.map((p) => [p[0], p[1], p[2] - 5] as Vec3), dir: [0, 0, 1], on: "S" + (n - 1) },
     ],
@@ -319,7 +321,7 @@ function pivotSteps(o: { door: string; top: string; bottom: string; x: number; y
     {
       title: "Screw on the knob",
       detail: "The bolt goes in from the inside of the door. Tighten it by hand, then a little more with the screwdriver.",
-      fix: [fx("knob", door, [0, 0, -1], [o.knob], { len: 30, dia: 30 }), fx("screw", door, [0, 0, 1], [[o.knob[0], o.knob[1], o.knob[2] - 16]], KNOB_BOLT)],
+      fix: [fx("knob", door, [0, 0, -1], [o.knob], { len: 30, dia: 30 }), fx("screw", door, [0, 0, 1], [[o.knob[0], o.knob[1], o.knob[2] - 24]], KNOB_BOLT)],
       tools: ["screwdriver"],
     },
   ];
@@ -531,7 +533,7 @@ function glassCabinet(s: ProductSpec): CustomParams {
     {
       title: "Screw the knob onto the door",
       detail: "Lay the door on the rug. The screw goes through the frame from the inside into the knob.",
-      fix: [fx("knob", "DR", [0, 0, -1], [[W / 2 - P - 20, dy, D / 2]], { len: 30, dia: 26 }), fx("screw", "DR", [0, 0, 1], [[W / 2 - P - 20, dy, D / 2 - 18]], { len: 20, dia: 4, name: "Knob screw" })],
+      fix: [fx("knob", "DR", [0, 0, -1], [[W / 2 - P - 20, dy, D / 2]], { len: 30, dia: 26 }), fx("screw", "DR", [0, 0, 1], [[W / 2 - P - 20, dy, D / 2 - 24]], { len: 26, dia: 4, name: "Knob screw" })],
       wait: ["DR"],
       tools: ["screwdriver"],
     },
@@ -602,10 +604,10 @@ function sideboard(s: ProductSpec): CustomParams {
   const zz = (k: number) => zc + k * (pd / 2 - 50);
   const dw = (on: string, dir: Vec3, pts: Vec3[], mate: string, o: Partial<CustomFix> = DOWEL) => ({ ...fx("dowel", on, dir, pts, o), mate });
   const pair = (x: number, y: number, z0 = zc, d = 50): Vec3[] => [-1, 1].map((k) => [x, y, z0 + k * d] as Vec3);
-  const screwsThrough = (side: "L" | "R", list: [string, number, number][]) =>
-    list.map(([id, y, n]) => {
+  const screwsThrough = (side: "L" | "R", list: [string, number, number, number?][]) =>
+    list.map(([id, y, n, z1]) => {
       const sx = side === "L" ? -1 : 1;
-      const zs = n === 1 ? [zc] : [zz(-1), zz(1)];
+      const zs = n === 1 ? [z1 ?? zc] : [zz(-1), zz(1)];
       return { ...fx("screw", side, [-sx, 0, 0], zs.map((z) => [sx * W / 2, y, z] as Vec3), ALLEN), mate: id };
     });
   const camsIn = (on: string, at: Vec3[], dir: Vec3) => fx("cam", on, dir, at, CAM);
@@ -663,8 +665,8 @@ function sideboard(s: ProductSpec): CustomParams {
     { title: "Lock the right shelf", detail: "Two cam locks, turned until tight.", fix: [camsIn("SR", pair(xr0 + 30, yS + T / 2, -D / 2 + B + shD / 2, 70), [0, -1, 0])], tools: ["screwdriver"] },
     { title: "Tap dowels into the right bottom", detail: "Two into each end.", fix: [dw("BR", [-1, 0, 0], pair(xr0, yB), "M"), dw("BR", [1, 0, 0], pair(xr1, yB), "R")], wait: ["BR"], tools: ["hammer"] },
     { title: "Slide the right bottom in", detail: "From the end, onto the divider's holes, level with the left bottom.", add: ["BR"], from: { BR: [0, 0, 300] } },
-    { title: "Tap dowels into the right ends", detail: "Two into the long panel and two into the right shelf.", fix: [dw("SR", [-1, 0, 0], pair(xr1, yS, -D / 2 + B + shD / 2), "R"), dw("P", [-1, 0, 0], pair(xr1, yP, zc, 90), "R")], tools: ["hammer"] },
-    { title: "Fit the right side and screw it on", detail: "Press it onto all the dowels, then five long screws.", add: ["R"], fix: screwsThrough("R", [["P", yP, 2], ["SR", yS, 1], ["BR", yB, 2]]), tools: ["allen"], from: { R: [300, 0, 0] } },
+    { title: "Tap dowels into the right ends", detail: "Two into the long panel and two into the right shelf.", fix: [dw("SR", [-1, 0, 0], pair(xr1, yS, -D / 2 + B + shD / 2), "R"), dw("P", [-1, 0, 0], pair(xr1, yP, zc, 20), "R")], tools: ["hammer"] },
+    { title: "Fit the right side and screw it on", detail: "Press it onto all the dowels, then five long screws.", add: ["R"], fix: screwsThrough("R", [["P", yP, 2], ["SR", yS, 1, -D / 2 + B + shD / 2], ["BR", yB, 2]]), tools: ["allen"], from: { R: [300, 0, 0] } },
     {
       title: "Stand it up and tap dowels into the tops",
       detail: "Two into each side and one into the small divider.",
@@ -741,7 +743,7 @@ function sideboard(s: ProductSpec): CustomParams {
       from: { DK: [0, 0, -300] },
       tools: ["hammer"],
     },
-    { title: "Screw the knob onto the drawer", detail: "The bolt goes in from the inside of the front.", fix: [fx("knob", "DF", [0, 0, -1], [[dxc, yP + T / 2 + oh / 2, D / 2]], { len: 30, dia: 30 }), fx("screw", "DF", [0, 0, 1], [[dxc, yP + T / 2 + oh / 2, D / 2 - 16]], KNOB_BOLT)], tools: ["screwdriver"] },
+    { title: "Screw the knob onto the drawer", detail: "The bolt goes in from the inside of the front.", fix: [fx("knob", "DF", [0, 0, -1], [[dxc, yP + T / 2 + oh / 2, D / 2]], { len: 30, dia: 30 }), fx("screw", "DF", [0, 0, 1], [[dxc, yP + T / 2 + oh / 2, D / 2 - 24]], KNOB_BOLT)], tools: ["screwdriver"] },
     { title: "Pull the runners out", detail: "Pull the inner part of both runners forward until they stop.", kind: "drawer" },
     { title: "Slide the drawer onto the runners", detail: "Rest it on them and push it in.", kind: "drawer" },
     { title: "Pull the drawer out to the stop", detail: "Until the screw holes in the runners line up with the holes in the drawer sides.", kind: "drawer" },

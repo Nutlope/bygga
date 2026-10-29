@@ -164,6 +164,7 @@ function table(o: TableOpts): CustomParams {
       title: "Lay the two top halves face down and push them together",
       detail: "On a rug. Six dowels in the edge of one half, into the holes in the other, until the join closes.",
       add: ["TB", "TF"],
+      from: { TB: [0, 300, 0], TF: [0, 300, 0] },
       pose: "-y",
       warnings: ["floor"],
       fix: [fx("dowel", [-400, -240, -80, 80, 240, 400].map((x) => [x, H - TOPT / 2, 0] as Vec3), [0, 0, -1], { on: "TB", mate: "TF" })],
@@ -259,7 +260,7 @@ function chair(s: ProductSpec): CustomParams {
   const rail = (sx: number) => (sx < 0 ? "RL" : "RR");
   // the long bolts sit in a window near each end of the side rail and go out through its end into the leg
   const boltsAt = (z: number): Vec3[] => G.map((sx) => [sx * xr, yb, z]);
-  const backWin = zb + L / 2 + 40, frontWin = zf - L / 2 - 40;
+  const backWin = zb + BOLT.len - 5, frontWin = zf - BOLT.len + 5; // windows where the bolt tips reach the barrel nuts
   const barrels = (z: number): Vec3[] => G.map((sx) => [sx * (xl - L / 2), yb, z]);
   const brackets = (z: number, dz: number): Vec3[] => G.map((sx) => [sx * 90, yRail - 25, z + dz]);
   const backBr = brackets(zb + L / 2, 6), frontBr = brackets(zf - L / 2, -6);
@@ -296,8 +297,7 @@ function chair(s: ProductSpec): CustomParams {
     {
       title: "Fit the front frame's brackets, barrel nuts and bolts",
       detail: "Two seat brackets screwed inside its rail, a barrel nut in each front leg and a long bolt turned into each, as on the back.",
-      add: ["FF"],
-      from: { FF: [0, 0, 320] },
+      wait: ["FF"],
       fix: [
         fx("angle", frontBr, [0, 0, 1], { ...SEATB, on: "FF" }),
         fx("screw", frontBr, [0, 0, 1], { ...WOOD, on: "FF" }),
@@ -306,7 +306,7 @@ function chair(s: ProductSpec): CustomParams {
       ],
       tools: ["screwdriver", "flathead"],
     },
-    { title: "Press the front frame down onto the side rails", detail: "Its bolt heads drop into the windows at the front ends of the rails." },
+    { title: "Press the front frame down onto the side rails", detail: "Its bolt heads drop into the windows at the front ends of the rails.", add: ["FF"], from: { FF: [0, 0, 320] } },
     {
       title: "Turn the chair upside down and tighten the front bolts",
       detail: "Rest the seat on a table edge. A curved washer under each bolt head, then tighten with the Allen key.",
@@ -389,10 +389,11 @@ function extendable(): CustomParams {
     {
       title: "Screw a corner bracket onto each end of the long rails",
       detail: "Lay the two long rails on a rug, inside face up. Two screws through each bracket.",
-      add: ["LB", "LF"],
+      // the long rails take their fittings lying beside the build and are folded onto the inner frame later
+      wait: ["LB", "LF"],
       pose: "-y",
       warnings: ["floor"],
-      fix: [...G.flatMap((sx) => G.map((sz) => fx("angle", [corner(sx, sz)], diag(sx, sz), { ...CORNER }))), ...G.map((sz) => fx("screw", onLong(sz).filter((_, i) => i % 2 === 0).flatMap((p) => [p, [p[0], p[1] + 40, p[2]] as Vec3]), [0, 0, sz], { ...BSCREW, on: long(sz) }))],
+      fix: [...G.flatMap((sx) => G.map((sz) => fx("angle", [corner(sx, sz)], diag(sx, sz), { ...CORNER, on: long(sz) }))), ...G.map((sz) => fx("screw", onLong(sz).filter((_, i) => i % 2 === 0).flatMap((p) => [[p[0], p[1], sz * (zr - RT / 2 - 3)], [p[0], p[1] + 40, sz * (zr - RT / 2 - 3)]] as Vec3[]), [0, 0, sz], { ...BSCREW, on: long(sz) }))],
       tools: ["screwdriver"],
     },
     {
@@ -414,17 +415,17 @@ function extendable(): CustomParams {
       tools: ["screwdriver"],
     },
     {
-      title: "Join the inner frame with eight dowels",
-      detail: "Two dowels in each end of the two inner rails, pushed into the two cross rails.",
-      add: ["CL", "CR", "IB", "IF"],
+      title: "Tap eight dowels into the inner rails",
+      detail: "Two in each end of the two short inner rails, by hand.",
       fix: G.flatMap((sx) => G.map((sz) => fx("dowel", [-12, 12].map((dy) => [sx * (xc - RT / 2), yH + dy, sz * zi] as Vec3), [-sx, 0, 0], { on: sz < 0 ? "IB" : "IF", mate: sx < 0 ? "CL" : "CR" }))),
     },
+    { title: "Push the cross rails onto the dowels", detail: "One at each end of the inner rails, pressed on until the joints close.", add: ["CL", "CR"] },
     {
       title: "Tap a dowel into each end of the cross rails",
       detail: "Four dowels, one in each end.",
       fix: G.flatMap((sx) => G.map((sz) => fx("dowel", [[sx * xc, yH + 15, sz * (zr - RT / 2)]], [0, 0, -sz], { on: sx < 0 ? "CL" : "CR", mate: long(sz) }))),
     },
-    { title: "Fold the long rails up onto the inner frame", detail: "The dowels and connector bolts go into the holes in the cross rail ends. The holes for the runners face away from the brackets." },
+    { title: "Fold the long rails up onto the inner frame", detail: "The dowels and connector bolts go into the holes in the cross rail ends. The holes for the runners face away from the brackets.", add: ["LB", "LF"] },
     {
       title: "Lock the cross rails with four cam locks",
       detail: "One near each end of the cross rails, arrow towards the bolt, turned clockwise until it grips.",
@@ -442,7 +443,7 @@ function extendable(): CustomParams {
       title: "Screw the end rails onto the corner brackets",
       detail: "Two screws through each bracket into the end rail, then turn the frame over.",
       add: ["SR"],
-      fix: G.map((sx) => fx("screw", onEnd(sx), [sx, 0, 0], { ...BSCREW, on: sx < 0 ? "SL" : "SR" })),
+      fix: G.map((sx) => fx("screw", onEnd(sx).map((p) => [sx * (xr - RT / 2 - 3), p[1], p[2]] as Vec3), [sx, 0, 0], { ...BSCREW, on: sx < 0 ? "SL" : "SR" })),
       tools: ["screwdriver"],
     },
     {

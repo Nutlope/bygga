@@ -25,6 +25,18 @@ function recipe(s: ProductSpec): CustomParams {
     { shape: "cyl", size: [10, W - 2 * p, 10], pos: [0, up - dy, -zi], rot: [0, 0, Math.PI / 2] },
     ...[-1, 1].map((sx): PartPiece => ({ shape: "cyl", size: [10, D - 2 * p, 10], pos: [sx * xi, up - dy, 0], rot: [Math.PI / 2, 0, 0] })),
   ]);
+  // a steel tray: a thin bottom with a low rim all round, open on top
+  const tray = (h: number): { size: Vec3; pieces: PartPiece[] } => {
+    const tw = W - 2 * p - 4, td = D - 2 * p - 4, t = 2;
+    return {
+      size: [tw, h, td],
+      pieces: [
+        { shape: "box", size: [tw, t, td], pos: [0, -h / 2 + t / 2, 0] },
+        ...[-1, 1].map((sz): PartPiece => ({ shape: "box", size: [tw, h, t], pos: [0, 0, sz * (td / 2 - t / 2)] })),
+        ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [t, h, td - 2 * t], pos: [sx * (tw / 2 - t / 2), 0, 0] })),
+      ],
+    };
+  };
   const post = (id: string, name: string, x: number, z: number, y0 = yC, y1 = H - 20): CustomPart => ({ id, name, size: [p, y1 - y0, p], pos: [x, (y0 + y1) / 2, z], material: "metal" });
   const corners = [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const;
   const mids: [number, number][] = [[-W / 6, -zi], [W / 6, -zi], [-xi, 0], [xi, 0]];
@@ -33,9 +45,9 @@ function recipe(s: ProductSpec): CustomParams {
     ...corners.map(([sx, sz], i) => post(`L${i + 1}`, "Leg", sx * xi, sz * zi, yC, H - 20)),
     ...mids.map(([x, z], i) => post(`M${i + 1}`, "Post", x, z, yLow + p / 2, yUp - p / 2)),
     { id: "B", name: "Lower frame", size: [W, p, D], pos: [0, yLow, 0], material: "metal", pieces: [...ring(0), { shape: "box", size: [p, p, D - 2 * p], pos: [0, 0, 0] }] },
-    { id: "T1", name: "Tray", size: [W - 2 * p - 4, 40, D - 2 * p - 4], pos: [0, 430, 0], material: "metal" },
-    { id: "T2", name: "Tray", size: [W - 2 * p - 4, 40, D - 2 * p - 4], pos: [0, yLow + p / 2 + 20, 0], material: "metal" },
-    { id: "T3", name: "Top tray", size: [W - 2 * p - 4, 70, D - 2 * p - 4], pos: [0, H - 35, 0], material: "metal" },
+    { id: "T1", name: "Tray", ...tray(40), pos: [0, 430, 0], material: "metal" },
+    { id: "T2", name: "Tray", ...tray(40), pos: [0, yLow + p / 2 + 20, 0], material: "metal" },
+    { id: "T3", name: "Top tray", ...tray(70), pos: [0, H - 35, 0], material: "metal" },
   ];
   const fx = (kind: CustomFix["kind"], at: Vec3[], dir: Vec3, on: string, o: Partial<CustomFix> = {}): CustomFix => ({ kind, count: at.length, at, dir, on, ...o });
   const SCREW = { len: 12, dia: 5 };
@@ -62,7 +74,8 @@ function recipe(s: ProductSpec): CustomParams {
         detail: "Two bolts at each corner: one through the side of the leg, one down through the plate.",
         fix: [
           ...corners.map(([sx, sz]) => fx("bolt", [[sx * (W / 2), yLow + 40, sz * zi]], [-sx, 0, 0], "B", { len: 12, dia: 6 })),
-          fx("bolt", corners.map(([sx, sz]): Vec3 => [sx * xi, yLow - p / 2, sz * zi]), [0, 1, 0], "B", { len: 12, dia: 6 }),
+          // the plate's bolt goes into the frame's long tube just in from the leg, clear of the leg screw
+          fx("bolt", corners.map(([sx, sz]): Vec3 => [sx * (xi - 26), yLow - p / 2, sz * zi]), [0, 1, 0], "B", { len: 12, dia: 6 }),
         ],
       },
       {

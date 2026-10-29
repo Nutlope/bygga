@@ -96,9 +96,11 @@ function recipe(s: ProductSpec, c: Cfg): CustomParams {
   P({ id: "T", name: "Top", size: [r(W), TT, r(D)], pos: [0, r(H - TT / 2), 0], material: "board" });
   // plinth frame: front and back rails between two end pieces
   const yP = c.legH + PH / 2;
-  P({ id: "PF", name: "Plinth rail", size: [r(Wc - 2 * PT), PH, PT], pos: [0, r(yP), r(zf - PT / 2)], material: "board" });
+  // on the cabinets the plinth's front sits back under the front rail, behind the doors
+  const zp = doors ? zr + RT / 2 : zf, zpc = (z0 + zp) / 2;
+  P({ id: "PF", name: "Plinth rail", size: [r(Wc - 2 * PT), PH, PT], pos: [0, r(yP), r(zp - PT / 2)], material: "board" });
   P({ id: "PB", name: "Plinth rail", size: [r(Wc - 2 * PT), PH, PT], pos: [0, r(yP), r(z0 + PT / 2)], material: "board" });
-  for (const [i, sx] of G.entries()) P({ id: i ? "PR" : "PL", name: "Plinth end", size: [PT, PH, r(Dc)], pos: [r(sx * (Wc / 2 - PT / 2)), r(yP), r(zc)], material: "board" });
+  for (const [i, sx] of G.entries()) P({ id: i ? "PR" : "PL", name: "Plinth end", size: [PT, PH, r(zp - z0)], pos: [r(sx * (Wc / 2 - PT / 2)), r(yP), r(zpc)], material: "board" });
   const corners: [number, number][] = [
     [-1, -1],
     [1, -1],
@@ -106,7 +108,7 @@ function recipe(s: ProductSpec, c: Cfg): CustomParams {
     [1, 1],
   ];
   const lx = Wc / 2 - PT - LD / 2 - 6;
-  const lz = (sz: number) => (sz < 0 ? z0 + PT + LD / 2 + 6 : zf - PT - LD / 2 - 6);
+  const lz = (sz: number) => (sz < 0 ? z0 + PT + LD / 2 + 6 : zp - PT - LD / 2 - 6);
   const legLen = c.legH + PH - 5;
   corners.forEach(([sx, sz], i) => P({ id: `G${i + 1}`, name: "Leg", size: [LD, legLen, LD], pos: [r(sx * lx), r(legLen / 2), r(lz(sz))], material: "board", pieces: legPieces(legLen) }));
   // shelves, evenly up the inside
@@ -245,13 +247,17 @@ function recipe(s: ProductSpec, c: Cfg): CustomParams {
     warnings: c.model === "bookcase" ? ["floor"] : undefined,
   });
   // plinth frame
+  // built beside the carcass, then laid on it as one frame
+  const frame = ["PF", "PB", "PL", "PR"];
+  const aside = Object.fromEntries(frame.map((id) => [id, [Wc + 300, 0, 0] as Vec3]));
   const pr = (id: string, z: number) => G.map((sx) => fx("dowel", [[r(sx * (Wc / 2 - PT)), r(yP), r(z)]], [-sx, 0, 0], { ...DOWEL, on: id }));
-  S({ title: "Tap the dowels into the plinth rails", detail: "Build the plinth frame on the floor. One dowel into each end of both long rails.", fix: [...pr("PF", zf - PT / 2), ...pr("PB", z0 + PT / 2)], tools: ["hammer"] });
-  const brk = (sx: number, sz: number): Vec3 => [r(sx * (Wc / 2 - PT - 22)), r(yP), r(sz < 0 ? z0 + PT + 22 : zf - PT - 22)];
+  S({ title: "Tap the dowels into the plinth rails", detail: "Build the plinth frame on the floor. One dowel into each end of both long rails.", fix: [...pr("PF", zp - PT / 2), ...pr("PB", z0 + PT / 2)], tools: ["hammer"], wait: frame, from: aside });
+  // set in from the corner far enough that their screws clear the dowels there
+  const brk = (sx: number, sz: number): Vec3 => [r(sx * (Wc / 2 - PT - 30)), r(yP), r(sz < 0 ? z0 + PT + 30 : zp - PT - 30)];
   const brkScrews = (sz: number, side: "rail" | "end") =>
     fx("screw", G.flatMap((sx) => [-1, 1].map((k): Vec3 => {
       const p = brk(sx, sz);
-      return side === "rail" ? [p[0] + k * 14, p[1] + 14, sz < 0 ? z0 + PT : zf - PT] : [sx < 0 ? -Wc / 2 + PT : Wc / 2 - PT, p[1] + 14, p[2] + k * 14];
+      return side === "rail" ? [p[0] + k * 12, p[1] + 14, sz < 0 ? z0 + PT : zp - PT] : [sx < 0 ? -Wc / 2 + PT : Wc / 2 - PT, p[1] + 14, p[2] + k * 12];
     })), side === "rail" ? [0, 0, sz] : [-1, 0, 0], { ...BSCREW, on: side === "rail" ? (sz < 0 ? "PB" : "PF") : undefined });
   S({
     title: "Screw a leg bracket to each end of the rails",
@@ -262,19 +268,20 @@ function recipe(s: ProductSpec, c: Cfg): CustomParams {
   S({
     title: "Fit the plinth ends",
     detail: "Push them onto the dowels, then two screws through each bracket into the end.",
-    add: ["PL", "PR"],
     fix: [
-      fx("screw", corners.filter(([sx]) => sx < 0).flatMap(([sx, sz]) => [-1, 1].map((k): Vec3 => [-Wc / 2 + PT, brk(sx, sz)[1] + 14, brk(sx, sz)[2] + k * 14])), [-1, 0, 0], { ...BSCREW, on: "PL" }),
-      fx("screw", corners.filter(([sx]) => sx > 0).flatMap(([sx, sz]) => [-1, 1].map((k): Vec3 => [Wc / 2 - PT, brk(sx, sz)[1] + 14, brk(sx, sz)[2] + k * 14])), [1, 0, 0], { ...BSCREW, on: "PR" }),
+      fx("screw", corners.filter(([sx]) => sx < 0).flatMap(([sx, sz]) => [-1, 1].map((k): Vec3 => [-Wc / 2 + PT, brk(sx, sz)[1] + 14, brk(sx, sz)[2] + k * 12])), [-1, 0, 0], { ...BSCREW, on: "PL" }),
+      fx("screw", corners.filter(([sx]) => sx > 0).flatMap(([sx, sz]) => [-1, 1].map((k): Vec3 => [Wc / 2 - PT, brk(sx, sz)[1] + 14, brk(sx, sz)[2] + k * 12])), [1, 0, 0], { ...BSCREW, on: "PR" }),
     ],
     tools: ["screwdriver"],
   });
   const plinthScrews = c.model === "bookcase" ? 6 : 8;
-  const along = [-1, 0, 1].flatMap((t) => [zf - PT / 2, z0 + PT / 2].map((z): Vec3 => [r(t * (Wc / 2 - 120)), c.legH, r(z)]));
-  const psAt: Vec3[] = plinthScrews === 6 ? along : [...along, ...G.map((sx): Vec3 => [r(sx * (Wc / 2 - PT / 2)), c.legH, r(zc)])];
+  const along = [-1, 0, 1].flatMap((t) => [zp - PT / 2, z0 + PT / 2].map((z): Vec3 => [r(t * (Wc / 2 - 120)), c.legH, r(z)]));
+  const psAt: Vec3[] = plinthScrews === 6 ? along : [...along, ...G.map((sx): Vec3 => [r(sx * (Wc / 2 - PT / 2)), c.legH, r(zpc)])];
   S({
     title: "Screw the plinth frame under the bottom",
     detail: `Lay it on the bottom end of the carcass, onto the dowels, and drive ${plinthScrews} long screws through it with the Allen key. Use the longest screws here.`,
+    add: frame,
+    from: Object.fromEntries(frame.map((id) => [id, [0, -400, 0] as Vec3])), // onto the dowels in the sides
     fix: [fx("screw", psAt, [0, 1, 0], { ...PSCREW, mate: "B" })],
     tools: ["allen"],
     pose: c.model === "bookcase" ? "-z" : "-y",
@@ -379,7 +386,7 @@ function recipe(s: ProductSpec, c: Cfg): CustomParams {
     });
     S({ title: "Screw the bottom hinges onto the doors", detail: "The other kind of hinge goes into the bottom holes, two screws each.", fix: [fx("hinge", hingeAt(hy[0]), [0, 0, 1], { len: 50, dia: 35 })], tools: ["screwdriver"] });
     S({ title: "Click the doors onto the hinge plates", detail: "Hook each hinge's back end onto its plate, then press the front until it clicks. Adjust the screws on the hinges until the gaps are even.", tools: ["screwdriver"] });
-    const pull: Vec3[] = G.map((sx): Vec3 => [sx * 45, r(yD + 40), zf]);
+    const pull: Vec3[] = G.map((sx): Vec3 => [sx * 45, r(yD + 40), zf + 4]); // clear of its screw's head
     S({
       title: "Screw on the handles",
       detail: "One on each door by the meeting edge, a screw through from the inside.",

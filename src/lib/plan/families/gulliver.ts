@@ -118,13 +118,14 @@ function cot(s: ProductSpec): CustomParams {
     {
       title: "Screw the four hooks into the bed base",
       detail: crib ? "One in each corner: the bolt goes down through the base into the hook under it." : "One in each corner: the hook goes in from below, the nut from above.",
-      add: ["B"],
       fix: hooks,
+      wait: ["B"],
       tools: ["allen"],
     },
     {
       title: "Stand it on its end and hook the base in",
       detail: "The high level for a newborn, the low one once your baby can sit up. Each hook goes into its hole in the side panel.",
+      add: ["B"],
       pose: "+x",
     },
     { title: "Tap dowels into the other ends", detail: "Two in the top end of each side panel.", fix: sideDowels(1), tools: ["hammer"] },
@@ -188,11 +189,12 @@ function changing(s: ProductSpec): CustomParams {
   const frameDowels = (k: string, f: { y: number; zb: number; zf: number; t: number }, rail: "F" | "B") => {
     const z = rail === "F" ? f.zf - 20 : f.zb + 20;
     return [-1, 1].map((sx) =>
-      at("dowel", [[sx * (xi - 10), f.y - 12, z], [sx * (xi - 10), f.y - 28, z]], [0, 0, rail === "F" ? -1 : 1], `${k}${rail}`, `${k}${sx < 0 ? "L" : "R"}`, { len: 30, dia: 6, name: "Plain dowel" }),
+      at("dowel", [[sx * (xi - 10), f.y - 8, z], [sx * (xi - 10), f.y - 32, z]], [0, 0, rail === "F" ? -1 : 1], `${k}${rail}`, `${k}${sx < 0 ? "L" : "R"}`, { len: 30, dia: 6, name: "Plain dowel" }),
     );
   };
-  const endDowel = (k: string, f: { y: number; zb: number; zf: number }, sx: number): CustomFix =>
-    at("dowel", [[sx * xi, f.y - 20, f.zf - 10], [sx * xi, f.y - 20, f.zb + 10]], [sx, 0, 0], `${k}F`, sx < 0 ? "A" : "Z", { len: 30, dia: 8, name: "Fluted dowel" });
+  // one in the end of the front rail, one in the end of the back rail, each on its own rail so its hole is drilled there
+  const endDowel = (k: string, f: { y: number; zb: number; zf: number }, sx: number): CustomFix[] =>
+    (["F", "B"] as const).map((r) => at("dowel", [[sx * xi, f.y - 20, r === "F" ? f.zf - 10 : f.zb + 10]], [sx, 0, 0], `${k}${r}`, sx < 0 ? "A" : "Z", { len: 30, dia: 8, name: "Fluted dowel" }));
   // the top's ends already carry two dowels; the ladder takes two more into its side pieces
   const topMid = (sx: number): CustomFix =>
     at("dowel", [[sx * xi, ft.y - 20, -60], [sx * xi, ft.y - 20, 60]], [sx, 0, 0], `T${sx < 0 ? "L" : "R"}`, sx < 0 ? "A" : "Z", { len: 30, dia: 8, name: "Fluted dowel" });
@@ -212,7 +214,7 @@ function changing(s: ProductSpec): CustomParams {
       fix: frameDowels("T", ft, "B"),
       tools: ["hammer"],
     },
-    { title: "Tap ribbed dowels into the top's ends", detail: "Two at each end, into the rails.", fix: [endDowel("T", ft, -1), endDowel("T", ft, 1)], tools: ["hammer"] },
+    { title: "Tap ribbed dowels into the top's ends", detail: "Two at each end, into the rails.", fix: [...endDowel("T", ft, -1), ...endDowel("T", ft, 1)], tools: ["hammer"] },
     {
       title: "Build the two shelves the same way",
       detail: "Back rail, plain dowels, side pieces on the front rail, panel in, back rail on. The panel's smooth side faces up.",
@@ -224,7 +226,7 @@ function changing(s: ProductSpec): CustomParams {
       title: "Push the top and shelves onto one end ladder",
       detail: "Lay the table on its front on a rug. Ribbed dowels into the ladder's holes, then push all three frames on.",
       add: ["A"],
-      fix: [endDowel("M", f1, -1), endDowel("L", f2, -1), topMid(-1)],
+      fix: [...endDowel("M", f1, -1), ...endDowel("L", f2, -1), topMid(-1)],
       pose: "-z",
       tools: ["hammer"],
       warnings: ["floor"],
@@ -233,12 +235,13 @@ function changing(s: ProductSpec): CustomParams {
     {
       title: "Tap dowels into the two back rails",
       detail: "One ribbed dowel in each end.",
-      fix: [-1, 1].map((sx) => at("dowel", [[sx * xi, 720, -D / 2 + 10], [sx * xi, 400, -D / 2 + 10]], [sx, 0, 0], undefined, undefined, { len: 30, dia: 8, name: "Fluted dowel" })),
+      fix: [-1, 1].flatMap((sx) => [720, 400].map((y, i) => at("dowel", [[sx * xi, y, -D / 2 + 10]], [sx, 0, 0], `RB${i}`, sx < 0 ? "A" : "Z", { len: 30, dia: 8, name: "Fluted dowel" }))),
+      wait: ["RB0", "RB1"],
       tools: ["hammer"],
     },
     { title: "Slide the back rails in", detail: "Into the ladder's holes, across the back.", add: ["RB0", "RB1"] },
     { title: "Screw the back rails to the ladder", detail: "One long screw through the post into each rail.", fix: [at("screw", [720, 400].map((y) => [-W / 2, y, -D / 2 + 10] as Vec3), [1, 0, 0], "A", undefined, { len: 70, dia: 5 })], tools: ["allen"] },
-    { title: "Push the other end ladder on", detail: "Six ribbed dowels into its holes first, then press it onto all the frames and rails.", add: ["Z"], fix: [topMid(1), endDowel("M", f1, 1), endDowel("L", f2, 1)], tools: ["hammer"] },
+    { title: "Push the other end ladder on", detail: "Six ribbed dowels into its holes first, then press it onto all the frames and rails.", add: ["Z"], fix: [topMid(1), ...endDowel("M", f1, 1), ...endDowel("L", f2, 1)], tools: ["hammer"] },
     { title: "Screw the second ladder on", detail: "Eight long screws: two into each frame and one into each back rail.", fix: [at("screw", ladderScrews(1, true), [-1, 0, 0], "Z", undefined, { len: 70, dia: 5 })], tools: ["allen"], check: "square" },
     { title: "Stand it up", detail: "Check it stands steady before you use it.", pose: "+y", people: 2, warnings: ["two"] },
   ];

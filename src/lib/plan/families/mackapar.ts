@@ -126,7 +126,7 @@ function coatRack(s: ProductSpec): CustomParams {
       warnings: ["floor"],
     },
     { title: "Turn the short tubes onto the top studs", detail: "The shortest four tubes, one on each tube end at the top of the frames.", add: ids("U") },
-    { title: "Bolt on the top shelf", detail: "A flat bolt through each corner into the short tubes, tightened with a flat screwdriver.", add: ["T"], fix: [{ ...FLAT, count: 4, at: at4(xt, zt, H), dir: [0, -1, 0], on: "T" }], tools: ["flathead"] },
+    { title: "Bolt on the top shelf", detail: "A flat bolt through each corner into the short tubes, tightened with a flat screwdriver.", add: ["T"], fix: [{ ...FLAT, count: 4, at: at4(xt, zt, H - TR + 8), dir: [0, -1, 0], on: "T" }], tools: ["flathead"] }, // down through the tray's corner plate into the tube
     {
       title: "Screw the long tubes onto the frames",
       detail: "Turn a stud into one end of each long tube first. The plain end goes onto the frame's stud.",
@@ -237,7 +237,7 @@ function shoeCabinet(s: ProductSpec): CustomParams {
       detail: "On a rug. Three plates along the front of the bottom, four screws in each.",
       fix: [
         { kind: "plate", count: 3, len: 50, dia: 50, at: legAt, dir: [0, 1, 0], on: "BOT" },
-        { ...SCREW, count: 12, at: legAt.flatMap((p) => [[-14, -14], [14, -14], [14, 14], [-14, 14]].map(([dx, dz]): Vec3 => [p[0] + dx, y0 - 2, p[2] + dz])), dir: [0, 1, 0], on: "BOT" },
+        { ...SCREW, count: 12, at: legAt.flatMap((p) => [[-17, -17], [17, -17], [17, 17], [-17, 17]].map(([dx, dz]): Vec3 => [p[0] + dx, y0 - 2, p[2] + dz])), dir: [0, 1, 0], on: "BOT" },
       ],
       tools: ["screwdriver"],
       pose: "-y",
@@ -279,7 +279,7 @@ function shoeCabinet(s: ProductSpec): CustomParams {
       add: ["BT0", "BT1"],
       from: { BT0: [0, 0, 300], BT1: [0, 0, 300] },
     },
-    { title: "Screw in the door stops", detail: "One block inside each side, at the top by the front, two screws each.", fix: [...sides.map((sx): CustomFix => ({ kind: "spacer", name: "Door stop", count: 1, len: 20, dia: 30, at: [[sx * xi, yt - 40, zD2]], dir: [sx, 0, 0], on: sideId(sx) })), ...sides.map((sx): CustomFix => ({ ...SCREW, count: 2, at: [-10, 10].map((dy): Vec3 => [sx * xi, yt - 40 + dy, zD2]), dir: [sx, 0, 0], on: sideId(sx) }))], tools: ["screwdriver"] },
+    { title: "Screw in the door stops", detail: "One block inside each side, at the top by the front, two screws each.", fix: [...sides.map((sx): CustomFix => ({ kind: "spacer", name: "Door stop", count: 1, len: 20, dia: 30, at: [[sx * xi, yt - 40, zD2]], dir: [sx, 0, 0], on: sideId(sx) })), ...sides.map((sx): CustomFix => ({ ...SCREW, count: 2, at: [-24, 24].map((dy): Vec3 => [sx * xi, yt - 40 + dy, zD2]), dir: [sx, 0, 0], on: sideId(sx) }))], tools: ["screwdriver"] },
     {
       title: "Fit the runners and hang the back door",
       detail: "Two runners at the top and two at the bottom of each door, two pins pressed into each. Tilt the door into the back track at the top, lower it onto the bottom track and click the locks shut.",

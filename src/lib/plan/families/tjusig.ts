@@ -52,7 +52,9 @@ function hatRack(): CustomParams {
       title: "Dowel an arm onto its upright",
       detail: "Two dowels in the top of the upright, the arm pressed down on them. Check the marked ends match.",
       add: ["A0", "U0"],
-      fix: [fx("dowel", [-10, 10].map((d) => pt(-ex, yT - 20, zU + d)), [0, -1, 0], { on: "U0", ...DOWEL })],
+      fix: [fx("dowel", [-10, 10].map((d) => pt(-ex, yT - 20, zU + d)), [0, -1, 0], { on: "U0", mate: "A0", ...DOWEL })],
+      // the upright slides in along the floor, then the arm goes onto its dowels
+      from: { U0: [0, -250, 0], A0: [0, 250, 0] },
       pose: "+x",
       tools: ["hammer"],
     },
@@ -74,11 +76,17 @@ function hatRack(): CustomParams {
     { title: "Push in the other three tubes", detail: "All the way into their holes.", add: ["T2", "T1", "T0"] },
     { title: "Slide the cardboard spacer over the tube ends", detail: "It holds them in line while the other arm goes on." },
     {
-      title: "Put the other arm and upright on",
-      detail: "Dowel the arm to its upright first, then press it down over the rail, the tubes and the hook rail.",
-      add: ["A1", "U1"],
-      fix: [fx("dowel", [pt(ex, yT - 20, zU)], [0, -1, 0], { on: "U1", ...DOWEL })],
+      title: "Dowel the other arm onto its upright",
+      detail: "Beside the rack, the same way as the first: the dowel in the top of the upright, the arm pressed onto it.",
+      wait: ["U1", "A1"],
+      fix: [fx("dowel", [pt(ex, yT - 20, zU)], [0, -1, 0], { on: "U1", mate: "A1", ...DOWEL })],
+      from: { U1: [0, -250, 0], A1: [0, 250, 0] },
       tools: ["hammer"],
+    },
+    {
+      title: "Press them down over the rail and the tubes",
+      detail: "Both together, over the front rail, the four tubes and the hook rail, until they sit on the spacer.",
+      add: ["A1", "U1"],
     },
     {
       title: "Drop in the second barrel nut",
@@ -165,7 +173,7 @@ function bench(): CustomParams {
       title: "Stand it on the end frame and fit the back rail",
       detail: "Two dowels in the end of the back rail, then push it into the frame's top back corner. Hold it upright.",
       add: ["UB"],
-      fix: [fx("dowel", [-8, 8].map((dz) => pt(-ix, FH - 20, -LZ + dz)), [1, 0, 0], { on: "UB", ...DOWEL })],
+      fix: [fx("dowel", [-12, 12].map((dz) => pt(-ix, FH - 20, -LZ + dz)), [1, 0, 0], { on: "UB", ...DOWEL })],
       pose: "+x",
       tools: ["hammer"],
     },
@@ -179,7 +187,7 @@ function bench(): CustomParams {
       add: ["E1"],
       fix: [
         fx("dowel", railEnd(1).map((p) => pt(p[0], p[1] + 10, p[2])), [-1, 0, 0], DOWEL),
-        fx("dowel", [-8, 8].map((dz) => pt(ix, FH - 20, -LZ + dz)), [-1, 0, 0], { on: "UB", ...DOWEL }),
+        fx("dowel", [-12, 12].map((dz) => pt(ix, FH - 20, -LZ + dz)), [-1, 0, 0], { on: "UB", ...DOWEL }),
       ],
       tools: ["hammer"],
     },
@@ -264,7 +272,8 @@ function shoeRack(): CustomParams {
     {
       title: "Screw the uprights onto the crossbars",
       detail: "Press them onto the ends of the left crossbars, one screw at an angle through each upright.",
-      fix: S.map((sz) => fx("screw", [pt(-UX + 20, 60, sz * (UZ - 20))], [0, Math.SQRT1_2, -sz * Math.SQRT1_2], { len: 50, dia: 4 })),
+            // up at an angle from the upright's inside face into the underside of the crossbar's end
+      fix: S.map((sz) => fx("screw", [pt(-UX, levels[0] - 30, sz * (UZ - 15))], [0, Math.SQRT1_2, -sz * Math.SQRT1_2], { len: 50, dia: 4 })),
       tools: ["screwdriver"],
     },
     {

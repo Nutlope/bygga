@@ -94,6 +94,8 @@ function recipe(s: ProductSpec): CustomParams {
       title: "Bolt the aprons to the top",
       detail: "Turn the base upside down onto the top. Four bolts with washers through each apron.",
       add: ["TA", "TB"],
+      // joined, the two halves move as one
+      from: { TA: [0, 520, 0], TB: [0, 520, 0] },
       fix: [-zA, zA].flatMap((z) => {
         const pts = xs4.map((x): Vec3 => [x, yA - hA / 2, z]);
         const on = z < 0 ? "A1" : "A2", mate = z < 0 ? "TB" : "TA";

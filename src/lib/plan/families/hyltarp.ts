@@ -114,7 +114,8 @@ function sofaBed(b: PlanBuilder, s: ProductSpec): boolean {
   step({ title: "Cut the two ties that hold the bed folded", detail: "Stand the frame on the floor with the folded bed inside it, and throw the ties away." }, () => b.add(fr, [0, 200, 0]));
   step({ title: "Hang the front panel on its two brackets", detail: "One of you at each end. Lower it straight down until both ends sit on the brackets.", kind: "join", people: 2 }, () => b.add(front, [0, 260, 160]));
   step({ title: "Lock the front panel with the wing screw", detail: "One of you lifts the front of the bed a little; the other turns the wing screw in through the middle bracket by hand.", kind: "screws", people: 2, warnings: ["two", "hand"] }, () => {
-    fit(WSCREW, [{ on: front, mate: fr, at: [0, feet + 50, fz - 20], dir: [0, 0, 1], travel: 70, spin: 3 }]);
+    // from behind, through the middle bracket (not drawn) into the back of the front panel
+    fit(WSCREW, [{ on: front, mate: fr, at: [0, feet + 50, fz - 2], dir: [0, 0, 1], travel: 70, spin: 3 }]);
   });
   step({ title: "Unfold the bed", detail: "Together: lift the seat part up and out, then swing the leg frame over and down onto the floor.", people: 2 });
   step({ title: "Lower the backrest onto the side plates", detail: "Fit the holes at the bottom of the backrest over the pins on both side plates and press it down.", kind: "join", people: 2 }, () => b.add(back, [0, 380, 0]));

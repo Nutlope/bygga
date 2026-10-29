@@ -71,7 +71,7 @@ function table(s: ProductSpec): CustomParams {
   const pair = (r: number, y: number, i: number): Vec3[] => {
     const a = ang(i), t: Vec3 = [-Math.sin(a), 0, Math.cos(a)];
     const p = polar(r, y, i);
-    return [-1, 1].map((k) => [Math.round(p[0] + k * 9 * t[0]), y, Math.round(p[2] + k * 9 * t[2])] as Vec3);
+    return [-1, 1].map((k) => [Math.round(p[0] + k * 12 * t[0]), y, Math.round(p[2] + k * 12 * t[2])] as Vec3);
   };
   const lowScrews = legs.map((id, i) => at("screw", pair(rLow - wall / 2, yLow + lowH, i), [0, -1, 0], "B", id, { len: 16, dia: 6 }));
   const topScrews = legs.map((id, i) => at("screw", pair(rLeg - 10, yTopRing + 10, i), [0, -1, 0], "T", id, { len: 12, dia: 6 }));

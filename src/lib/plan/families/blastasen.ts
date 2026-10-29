@@ -36,7 +36,7 @@ function recipe(s: ProductSpec): CustomParams | null {
     };
   };
   parts.push(side("FL", -1), side("FR", 1));
-  const runY = rail0 + 14, rx = xi - 18;
+  const runY = rail0 + 14, rx = LX - 20; // the runners sit against the inside of the side rails
   parts.push({ id: "RL", name: "Drawer runner", size: [20, 22, 2 * LZ - 40], pos: [-rx + 4, runY, 0], material: "wood" });
   parts.push({ id: "RR", name: "Drawer runner", size: [20, 22, 2 * LZ - 40], pos: [rx - 4, runY, 0], material: "wood" });
   parts.push({ id: "BK", name: "Back panel", size: [2 * xi, top0 - rail0, 18], pos: [0, (top0 + rail0) / 2, -LZ - 5], material: "wood" });
@@ -63,7 +63,7 @@ function recipe(s: ProductSpec): CustomParams | null {
       title: "Screw the drawer runners onto both side frames",
       detail: "Lay both frames on a rug, rails inside up. Three short screws in each runner.",
       add: ["FL", "RL", "FR", "RR"],
-      fix: [-1, 1].map((sx) => at("screw", [-90, 0, 90].map((z) => [sx * (rx - 4), runY, z] as Vec3), [-sx, 0, 0], sx < 0 ? "RL" : "RR", sid(sx), { len: 15, dia: 4 })),
+      fix: [-1, 1].map((sx) => at("screw", [-90, 0, 90].map((z) => [sx * (rx - 4), runY, z] as Vec3), [sx, 0, 0], sx < 0 ? "RL" : "RR", sid(sx), { len: 15, dia: 4 })),
       tools: ["screwdriver"],
       pose: "+x",
       warnings: ["floor"],
@@ -81,10 +81,10 @@ function recipe(s: ProductSpec): CustomParams | null {
       fix: [at("camScrew", legs.map((p) => [p[0], sh0 + 9, p[2] - Math.sign(p[2]) * (L / 2)] as Vec3), [0, 0, -1], undefined, "SH", { len: 12, dia: 6 })],
       tools: ["screwdriver"],
     },
-    { title: "Tap dowels into the back panel", detail: "One in each end.", fix: [at("dowel", [-1, 1].map((sx) => [sx * xi, (top0 + rail0) / 2, -LZ - 5] as Vec3), [1, 0, 0], "BK")], wait: ["BK"], tools: ["hammer"] },
+    { title: "Tap dowels into the back panel", detail: "One in each end.", fix: [...[-1, 1].map((sx) => at("dowel", [[sx * xi, (top0 + rail0) / 2, -LZ - 5]], [-sx, 0, 0], "BK"))], wait: ["BK"], tools: ["hammer"] },
     { title: "Stand the back panel on the lower frame", detail: "Onto its dowel and cam bolts.", add: ["BK"] },
     { title: "Lock it with two cam locks", detail: "Arrow towards the bolt, then turn clockwise.", fix: [at("cam", lockSide(-1, "back"), [0, 0, -1], "BK", undefined, CAM)], tools: ["screwdriver"] },
-    { title: "Tap dowels into the front rail", detail: "One in each end.", fix: [at("dowel", [-1, 1].map((sx) => [sx * xi, rail0 + 14, LZ + 5] as Vec3), [1, 0, 0], "FRL")], wait: ["FRL"], tools: ["hammer"] },
+    { title: "Tap dowels into the front rail", detail: "One in each end.", fix: [...[-1, 1].map((sx) => at("dowel", [[sx * xi, rail0 + 14, LZ + 5]], [-sx, 0, 0], "FRL"))], wait: ["FRL"], tools: ["hammer"] },
     { title: "Stand the front rail on the frame", detail: "The flat side faces the front.", add: ["FRL"] },
     { title: "Lock it with a cam lock", fix: [at("cam", lockSide(-1, "front"), [0, -1, 0], "FRL", undefined, CAM)], tools: ["screwdriver"] },
     {
@@ -149,13 +149,13 @@ function recipe(s: ProductSpec): CustomParams | null {
     {
       title: "Screw on the knob",
       detail: "The screw goes through the front from the inside.",
-      fix: [{ kind: "knob", count: 1, at: [[0, (dy0 + dy1) / 2, dz1 + 18]], dir: [0, 0, -1], on: "DF" }, at("screw", [[0, (dy0 + dy1) / 2, dz1]], [0, 0, 1], "DF", undefined, { len: 30, dia: 4 })],
+      fix: [{ kind: "knob", count: 1, at: [[0, (dy0 + dy1) / 2, dz1 + 18]], dir: [0, 0, -1], on: "DF" }, at("screw", [[0, (dy0 + dy1) / 2, dz1 - 5]], [0, 0, 1], "DF", undefined, { len: 30, dia: 4 })],
       tools: ["screwdriver"],
     },
     {
       title: "Screw two stop screws into the drawer back",
       detail: "Near the top of each end. They catch on the stops so the drawer can't fall out.",
-      fix: [at("screw", [-1, 1].map((sx) => [sx * (dx - 30), dy1 - 12, dz0 + 7] as Vec3), [0, 0, 1], "DK", undefined, { len: 12, dia: 6 })],
+      fix: [at("screw", [-1, 1].map((sx) => [sx * (dx - 30), dy1 - 12, dz0] as Vec3), [0, 0, 1], "DK", undefined, { len: 12, dia: 6 })],
       tools: ["screwdriver"],
     },
     { title: "Slide the drawer in", detail: "Its grooves run on the wooden runners." },

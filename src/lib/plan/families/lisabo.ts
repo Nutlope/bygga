@@ -181,7 +181,7 @@ function desk(s: ProductSpec): CustomParams {
   const yU = H - t.T; // underside of the top
   const y0 = yU - 2 - dh; // drawer bottom edge
   const zF = D / 2 - t.inset; // front face of the frame
-  const zBack = zF - ft - dd; // drawer back face
+  const zBack = zF - dd; // drawer back face: the front, the sides and the back make up the depth
   const yc = y0 + dh / 2;
   const sideL = dd - ft - bt;
   const sideZ = zF - ft - sideL / 2;
@@ -334,8 +334,8 @@ function chair(s: ProductSpec): CustomParams {
     [xIn - 8, rY - 30, zB + 40],
     [-xIn + 8, rY - 30, zF - 70],
     [xIn - 8, rY - 30, zF - 70],
-    [-70, rY - 30, 40],
-    [70, rY - 30, 40],
+    // the middle two go up through the cross rails, 7 cm either side of where they cross
+    ...[-70, 70].map((x): Vec3 => [x, rY - 30, (zF + zB) / 2 + 70 * ((zF - zB - 60) / (2 * xIn))]),
   ];
   return {
     parts,

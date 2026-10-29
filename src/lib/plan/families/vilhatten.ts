@@ -93,6 +93,7 @@ function carcass(): { parts: CustomPart[]; steps: CustomStep[] } {
       title: "Screw two connector bolts into the fixed shelf",
       detail: "Into the holes in the middle of its underside, by hand or with the screwdriver, until they stop.",
       fix: [at("camScrew", [ZM - 60, ZM + 60].map((z) => [0, ySh, z] as Vec3), [0, 1, 0], { ...CONNECTOR, on: "SH" })],
+      from: { SH: [0, 300, 0] },
       tools: ["screwdriver"],
     },
     { title: "Push the divider onto the shelf", detail: "The connector bolts and dowels go into its top end; the runners face right.", add: ["DV"], from: { DV: [0, -300, 0] } },
@@ -126,7 +127,7 @@ function carcass(): { parts: CustomPart[]; steps: CustomStep[] } {
     {
       title: "Tap the dowels into the plinth and the back rail",
       detail: "Two in each end of both rails.",
-      fix: ["PF", "PB"].flatMap((id) => [-1, 1].map((sx) => at("dowel", [20, 50].map((y) => [sx * inner, y, id === "PF" ? Z1 - 20 - T / 2 : ZI + T / 2] as Vec3), [sx, 0, 0], { ...DOWEL, on: id }))),
+      fix: ["PF", "PB"].flatMap((id) => [-1, 1].map((sx) => at("dowel", [14, 56].map((y) => [sx * inner, y, id === "PF" ? Z1 - 20 - T / 2 : ZI + T / 2] as Vec3), [sx, 0, 0], { ...DOWEL, on: id }))),
       wait: ["PF", "PB"],
       tools: ["hammer"],
     },

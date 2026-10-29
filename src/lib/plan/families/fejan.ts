@@ -5,7 +5,7 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Produc
  * FEJAN, read from the garden table's manual. Each of the four steel legs comes in two tubes: the short one is
  * pushed into the long one, and a plastic foot is tapped onto its end with a hammer over a piece of wood. The top
  * lies upside down on a rug, a leg stands in each corner bracket, and two Allen bolts with washers go through the
- * bracket into each leg. The folding chair comes assembled (no manual), so it keeps its old guide.
+ * bracket into each leg. The folding chair comes assembled and has no manual: its guide unfolds and locks it.
  */
 
 const at = (kind: CustomFix["kind"], pts: Vec3[], dir: Vec3, on?: string, mate?: string, o: Partial<CustomFix> = {}): CustomFix => ({ kind, count: pts.length, at: pts, dir, on, mate, ...o });
@@ -37,7 +37,8 @@ function table(s: ProductSpec): CustomParams {
   const boltPts = (d: Vec3) =>
     corners
       .filter(([sx, sz]) => (d[0] ? sx === d[0] : sz === d[2]))
-      .map(([sx, sz]) => (d[0] ? [sx * (xl - L / 2), H - A + 10, sz * zl] : [sx * xl, H - A + 10, sz * (zl - L / 2)]) as Vec3);
+      // the bolts through the two sides of a bracket sit at different heights so they pass each other in the leg
+      .map(([sx, sz]) => (d[0] ? [sx * (xl - L / 2 - 4), H - 28, sz * zl] : [sx * xl, H - 16, sz * (zl - L / 2 - 4)]) as Vec3);
   const boltFix = (kind: CustomFix["kind"], o: Partial<CustomFix>) => dirs.map((d) => at(kind, boltPts(d), d, "T", undefined, o));
 
   const steps: CustomStep[] = [
@@ -71,10 +72,40 @@ function table(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+
+/** The folding chair: two long tubes from the back feet into the backrest, a front frame under the seat, the seat hinged between. */
+function foldingChair(s: ProductSpec): CustomParams {
+  const W = Math.round(s.size.w * 10) || 440, H = Math.round(s.size.h * 10) || 890, D = Math.round(s.size.d * 10) || 420;
+  const yS = 450, tube = 20, xs = W / 2 - tube;
+  const tubeBetween = (a: [number, number], c: [number, number], x: number): PartPiece => {
+    const dy = c[0] - a[0], dz = c[1] - a[1];
+    return { shape: "cyl", size: [tube, Math.round(Math.hypot(dy, dz)), tube], pos: [x, (a[0] + c[0]) / 2 - H / 2, (a[1] + c[1]) / 2], rot: [Math.atan2(dz, dy), 0, 0] };
+  };
+  const back: [number, number][] = [[0, -D / 2 + 30], [H - 20, -D / 2 + 80]];
+  const front: [number, number][] = [[0, D / 2 - 20], [yS - 30, -D / 2 + 100]];
+  const pieces: PartPiece[] = [
+    ...[-1, 1].map((sx) => tubeBetween(back[0], back[1], sx * xs)),
+    ...[-1, 1].map((sx) => tubeBetween(front[0], front[1], sx * (xs - tube))),
+    { shape: "cyl", size: [tube, 2 * (xs - tube), tube], pos: [0, 160 - H / 2, D / 2 - 20 - Math.round(((D - 120) * 160) / (yS - 30))], rot: [0, 0, Math.PI / 2] },
+  ];
+  const parts: CustomPart[] = [
+    { id: "frame", name: "Chair frame", size: [W, H, D], pos: [0, H / 2, 0], material: "metal", pieces },
+    { id: "back", name: "Backrest", size: [W - 10, 200, 20], pos: [0, H - 110, -D / 2 + 76], material: "board" },
+    { id: "seat", name: "Seat", size: [W - 30, 20, D - 40], pos: [0, yS, 20], material: "board" },
+  ];
+  const steps: CustomStep[] = [
+    { title: "Take the folded chair out of the box", detail: "It comes assembled, with nothing to screw together. Stand it on its feet, still folded.", add: ["frame", "back"], from: { frame: [0, 300, 0], back: [0, 300, 0] } },
+    { title: "Unfold it and press the seat down", detail: "Pull the back and the front legs apart, then push the seat down until it lies flat and the frame locks.", add: ["seat"], from: { seat: [0, 260, -200] } },
+    { title: "Check it stands steady", detail: "All four feet should touch the floor. To fold it, lift the front edge of the seat. Store it indoors over winter." },
+  ];
+  return { parts, steps };
+}
+
 const family: Family = {
   names: ["FEJAN"],
   recipe(s) {
     if (/fejan-table/.test(s.slug ?? "")) return table(s);
+    if (/folding|fejan-chair/.test(`${s.variant} ${s.slug ?? ""}`.toLowerCase())) return foldingChair(s);
     return null;
   },
 };

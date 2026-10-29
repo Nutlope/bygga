@@ -42,7 +42,7 @@ function recipe(s: ProductSpec): CustomParams {
   const zIn = ze - t / 2, yIn = ye - t / 2; // the rails' inner faces
   parts.push(
     rail("R1", t / 2, ze, xs.map((x): [Vec3, Vec3] => [[40, 30, 3], [x, t + 10, zIn - 22]])),
-    rail("R2", ye, ze, [...xs.map((x): [Vec3, Vec3] => [[40, 30, 3], [x, yIn - 15, zIn - 22]]), ...xs.map((x): [Vec3, Vec3] => [[40, 3, 30], [x, yIn - 22, zIn - 15]])]),
+    rail("R2", ye, ze, [...xs.map((x): [Vec3, Vec3] => [[40, 50, 3], [x, yIn - 25, zIn - 22]]), ...xs.map((x): [Vec3, Vec3] => [[40, 3, 30], [x, yIn - 22, zIn - 15]])]),
     rail("R3", ye, -ze, xs.map((x): [Vec3, Vec3] => [[40, 3, 30], [x, yIn - 22, -zIn + 15]])),
   );
   // slatted panels: seven slats down the front, eight across the top
@@ -103,7 +103,7 @@ function recipe(s: ProductSpec): CustomParams {
         detail: "Lower it into the bottom of the frame onto the six tabs, then a bolt through each tab.",
         add: ["P1"],
         from: { P1: [0, 0, 300] },
-        fix: [fix("bolt", [t + 10, yIn - 15].flatMap((y) => xs.map((x): Vec3 => [x, y, zIn - 22])), [0, 0, 1], { ...bolt, mate: "P1" })],
+        fix: [fix("bolt", [t + 10, yIn - 38].flatMap((y) => xs.map((x): Vec3 => [x, y, zIn - 22])), [0, 0, 1], { ...bolt, mate: "P1" })],
         tools: ["allen"],
       },
       {

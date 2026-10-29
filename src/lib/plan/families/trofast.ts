@@ -358,7 +358,7 @@ function pineTriple(k: Kit, W: number, H: number, D: number, roomDivider: boolea
     tools: ["hammer", "allen"],
     pose: "+z",
   });
-  k.steps.push({ title: "Slide on the top panel", detail: "Four dowels in each end, then push it down onto the dividers' dowels.", add: ["TP"], fix: [k.endDowels("TP", -1, 4, "L"), k.endDowels("TP", 1, 4, "R")], tools: ["hammer"] });
+  k.steps.push({ title: "Slide on the top panel", detail: "Four dowels in each end. Angle it into the side first, then lower it onto the dividers' dowels.", add: ["TP"], from: { TP: [220, 220, 0] }, fix: [k.endDowels("TP", -1, 4, "L"), k.endDowels("TP", 1, 4, "R")], tools: ["hammer"] });
   k.steps.push({ title: "Fit the top rails", detail: "One dowel in each end, then slide them onto the top panel's edges.", add: ["TF", "TK"], fix: ["TF", "TK"].flatMap((r) => [k.endDowels(r, -1, 1, "L"), k.endDowels(r, 1, 1, "R")]), tools: ["hammer"] });
   k.steps.push({ title: "Screw the top to the side", detail: "Three screws through the side into the top panel and its rails.", fix: [k.through("L", "TP", 1), k.through("L", "TF", 1), k.through("L", "TK", 1)], tools: ["allen"] });
   k.steps.push({
@@ -493,7 +493,8 @@ function whiteTriple(k: Kit, W: number, H: number, D: number) {
   k.steps.push({
     title: "Join the dividers with the two middle rails",
     detail: "Upside down on a rug. Two big dowels in each rail end, then push the dividers on.",
-    add: ["V1", "V2", ...midRails],
+    add: [...midRails, "V1", "V2"],
+    from: { A1F: [0, 0, 0], A1K: [0, 0, 0] },
     fix: midRails.flatMap((r) => [{ ...k.endDowels(r, -1, 2, "V1"), ...BIG }, { ...k.endDowels(r, 1, 2, "V2"), ...BIG }]),
     tools: ["hammer"],
     pose: "-y",
@@ -559,6 +560,7 @@ function whiteStepped(k: Kit, W: number, H: number, D: number) {
     detail: "Lay the side on its back edge on a rug. Tap four dowels into each end of the top, push it on and turn one screw through the side.",
     add: ["L", "T0P"],
     fix: [...topDowels(0), k.through("L", "T0P", 1)],
+    from: { L: [0, 0, 0], T0P: [300, 0, 0] },
     tools: ["hammer", "allen"],
     pose: "+z",
     warnings: ["floor"],
@@ -571,9 +573,9 @@ function whiteStepped(k: Kit, W: number, H: number, D: number) {
   k.steps.push({ title: "Screw the low top to the divider", detail: "Four dowels in each end, then one screw.", add: ["T2P"], fix: [...topDowels(2), k.through("V2", "T2P", 1)], tools: ["hammer", "allen"] });
   k.steps.push({ title: "Fit its rails", detail: "A dowel in each end, then one screw through the divider into each.", add: ["T2F", "T2K"], fix: [...railDowels(2), k.through("V2", "T2F", 1), k.through("V2", "T2K", 1)], tools: ["hammer", "allen"] });
   k.steps.push({ title: "Tap dowels into the bottom of the dividers", detail: "Two in each.", fix: [k.uprightDowels("V1", -1, 2, "BP"), k.uprightDowels("V2", -1, 2, "BP")], tools: ["hammer"] });
-  k.steps.push({ title: "Lay the bottom on", detail: "Tap two dowels into each end, then swing it onto the dividers' dowels.", add: ["BP"], fix: [k.endDowels("BP", -1, 2, "L"), k.endDowels("BP", 1, 2, "R")], tools: ["hammer"] });
+  k.steps.push({ title: "Lay the bottom on", detail: "Tap two dowels into each end, then swing it onto the dividers' dowels.", add: ["BP"], from: { BP: [220, 220, 0] }, fix: [k.endDowels("BP", -1, 2, "L"), k.endDowels("BP", 1, 2, "R")], tools: ["hammer"] });
   k.steps.push({ title: "Screw the bottom to the dividers", detail: "Two screws into each.", fix: [k.throughPanel("BP", "V1", 2), k.throughPanel("BP", "V2", 2)], tools: ["allen"] });
-  k.steps.push({ title: "Swing the long rails on", detail: "Four dowels in each first: one in each end and two along the top edge. They go front and back, under the bottom.", add: ["BF", "BK"], fix: ["BF", "BK"].flatMap((r) => [k.endDowels(r, -1, 1, "L"), k.endDowels(r, 1, 1, "R"), k.fx("dowel", r, [c.xs[1], c.xs[2]].map((x) => [x, RH, k.mid(r, 2)] as Vec3), [0, -1, 0], "BP")]), tools: ["hammer"] });
+  k.steps.push({ title: "Swing the long rails on", detail: "Four dowels in each first: one in each end and two along the top edge. They go front and back, under the bottom.", add: ["BF", "BK"], from: { BF: [220, -220, 0], BK: [220, -220, 0] }, fix: ["BF", "BK"].flatMap((r) => [k.endDowels(r, -1, 1, "L"), k.endDowels(r, 1, 1, "R"), k.fx("dowel", r, [c.xs[1], c.xs[2]].map((x) => [x, RH, k.mid(r, 2)] as Vec3), [0, -1, 0], "BP")]), tools: ["hammer"] });
   k.steps.push({
     title: "Screw on the low side",
     detail: "Nine screws through it into the low top, its rails, the bottom and the long rails.",
@@ -640,7 +642,7 @@ function wallStorage(k: Kit, W: number, H: number, D: number, white: boolean) {
   });
   k.steps.push({ title: "Screw the bottom to the dividers", detail: "Two screws into each, from underneath.", fix: [k.throughPanel("BP", "V1", 2), k.throughPanel("BP", "V2", 2)], tools: ["allen"] });
   k.steps.push({ title: "Fit the top", detail: "Two dowels in the top end of each divider, then press the top on.", add: ["TP"], fix: [k.uprightDowels("V1", 1, 2, "TP"), k.uprightDowels("V2", 1, 2, "TP")], tools: ["hammer"] });
-  k.steps.push({ title: "Screw the top to the dividers", detail: white ? "Two screws into each." : "One screw into each.", fix: [k.throughPanel("TP", "V1", white ? 2 : 1), k.throughPanel("TP", "V2", white ? 2 : 1)], tools: ["allen"] });
+  k.steps.push({ title: "Screw the top to the dividers", detail: white ? "Two screws into each." : "One screw into each.", fix: white ? [k.throughPanel("TP", "V1", 2), k.throughPanel("TP", "V2", 2)] : ["V1", "V2"].map((v) => k.fx("bolt", "TP", [[k.mid(v, 0), H, 0]], [0, -1, 0], v, BOLT)), tools: ["allen"] });
   const ends = ["TP", "BP"];
   if (!white) k.steps.push(fittings);
   k.steps.push({
@@ -687,74 +689,70 @@ function deskRecipe(k: Kit, s: ProductSpec) {
   const a = pineSingle(k, fw, H, D, { ox: -ox, p: "a", block: true, steps: false });
   const b = pineSingle(k, fw, H, D, { ox, p: "b", block: true, steps: false });
   const gap = W - 2 * fw;
-  // the middle top: a panel in two grooved rails, as the frames' own tops
-  k.part("MP", "Desk top panel", [gap, PT, D - 2 * RT], [0, H - PT / 2, 0]);
-  k.part("MF", "Desk top rail", [gap, RH, RT], [0, H - RH / 2, D / 2 - RT / 2]);
-  k.part("MK", "Desk top rail", [gap, RH, RT], [0, H - RH / 2, -D / 2 + RT / 2]);
-  // two flat metal rails under it, their ends turned down against the frames' inner sides
-  const zr = [D / 2 - RT - 60, -D / 2 + RT + 60];
+  // the middle top: one board between the frames' tops
+  k.part("MP", "Desk top", [gap, PT, D], [0, H - PT / 2, 0]);
+  // two flat metal rails under its front and back edges, their ends turned down against the frames' inner sides,
+  // held by the inner sides' top screws that go back in through them
+  const zr = [D / 2 - 15, -D / 2 + 15], zt = [D / 2 - RT / 2, -D / 2 + RT / 2];
   zr.forEach((z, i) => k.part(`M${i}`, "Metal rail", [gap, 4, 30], [0, H - PT - 2, z], { mat: "metal", pieces: [
     { shape: "box", size: [gap, 4, 30], pos: [0, 0, 0] },
     { shape: "box", size: [3, 40, 30], pos: [-gap / 2 + 1.5, -20, 0] },
     { shape: "box", size: [3, 40, 30], pos: [gap / 2 - 1.5, -20, 0] },
   ] }));
   // the low stretcher at the back on two corner brackets
-  const ys = 150, zs = -D / 2 + 40;
+  const ys = 60, zs = -D / 2 + 40;
   k.part("ST", "Stretcher", [gap, 50, 18], [0, ys, zs]);
   const aIn = "aR", bIn = "bL"; // the inner sides
   const xa = k.bx(aIn).max[0], xb = k.bx(bIn).min[0];
-  const frameSteps = () => {
-    k.steps.push({ title: "Screw a runner block onto each frame side", detail: "Two frames make the desk; build the first one now. Lay both its sides on a rug, runners up, and screw a block along each top end.", add: ["aL", "aKL"], fix: [a.blockScrews("L")], tools: ["screwdriver"], pose: "+x", warnings: ["floor"], repeat: 2 });
-    k.steps.push({ title: "Tap dowels into both ends of the rails", detail: "Two in each end, sixteen in all.", add: ["aTF", "aTK", "aBF", "aBK"], fix: a.dowelsAll(2), tools: ["hammer"] });
-    k.steps.push({ title: "Slide the panels into the rails and stand them on a side", detail: "The groove in each rail takes the panel's edge, rails facing out.", add: ["aTP", "aBP"] });
-    k.steps.push({ title: "Lay the other side on top", detail: "Runners and block facing down, onto all the dowels.", add: ["aR", "aKR"], fix: [a.blockScrews("R")], tools: ["screwdriver"] });
-    k.steps.push({ title: "Screw the side on", detail: "Six screws through it with the Allen key.", fix: a.sideScrews("R"), tools: ["allen"] });
-    k.steps.push({ title: "Turn it over and screw the other side", detail: "Six more screws the same way.", fix: a.sideScrews("L"), tools: ["allen"], pose: "-x" });
-    k.steps.push({
-      title: "Build the second frame the same way",
-      detail: "Blocks, dowels, panels, sides and twelve screws.",
-      add: ["bL", "bKL", "bR", "bKR", "bTP", "bBP", "bTF", "bTK", "bBF", "bBK"],
-      fix: merged([b.blockScrews("L"), b.blockScrews("R"), ...b.dowelsAll(2), ...b.sideScrews("R"), ...b.sideScrews("L")]),
-      tools: ["screwdriver", "hammer", "allen"],
-      pose: "+y",
-    });
+  // the inner sides' screws into the top rails and the back bottom rail come out again for the desk: leave them for later
+  const kept = (f: CustomFix[], p: string) => f.filter((x) => ![`${p}TF`, `${p}TK`, `${p}BK`].includes(x.mate ?? ""));
+  const frame = (f: typeof a, p: "a" | "b", inner: "L" | "R") => {
+    const outer = inner === "L" ? "R" : "L";
+    const first = p === "a";
+    const id = (x: string) => p + x;
+    k.steps.push({ title: first ? "Screw a runner block onto each frame side" : "Start the second frame the same way", detail: first ? "Two frames make the desk; build the first one now. Lay both its sides on a rug, runners up, and screw a block along each top end." : "A runner block on each of its sides, three screws each.", add: [id("L"), id("KL")], fix: [f.blockScrews("L")], tools: ["screwdriver"], pose: "+x", warnings: ["floor"], repeat: 2 });
+    k.steps.push({ title: "Tap dowels into both ends of the rails", detail: "Two in each end, sixteen in all.", add: [id("TF"), id("TK"), id("BF"), id("BK")], fix: f.dowelsAll(2), tools: ["hammer"] });
+    k.steps.push({ title: "Slide the panels into the rails and stand them on a side", detail: "The groove in each rail takes the panel's edge, rails facing out.", add: [id("TP"), id("BP")] });
+    k.steps.push({ title: "Lay the other side on top", detail: "Runners and block facing down, onto all the dowels.", add: [id("R"), id("KR")], fix: [f.blockScrews("R")], tools: ["screwdriver"] });
+    const screwsR = f.sideScrews("R"), screwsL = f.sideScrews("L");
+    k.steps.push({ title: "Screw the side on", detail: inner === "R" ? "Three screws through it with the Allen key. Leave out the two top corners and the back bottom corner: those screws hold the desk parts later." : "Six screws through it with the Allen key.", fix: inner === "R" ? kept(screwsR, p) : screwsR, tools: ["allen"] });
+    k.steps.push({ title: "Turn it over and screw the other side", detail: inner === "L" ? "Three screws this time. Leave out the two top corners and the back bottom corner: those screws hold the desk parts later." : "Six more screws the same way.", fix: inner === "L" ? kept(screwsL, p) : screwsL, tools: ["allen"], pose: "-x" });
+    void outer;
   };
-  frameSteps();
-  const railEnd = (i: number, side: -1 | 1) => k.fx("bolt", `M${i}`, [[side < 0 ? xa : xb, H - PT - 40, zr[i]]], [side < 0 ? 1 : -1, 0, 0], side < 0 ? aIn : bIn, BOLT);
+  frame(a, "a", "R");
+  frame(b, "b", "L");
+  const railEnd = (i: number, side: -1 | 1) => k.fx("bolt", `M${i}`, [[side < 0 ? xa + 3 : xb - 3, H - 25, zt[i]]], [side < 0 ? -1 : 1, 0, 0], `${side < 0 ? "a" : "b"}T${i ? "K" : "F"}`, BOLT);
   const yb = ys;
   k.steps.push({
-    title: "Take out the inner screws and fit the metal rails",
-    detail: "Upside down on the rug, the frames a desk top's width apart. Undo the top screws on the two inner sides and put them back through the rails' turned-down ends.",
+    title: "Fit the metal rails to the first frame",
+    detail: "Stand both frames on the rug, inner sides facing, a desk top's width apart. The saved screws go through the rails' turned-down ends into the top corners.",
     add: ["M0", "M1"],
     fix: [railEnd(0, -1), railEnd(1, -1)],
     tools: ["allen"],
-    pose: "-y",
+    pose: "+y",
     warnings: ["floor"],
   });
-  k.steps.push({ title: "Screw the rails to the other frame", detail: "Four screws, two through each rail end. Turn them by hand, not with a drill.", fix: [railEnd(0, 1), railEnd(1, 1), k.fx("bolt", "M0", [[xb, H - PT - 12, zr[0]]], [-1, 0, 0], bIn, BOLT), k.fx("bolt", "M1", [[xb, H - PT - 12, zr[1]]], [-1, 0, 0], bIn, BOLT)], tools: ["allen"] });
+  k.steps.push({ title: "Screw the rails to the other frame", detail: "One screw through each rail end into its top corners. Turn them by hand, not with a drill.", fix: [railEnd(0, 1), railEnd(1, 1)], tools: ["allen"] });
   k.steps.push({
     title: "Screw on the corner brackets",
-    detail: "One low down at the back of each inner side, a long screw each.",
-    fix: [k.fx("angle", aIn, [[xa, yb, zs + 20]], [-1, 0, 0]), k.fx("angle", bIn, [[xb, yb, zs + 20]], [1, 0, 0]), k.fx("bolt", aIn, [[xa, yb + 25, zs + 20]], [-1, 0, 0], undefined, BOLT), k.fx("bolt", bIn, [[xb, yb + 25, zs + 20]], [1, 0, 0], undefined, BOLT)],
+    detail: "One low down at the back of each inner side, on the last saved screw, into the back bottom rail.",
+    fix: [k.fx("angle", aIn, [[xa, 40, -D / 2 + 30]], [-1, 0, 0]), k.fx("angle", bIn, [[xb, 40, -D / 2 + 30]], [1, 0, 0]), k.fx("bolt", aIn, [[xa + 3, RH / 2, -D / 2 + RT / 2]], [-1, 0, 0], "aBK", BOLT), k.fx("bolt", bIn, [[xb - 3, RH / 2, -D / 2 + RT / 2]], [1, 0, 0], "bBK", BOLT)],
     tools: ["allen"],
   });
   k.steps.push({
     title: "Lay the desk top on the rails",
-    detail: "Turn the frames onto their sides, slip the top in between, face down, and screw through the rails into it.",
-    add: ["MP", "MF", "MK"],
+    detail: "Lay it on the rails between the frame tops and screw up through the front rail into it.",
+    add: ["MP"],
     fix: [k.fx("screw", "M0", [[-gap / 4, H - PT - 4, zr[0]], [gap / 4, H - PT - 4, zr[0]]], [0, 1, 0], "MP", { len: 14, dia: 6 })],
     tools: ["screwdriver"],
   });
   k.steps.push({ title: "Screw the top to the rails", detail: "Four more screws, by hand.", fix: [k.fx("screw", "M1", [-gap / 3, -gap / 9, gap / 9, gap / 3].map((x) => [x, H - PT - 4, zr[1]] as Vec3), [0, 1, 0], "MP", { len: 14, dia: 6 })], tools: ["screwdriver"] });
   k.steps.push({
-    title: "Stand it up and screw in the stretcher",
-    detail: "Turn the desk over onto its feet. The stretcher sits on the two brackets, two screws at each end.",
+    title: "Screw in the stretcher",
+    detail: "The stretcher sits on the two brackets at the back, two screws at each end.",
     add: ["ST"],
     fix: [k.fx("screw", "ST", [[-gap / 2 + 12, yb + 25, zs], [-gap / 2 + 40, yb + 25, zs], [gap / 2 - 12, yb + 25, zs], [gap / 2 - 40, yb + 25, zs]], [0, -1, 0], undefined, { len: 14, dia: 6 })],
     tools: ["screwdriver"],
-    pose: "+y",
-    people: 2,
-    warnings: ["two"],
   });
   const v = s.variant.toLowerCase();
   if (/box|tray/.test(v)) boxesStep(k, [-ox, ox], fw, H, D, /tray/.test(v), /mesh/.test(v));

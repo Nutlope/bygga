@@ -47,8 +47,8 @@ function recipe(s: ProductSpec): CustomParams {
     return [
       { id: `F${i}`, name: "Front", size: [2 * xi - 4, hc - 4, T], pos: [0, yb + hc / 2, zf] },
       ...[-1, 1].map((sx) => ({ id: `K${i}${sx < 0 ? "L" : "R"}`, name: "Bracket", size: [6, bh, bd], pos: [sx * (xi - 8), yb + bh / 2 + 6, bz], pieces: bracket, material: "fiber" as const })),
-      { id: `B${i}`, name: "Shoe board", size: [2 * xi - 40, 6, Math.hypot(bd, bh * 0.7) - 20], pos: [0, yb + bh * 0.4, bz], rot: [ang, 0, 0] as Vec3, material: "fiber" as const },
-      { id: `L${i}`, name: "Shoe strip", size: [2 * xi - 40, 40, 8], pos: [0, yb + bh * 0.82, bz - bd / 2 + 30] },
+      { id: `B${i}`, name: "Shoe board", size: [2 * xi - 22, 6, Math.hypot(bd, bh * 0.7) - 20], pos: [0, yb + bh * 0.4, bz], rot: [ang, 0, 0] as Vec3, material: "fiber" as const },
+      { id: `L${i}`, name: "Shoe strip", size: [2 * xi - 22, 40, 8], pos: [0, yb + bh * 0.82, bz - bd / 2 + 30] },
     ] as CustomPart[];
   };
   const comps = Array.from({ length: n }, (_, i) => comp(i));
@@ -76,8 +76,9 @@ function recipe(s: ProductSpec): CustomParams {
     const fz = f.pos[2] - T / 2;
     return {
       brackets: { kind: "screw" as const, count: 6, ...BIG, at: [kl, kr].flatMap((k) => [0.15, 0.5, 0.85].map((t) => [k.pos[0], f.pos[1] - f.size[1] / 2 + 15 + (f.size[1] - 30) * t * 0.8, fz - 2] as Vec3)), dir: [0, 0, 1] as Vec3, on: `F${i}` },
-      board: { kind: "screw" as const, count: 2, ...SMALL, at: [kl, kr].map((k) => [k.pos[0] + Math.sign(k.pos[0]) * 4, bd.pos[1], bd.pos[2]] as Vec3), dir: [-1, 0, 0] as Vec3, on: `B${i}` },
-      strip: { kind: "screw" as const, count: 2, ...SMALL, at: [kl, kr].map((k) => [k.pos[0] + Math.sign(k.pos[0]) * 4, st.pos[1], st.pos[2]] as Vec3), dir: [-1, 0, 0] as Vec3, on: `L${i}` },
+      // one screw through each bracket from outside into the board's or strip's end
+      board: [kl, kr].map((k): CustomFix => ({ kind: "screw", count: 1, ...SMALL, at: [[k.pos[0] + Math.sign(k.pos[0]) * 3, bd.pos[1], bd.pos[2]]], dir: [-Math.sign(k.pos[0]), 0, 0], on: k.id, mate: `B${i}` })),
+      strip: [kl, kr].map((k): CustomFix => ({ kind: "screw", count: 1, ...SMALL, at: [[k.pos[0] + Math.sign(k.pos[0]) * 3, st.pos[1], st.pos[2]]], dir: [-Math.sign(k.pos[0]), 0, 0], on: k.id, mate: `L${i}` })),
     };
   };
   const bushings = comps.flatMap((_, i) => [-1, 1].map((sx) => [sx * (xi - 6), y0 + i * hc + 30, D / 2 - 45] as Vec3));
@@ -138,15 +139,15 @@ function recipe(s: ProductSpec): CustomParams {
       tools: ["screwdriver"],
       from: { F0: [0, 0, 500], K0L: [0, 0, 600], K0R: [0, 0, 600] },
     },
-    { title: "Slot in the shoe board and screw it", detail: "The wide board, into the slots in both brackets. One screw each side.", add: ["B0"], fix: [compFix(0).board], tools: ["screwdriver"], from: { B0: [0, 0, 500] } },
-    { title: "Slot in the shoe strip and screw it", detail: "The narrow strip, at the back of the brackets. One screw each side.", add: ["L0"], fix: [compFix(0).strip], tools: ["screwdriver"], from: { L0: [0, 0, 500] } },
+    { title: "Slot in the shoe board and screw it", detail: "The wide board, into the slots in both brackets. One screw each side.", add: ["B0"], fix: compFix(0).board, tools: ["screwdriver"], from: { B0: [0, 0, 500] } },
+    { title: "Slot in the shoe strip and screw it", detail: "The narrow strip, at the back of the brackets. One screw each side.", add: ["L0"], fix: compFix(0).strip, tools: ["screwdriver"], from: { L0: [0, 0, 500] } },
     {
       title: n > 2 ? "Build the other compartments the same way" : "Build the other compartment the same way",
       detail: "Brackets, shoe board and strip, then check each bracket's slot sits on its pivot.",
       add: later.flat().map((p) => p.id),
       fix: later.flatMap((_, j) => {
         const f = compFix(j + 1);
-        return [f.brackets, f.board, f.strip];
+        return [f.brackets, ...f.board, ...f.strip];
       }),
       tools: ["screwdriver"],
       repeat: n - 1,

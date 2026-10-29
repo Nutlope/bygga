@@ -14,6 +14,7 @@ const LONG = { kind: "bolt" as const, len: 20, dia: 6, name: "Long Allen bolt" }
 const LT = 3; // leg wall
 const LS = 40; // leg flange
 const FOOT = 25;
+const G2 = [-1, 1] as const;
 
 function unit(s: ProductSpec, backPanel: boolean): CustomParams {
   const W = s.size.w * 10, D = 610, H = 920;
@@ -62,7 +63,12 @@ function unit(s: ProductSpec, backPanel: boolean): CustomParams {
   const legAt = (p: Vec3) => `L${p[2] < 0 ? "B" : "F"}${p[0] < 0 ? "L" : "R"}`;
   const inX = (p: Vec3): Vec3 => [p[0] < 0 ? 1 : -1, 0, 0];
   const inZ = (p: Vec3): Vec3 => [0, 0, p[2] < 0 ? 1 : -1];
-  const merge = (list: CustomFix[]): CustomFix => ({ ...list[0], count: list.length, at: list.flatMap((f) => f.at!), on: undefined, mate: undefined });
+  // one fix per direction, so each bolt keeps pointing in through its own leg
+  const merge = (list: CustomFix[]): CustomFix[] => {
+    const by = new Map<string, CustomFix[]>();
+    for (const f of list) by.set(String(f.dir), [...(by.get(String(f.dir)) ?? []), f]);
+    return [...by.values()].map((g) => ({ ...g[0], count: g.length, at: g.flatMap((f) => f.at!), on: undefined, mate: undefined }));
+  };
 
   const steps: CustomStep[] = [
     {
@@ -77,7 +83,7 @@ function unit(s: ProductSpec, backPanel: boolean): CustomParams {
       title: "Bolt the back legs to the worktop",
       detail: "The unit is built lying on its back. One of you holds the worktop on its back edge while the other slides the two back legs onto it.",
       add: ["T"],
-      fix: [merge(bolts([side(-1, -1, yT), side(1, -1, yT)], inX, "T"))],
+      fix: [...merge(bolts([side(-1, -1, yT), side(1, -1, yT)], inX, "T"))],
       tools: ["allen"],
       people: 2,
       pose: "+z",
@@ -87,7 +93,7 @@ function unit(s: ProductSpec, backPanel: boolean): CustomParams {
       title: "Bolt the bottom shelf to the back legs",
       detail: "Lower it onto the legs next to the feet, top side towards the worktop.",
       add: ["B"],
-      fix: [merge(bolts([side(-1, -1, yB), side(1, -1, yB)], inX, "B"))],
+      fix: [...merge(bolts([side(-1, -1, yB), side(1, -1, yB)], inX, "B"))],
       tools: ["allen"],
       pose: "+z",
     },
@@ -95,8 +101,8 @@ function unit(s: ProductSpec, backPanel: boolean): CustomParams {
       title: "Lay the front legs on and bolt them",
       detail: "Feet at the bottom shelf end. Two bolts at each corner: one through the front, one through the side.",
       fix: [
-        merge(bolts([face(-1, 1, yT), face(1, 1, yT), face(-1, 1, yB), face(1, 1, yB)], inZ, "T")),
-        merge(bolts([side(-1, 1, yT), side(1, 1, yT), side(-1, 1, yB), side(1, 1, yB)], inX, "T")),
+        ...merge(bolts([face(-1, 1, yT), face(1, 1, yT), face(-1, 1, yB), face(1, 1, yB)], inZ, "T")),
+        ...merge(bolts([side(-1, 1, yT), side(1, 1, yT), side(-1, 1, yB), side(1, 1, yB)], inX, "T")),
       ],
       tools: ["allen"],
       pose: "+z",
@@ -104,7 +110,7 @@ function unit(s: ProductSpec, backPanel: boolean): CustomParams {
     {
       title: "Stand it up and bolt the back",
       detail: "Turn it onto its feet, then put the last bolts through the back of the back legs.",
-      fix: [merge(bolts([face(-1, -1, yT), face(1, -1, yT), face(-1, -1, yB), face(1, -1, yB)], inZ, "T"))],
+      fix: [...merge(bolts([face(-1, -1, yT), face(1, -1, yT), face(-1, -1, yB), face(1, -1, yB)], inZ, "T"))],
       tools: ["allen"],
       pose: "+y",
     },
@@ -122,8 +128,9 @@ function unit(s: ProductSpec, backPanel: boolean): CustomParams {
           at: legs.map(([, sx, sz]) => [sx * (X - LT - 10), railY, sz * (Z - LS)] as Vec3),
           dir: [0, -1, 0],
         },
-        { ...BOLT, count: 4, at: legs.map(([, sx, sz]) => [sx * (X - LT), railY, sz * (Z - LS / 2)] as Vec3), dir: [1, 0, 0] },
-        { ...BOLT, count: 4, at: legs.map(([, sx, sz]) => [sx * (X - LS / 2), railY, sz * (Z - LT)] as Vec3), dir: [0, 0, 1] },
+        // from outside, through each flange of the leg into the bracket
+        ...G2.map((sx): CustomFix => ({ ...BOLT, count: 2, at: [-1, 1].map((sz) => [sx * X, railY, sz * (Z - LS / 2)] as Vec3), dir: [-sx, 0, 0] })),
+        ...G2.map((sz): CustomFix => ({ ...BOLT, count: 2, at: [-1, 1].map((sx) => [sx * (X - LS / 2), railY, sz * Z] as Vec3), dir: [0, 0, -sz] })),
       ],
       tools: ["allen"],
       check: "square",
@@ -161,14 +168,16 @@ function unit(s: ProductSpec, backPanel: boolean): CustomParams {
         title: "Bolt a bracket to each back leg",
         detail: "Take out the bolt at the top of the leg first; the long bolt goes back in its place, through the bracket.",
         add: ["PB", "PB2"],
-        fix: [{ ...LONG, count: 4, at: [-1, 1].flatMap((sx) => [yT, yT - 40].map((y) => [sx * (X - LS / 2), y, -Z - 5] as Vec3)), dir: [0, 0, 1] }],
+        from: { PB: [0, 0, -200], PB2: [0, 0, -200] },
+        // through the bracket and the leg into the worktop's back edge
+        fix: G2.map((sx): CustomFix => ({ ...LONG, count: 2, at: [-12, 12].map((dx) => [sx * (X - LS / 2) + dx, yT + 20, -Z - 5] as Vec3), dir: [0, 0, 1], on: sx < 0 ? "PB" : "PB2", mate: "T" })),
         tools: ["allen"],
         repeat: 2,
       },
       {
         title: "Drop the back panel into the brackets",
         detail: "One of you holds it level while the other lowers the tubes into both brackets, then bolt it twice on each side.",
-        fix: [{ ...BOLT, count: 4, at: [-1, 1].flatMap((sx) => [880, 950].map((y) => [sx * (X - 10), y, -Z - 5] as Vec3)), dir: [0, 0, -1] }],
+        fix: [{ ...BOLT, count: 4, at: [-1, 1].flatMap((sx) => [940, 975].map((y) => [sx * (X - 10), y, -Z - 5] as Vec3)), dir: [0, 0, -1] }],
         tools: ["allen"],
         people: 2,
         warnings: ["two"],

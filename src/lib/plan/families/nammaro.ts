@@ -10,7 +10,7 @@ import { rotate } from "../math";
  * on the long and round tables), rails or leg frames bolted on with barrel nuts, braces last, then turned over.
  * Chairs, benches and the modular sofa start from their side frames. The reclining chair is built folded flat, lying
  * on its back, then stood up and opened out. The folding chairs and the folding stool come ready assembled and have
- * no manual, so they keep their old guide.
+ * no manual: their guides only unfold them.
  */
 
 type Kind = CustomFix["kind"];
@@ -352,7 +352,7 @@ function bench(s: ProductSpec): CustomParams {
     { title: "Lay the rails onto the dowels", detail: "One along each long edge, the marked side the same way.", add: ["C1", "C2"] },
     { title: "Screw the rails to the seat", detail: "Four screws through each rail.", fix: railScrews, tools: ["allen"] },
     { title: "Tap the long dowels into the rail ends", detail: "Two into each end.", fix: endDowels, tools: ["hammer"] },
-    { title: "Push the leg frames onto the rail ends", detail: "One at each end, feet pointing up.", add: ["L1", "L2"] },
+    { title: "Push the leg frames onto the rail ends", detail: "One at each end, feet pointing up.", add: ["L1", "L2"], from: { L1: [-300, 0, 0], L2: [300, 0, 0] } },
     {
       title: "Bolt the two braces to the middle block",
       detail: "The long bolt goes through one brace, the block and the other brace, then a washer and the nut. Leave it a little loose.",
@@ -402,7 +402,7 @@ function barStool(s: ProductSpec): CustomParams {
     { title: "Lay the two rails onto the dowels", detail: "Marked side the same way on both.", add: ["C1", "C2"] },
     { title: "Screw the rails to the seat", detail: "Two screws through each rail.", fix: [at("screw", zs.flatMap((sz) => [-60, 60].map((x) => [x, yS - rh, sz * lz] as Vec3)), [0, 1, 0], undefined, "S", SCREW)], tools: ["allen"] },
     { title: "Tap the long dowels into the rail ends", detail: "Two into one end of each rail.", fix: zs.map((sz) => at("dowel", [yS - 15, yS - 45].map((y) => [-(lx - lw / 2), y, sz * lz] as Vec3), [1, 0, 0], sz < 0 ? "C1" : "C2", undefined, { len: 40, dia: 8 })), tools: ["hammer"] },
-    { title: "Push a leg frame onto the rail ends", detail: "Feet pointing up.", add: ["L1"] },
+    { title: "Push a leg frame onto the rail ends", detail: "Feet pointing up.", add: ["L1"], from: { L1: [-300, 0, 0] } },
     { title: "Bolt the leg frame to the rails", detail: "A barrel nut into each rail, then a bolt in through the leg.", fix: [nut(zs.map((sz) => [-(lx - 60), yS - rh, sz * lz] as Vec3)), bolt(-1, top(-1).map((p) => [p[0] - lw / 2, p[1], p[2]] as Vec3))], tools: ["allen", "flathead"] },
     { title: "Push the footrest into the leg frame", detail: "Its end hooks into the slot in the front leg.", add: ["F"] },
     { title: "Bolt the footrest on", detail: "One barrel nut and one bolt.", fix: [nut([[-(lx - 60), 244, lz]]), bolt(-1, [[-W / 2, 255, lz]])], tools: ["allen", "flathead"] },
@@ -790,6 +790,10 @@ function shelving(s: ProductSpec): CustomParams {
     door("D1", -1),
     door("D2", 1),
   ];
+  // screws into a slatted shelf go into a slat, not the gap beside it
+  const slatMids = (z0: number, z1: number) => slats(0, 1, z0, z1, 0, 1, Math.round((z1 - z0) / 58), "x", 10).map((p) => p.pos[2]);
+  const slatsB = slatMids(-iz, iz), slatsM = slatMids(-iz, iz - 30);
+  const snap = (z: number, mids: number[]) => mids.reduce((a, m) => (Math.abs(m - z) < Math.abs(a - z) ? m : a), mids[0]);
   const angles = (y: number) => ([-1, 1] as const).flatMap((sx) => [-iz / 2, iz / 2].map((z) => [sx * ix, y, z] as Vec3));
   const ends = ([-1, 1] as const).map((sx) => at("dowel", [-iz / 2, iz / 2].map((z) => [sx * ix, yb - 10, z] as Vec3), [-sx, 0, 0], "BS", sx < 0 ? "SL" : "SR", { len: 40, dia: 8 }));
   const steps: CustomStep[] = [
@@ -804,13 +808,29 @@ function shelving(s: ProductSpec): CustomParams {
       title: "Slide in the front rail with the catches",
       detail: "Screw the two magnetic catches under it first, two screws each, then push it in along the front.",
       add: ["FR"],
-      fix: [at("clip", [-ix / 2, ix / 2].map((x) => [x, yc - 60, iz - 15] as Vec3), [0, 1, 0], "FR", undefined, { len: 30, dia: 15 }), at("screw", [-ix / 2 - 10, -ix / 2 + 10, ix / 2 - 10, ix / 2 + 10].map((x) => [x, yc - 62, iz - 15] as Vec3), [0, 1, 0], "FR", undefined, { len: 12, dia: 3.5 })],
+      fix: [at("clip", [-ix / 2, ix / 2].map((x) => [x, yc - 60, iz - 15] as Vec3), [0, 1, 0], "FR", undefined, { len: 30, dia: 15 }), at("screw", [-ix / 2 - 25, -ix / 2 + 25, ix / 2 - 25, ix / 2 + 25].map((x) => [x, yc - 62, iz - 15] as Vec3), [0, 1, 0], "FR", undefined, { len: 12, dia: 3.5 })],
       tools: ["screwdriver"],
     },
-    { title: "Screw the brackets to the shelves", detail: "One screw through each of the eight brackets.", fix: [at("screw", [...angles(yb - 20), ...angles(yc - 20)].map((p) => [p[0] - Math.sign(p[0]) * 20, p[1], p[2]] as Vec3), [0, 1, 0], undefined, undefined, { len: 12, dia: 4 })], tools: ["screwdriver"] },
+    {
+      title: "Screw the brackets to the shelves",
+      detail: "One screw through each of the eight brackets.",
+      fix: [
+        at("screw", angles(yb - 20).map((p) => [p[0] - Math.sign(p[0]) * 30, p[1], snap(p[2], slatsB)] as Vec3), [0, 1, 0], "BS", undefined, { len: 12, dia: 4 }),
+        at("screw", angles(yc - 20).map((p) => [p[0] - Math.sign(p[0]) * 30, p[1], snap(p[2], slatsM)] as Vec3), [0, 1, 0], "MS", undefined, { len: 12, dia: 4 }),
+      ],
+      tools: ["screwdriver"],
+    },
     { title: "Tighten the back panel bolts", detail: "All four, now that the shelves hold it square.", tools: ["allen"], check: "square" },
     { title: "Fit the small brackets at the back", detail: "One in each corner where the back panel meets a shelf, screwed to the back panel.", fix: [at("angle", [-1, 1].flatMap((sx) => [yb + 20, yc - 60].map((y) => [sx * (ix - 60), y, -D / 2 + 24] as Vec3)), [0, 0, -1], "BP", undefined, { len: 24, dia: 20 }), at("screw", [-1, 1].flatMap((sx) => [yb + 30, yc - 70].map((y) => [sx * (ix - 60), y, -D / 2 + 26] as Vec3)), [0, 0, -1], "BP", undefined, { len: 12, dia: 4 })], tools: ["screwdriver"] },
-    { title: "Screw the small brackets to the shelves", detail: "One more screw in each.", fix: [at("screw", [-1, 1].flatMap((sx) => [yb, yc - 20].map((y) => [sx * (ix - 60), y, -D / 2 + 40] as Vec3)), [0, 1, 0], undefined, undefined, { len: 12, dia: 4 })], tools: ["screwdriver"] },
+    {
+      title: "Screw the small brackets to the shelves",
+      detail: "One more screw in each.",
+      fix: [
+        at("screw", [-1, 1].map((sx) => [sx * (ix - 60), yb, snap(-D / 2 + 40, slatsB)] as Vec3), [0, -1, 0], "BS", undefined, { len: 12, dia: 4 }),
+        at("screw", [-1, 1].map((sx) => [sx * (ix - 60), yc - 20, snap(-D / 2 + 40, slatsM)] as Vec3), [0, 1, 0], "MS", undefined, { len: 12, dia: 4 }),
+      ],
+      tools: ["screwdriver"],
+    },
     {
       title: "Turn it over and bolt the top shelf on",
       detail: "Stand it on its feet. Dowels into the top rails' ends, a barrel nut into each rail, then a long bolt in through each post.",
@@ -877,7 +897,7 @@ function backSlatsAt(y0: number, y1: number, n: number, gap = 22): [number, numb
 }
 
 /** One seat section, upside down on a rug as its manual builds it, then any more the same way. */
-function section(id: string, ox: number, Ws: number, D: number, deep: boolean, first: boolean) {
+function section(id: string, ox: number, Ws: number, D: number, deep: boolean, first: boolean, sx0: -1 | 1 = 1, k = 0) {
   const zf0 = -D / 2 + LW, zf1 = D / 2, zm = (zf0 + zf1) / 2;
   const hw = Ws / 2;
   const X = (x: number) => ox + x;
@@ -915,12 +935,14 @@ function section(id: string, ox: number, Ws: number, D: number, deep: boolean, f
   const railScrews = at("screw", rz.flatMap((z, i) => (i === 1 && deep ? [-0.6, -0.2, 0.2, 0.6] : [-0.6, 0, 0.6]).map((t) => [X(t * hw), RT, z] as Vec3)), [0, 1, 0], undefined, undefined, SCREW);
   const ends = (sx: -1 | 1) => rz.flatMap((z, i) => [RT + 18, YS - 45].map((y) => [X(sx * (hw - (deep && i === 1 ? 28 : LW))), y, z] as Vec3));
   const longDowels = ([-1, 1] as const).map((sx) => at("dowel", ends(sx), [-sx, 0, 0], undefined, undefined, { len: 40, dia: 8 }));
-  const sideScrews = (sx: -1 | 1) => at("screw", (deep ? [-0.6, -0.2, 0.2, 0.6] : [-0.5, 0, 0.5]).map((t) => [X(sx * (hw - 14)), RT, zm + (t * (zf1 - zf0 - 2 * LW))] as Vec3), [0, 1, 0], sx < 0 ? `${id}L` : `${id}R`, undefined, SCREW);
+  const sideScrews = (sx: -1 | 1) => at("screw", (deep ? [-0.6, -0.2, 0.2, 0.6] : [-0.5, 0, 0.5]).map((t) => [X(sx * (hw - 14)), RT, zm + (t * (zf1 - zf0 - 2 * LW)) / 2] as Vec3), [0, 1, 0], sx < 0 ? `${id}L` : `${id}R`, undefined, SCREW);
   const nutsAt = (sx: -1 | 1, zs: number[], y: number) => at("nut", zs.map((z) => [X(sx * (hw - 85)), y, z] as Vec3), [0, 1, 0], undefined, undefined, BARREL);
   const boltsAt = (sx: -1 | 1, zs: number[], y: number) => at("bolt", zs.map((z) => [X(sx * hw), y, z] as Vec3), [-sx, 0, 0], sx < 0 ? `${id}L` : `${id}R`, undefined, BOLT);
   const lowZ = [zf1 - 22, zf0 + 22];
-  const tops = (sx: -1 | 1): CustomFix[] => [nutsAt(sx, rz, RT), boltsAt(sx, rz, (RT + YS - 25) / 2)];
-  const lows = (sx: -1 | 1): CustomFix[] => [nutsAt(sx, lowZ, 60), boltsAt(sx, lowZ, 85)];
+  // every other section's bolts sit a little higher, so their heads don't land on its neighbour's at the join
+  const topY = (RT + YS - 25) / 2 + (k % 2) * 23, lowY = 78 + (k % 2) * 23;
+  const tops = (sx: -1 | 1): CustomFix[] => [nutsAt(sx, rz, RT), boltsAt(sx, rz, topY)];
+  const lows = (sx: -1 | 1): CustomFix[] => [nutsAt(sx, lowZ, 60), boltsAt(sx, lowZ, lowY)];
   const nb = deep ? 10 : 8;
 
   const steps: CustomStep[] = first
@@ -934,12 +956,12 @@ function section(id: string, ox: number, Ws: number, D: number, deep: boolean, f
         { title: deep ? "Lay the three rails onto the dowels" : "Lay the two rails onto the dowels", detail: "The marked side of each rail faces the same way.", add: [`${id}F`, `${id}B`, ...(deep ? [`${id}M`] : [])] },
         { title: "Screw the rails to the seat", detail: `${deep ? "Ten" : "Six"} screws, turned in with the Allen key.`, fix: [railScrews], tools: ["allen"] },
         { title: "Tap the long dowels into the rail ends", detail: "Two into each end.", fix: longDowels, tools: ["hammer"] },
-        { title: "Push a side frame onto the rail ends", detail: "Legs pointing up, onto the dowels.", add: [`${id}L`] },
+        { title: "Push a side frame onto the rail ends", detail: "Legs pointing up, onto the dowels.", add: [`${id}L`], from: { [`${id}L`]: [-300, 0, 0] } },
         { title: "Screw the side frame to the seat", detail: `${deep ? "Four" : "Three"} screws up through its top rail.`, fix: [sideScrews(-1)], tools: ["allen"] },
         { title: "Bolt the side frame to the rails", detail: "A barrel nut into each rail, slot towards the leg, then a bolt in through the frame. Not fully tight yet.", fix: tops(-1), tools: ["allen", "flathead"] },
         { title: "Push the two stretchers into the side frame", detail: "Low down, between the legs at the front and the back.", add: [`${id}X1`, `${id}X2`] },
         { title: "Bolt the stretchers on", detail: "A barrel nut into each, then a bolt through the leg.", fix: lows(-1), tools: ["allen", "flathead"] },
-        { title: "Push the other side frame on", detail: "Onto the rail and stretcher ends.", add: [`${id}R`] },
+        { title: "Push the other side frame on", detail: "Onto the rail and stretcher ends.", add: [`${id}R`], from: { [`${id}R`]: [300, 0, 0] } },
         { title: "Screw it to the seat", detail: "Up through its top rail, the same as the first.", fix: [sideScrews(1)], tools: ["allen"] },
         { title: "Bolt it to the rails and stretchers", detail: "Barrel nuts first, then the bolts.", fix: [...tops(1), ...lows(1)], tools: ["allen", "flathead"] },
         { title: "Turn the section over and tighten the bolts", detail: `Stand it on its legs, then tighten all ${nb} bolts.`, pose: "+y", tools: ["allen"], check: "square" },
@@ -949,8 +971,10 @@ function section(id: string, ox: number, Ws: number, D: number, deep: boolean, f
           title: "Build the next seat section the same way",
           detail: "Face down on the rug: dowels, rails and screws, the side frames and stretchers bolted on, then turned over and tightened.",
           add: [...seatIds, `${id}F`, `${id}B`, ...(deep ? [`${id}M`] : []), `${id}L`, `${id}X1`, `${id}X2`, `${id}R`],
-          fix: [...pins, shortDowels, { ...railScrews, at: [...railScrews.at!, ...sideScrews(-1).at!, ...sideScrews(1).at!], count: 0 }, ...longDowels, { ...nutsAt(-1, rz, RT), at: [...([-1, 1] as const).flatMap((sx) => [...nutsAt(sx, rz, RT).at!, ...nutsAt(sx, lowZ, 60).at!])] }, ...([-1, 1] as const).map((sx) => ({ ...boltsAt(sx, rz, 0), at: [...boltsAt(sx, rz, (RT + YS - 25) / 2).at!, ...boltsAt(sx, lowZ, 85).at!], on: undefined }))],
+          fix: [...pins, shortDowels, { ...railScrews, at: [...railScrews.at!, ...sideScrews(-1).at!, ...sideScrews(1).at!], count: 0 }, ...longDowels, { ...nutsAt(-1, rz, RT), at: [...([-1, 1] as const).flatMap((sx) => [...nutsAt(sx, rz, RT).at!, ...nutsAt(sx, lowZ, 60).at!])] }, ...([-1, 1] as const).map((sx) => ({ ...boltsAt(sx, rz, 0), at: [...boltsAt(sx, rz, topY).at!, ...boltsAt(sx, lowZ, lowY).at!] }))],
           tools: ["allen", "hammer", "flathead"],
+          // it arrives built, in one piece, beside the section before it
+          from: Object.fromEntries([...seatIds, `${id}F`, `${id}B`, ...(deep ? [`${id}M`] : []), `${id}L`, `${id}X1`, `${id}X2`, `${id}R`].map((k) => [k, [sx0 * Math.max(350, Ws * 0.7), 0, 0] as Vec3])),
         },
       ];
   for (const st of steps) for (const f of st.fix ?? []) f.count = f.at!.length;
@@ -999,7 +1023,8 @@ function armrest(id: string, x: number, sx: -1 | 1, zf0: number, zf1: number, Hb
       detail: "Built like the backs, then hooked onto the side of the seat with its posts beside the legs, and screwed on.",
       add: [panel.id, posts[0].id, posts[1].id],
       fix: [
-        ...[0, 1].map((i) => at("bolt", [YS + 80, Hb - 80].map((y) => [xo + LW / 2, y, i ? zf1 : zf0] as Vec3), [0, 0, i ? -1 : 1], `${id}${i ? "Z" : "A"}`, `${id}P`, { len: 50, dia: 6 })),
+        // into the ends of the lowest and the highest slat
+        ...[0, 1].map((i) => at("bolt", [backSlats(n, Hb)[0], backSlats(n, Hb)[n - 1]].map(([y0, y1]) => [slatX0 + 10, (y0 + y1) / 2, i ? zf1 : zf0] as Vec3), [0, 0, i ? -1 : 1], `${id}${i ? "Z" : "A"}`, `${id}P`, { len: 50, dia: 6 })),
         at("hook", [-0.5, 0.5].map((t) => [x, YS, (zf0 + zf1) / 2 + t * (zf1 - zf0) * 0.5] as Vec3), [0, -1, 0], undefined, undefined, { len: 40, dia: 30 }),
         at("screw", [zf0 + LW / 2, zf1 - LW / 2].map((z) => [sx > 0 ? xo + LW : xo, 160, z] as Vec3), [-sx, 0, 0], undefined, undefined, { len: 70, dia: 5 }),
         at("screw", [-0.5, 0.5].map((t) => [x - sx * 18, YS + 2, (zf0 + zf1) / 2 + t * (zf1 - zf0) * 0.5] as Vec3), [0, -1, 0], undefined, undefined, { len: 16, dia: 4 }),
@@ -1024,7 +1049,7 @@ function sofa(s: ProductSpec, o: Sofa): CustomParams {
   const order = [...mods.filter((m) => m.back), ...mods.filter((m) => !m.back)];
   let zf0 = 0, zf1 = 0;
   order.forEach((m, i) => {
-    const r = section(m.id, m.ox, Ws, D, o.deep, i === 0);
+    const r = section(m.id, m.ox, Ws, D, o.deep, i === 0, m.ox >= order[0].ox ? 1 : -1, i);
     parts.push(...r.parts);
     steps.push(...r.steps);
     zf0 = r.zf0;
@@ -1271,6 +1296,50 @@ function recliner(b: PlanBuilder, s: ProductSpec) {
   });
 }
 
+/* ---------- the folding chair and stool, sold assembled ---------- */
+
+/** The folding chair comes assembled (its page has no manual): unfold it, press the seat down, and the cushion goes on. */
+function foldingChair(s: ProductSpec, cushion: boolean): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const yS = 450, xb = W / 2 - 20, xf = xb - 30;
+  const frame = group("F", "Chair frame", [
+    ...[-1, 1].map((sx) => ({ ...strut([sx * xb, 0, -D / 2 + 60], [sx * xb, H, -D / 2 + 20], 40, 22, "x"), size: [40, 22, Math.hypot(H, 40)] as Vec3 })),
+    ...[-1, 1].map((sx) => strut([sx * xf, 0, D / 2 - 30], [sx * xf, yS - 20, -D / 2 + 90], 22, 40, "x")),
+    box(-xb + 20, xb - 20, H - 150, H - 70, -D / 2 + 22, -D / 2 + 42),
+    box(-xb + 20, xb - 20, H - 260, H - 190, -D / 2 + 26, -D / 2 + 46),
+    box(-xf + 11, xf - 11, 90, 130, D / 2 - 60, D / 2 - 40),
+    box(-xb + 20, xb - 20, 90, 130, -D / 2 + 50, -D / 2 + 70),
+  ]);
+  const seat = group("S", "Seat", slats(-xf + 11, xf - 11, -D / 2 + 70, D / 2 - 20, yS - 22, yS, 7, "x", 8));
+  const parts: CustomPart[] = [frame, seat];
+  if (cushion) parts.push({ id: "C", name: "Seat cushion", size: [W - 80, 40, D - 100], pos: [0, yS + 20, 15], material: "soft" });
+  const steps: CustomStep[] = [
+    { title: "Take the folded chair out of the box", detail: "It comes assembled, with nothing to screw together. Stand it on its feet, still folded.", add: ["F"], from: { F: [0, 300, 0] } },
+    { title: "Unfold it and press the seat down", detail: "Pull the back and the front legs apart, then push the seat down until it lies flat on its rails.", add: ["S"], from: { S: [0, 260, -200] } },
+    ...(cushion ? [{ title: "Tie the cushion on", detail: "Lay it on the seat and tie its straps round the back legs.", add: ["C"] }] : []),
+    { title: "Check it stands steady", detail: "All four feet should touch the floor. To fold it, lift the front edge of the seat. Keep it dry and indoors over winter." },
+  ];
+  return { parts, steps };
+}
+
+/** The folding stool comes assembled too: two leg frames crossed on a pin, the slatted seat hinged on top. */
+function foldingStool(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const yS = H - 22, x0 = W / 2 - 22, x1 = x0 - 26;
+  const legs = (id: string, x: number, flip: -1 | 1) =>
+    group(id, "Leg frame", [
+      ...[-1, 1].map((sx) => strut([sx * x, 0, flip * (D / 2 - 30)], [sx * x, yS - 10, -flip * (D / 2 - 40)], 40, 24, "x")),
+      box(-x + 12, x - 12, 30, 70, flip * (D / 2 - 40) - 12, flip * (D / 2 - 40) + 12),
+    ]);
+  const seat = group("S", "Seat", [box(-W / 2, -W / 2 + 22, yS - 40, yS, -D / 2, D / 2), box(W / 2 - 22, W / 2, yS - 40, yS, -D / 2, D / 2), ...slats(-W / 2 + 22, W / 2 - 22, -D / 2, D / 2, yS, H, 6, "z", 8)]);
+  const parts: CustomPart[] = [legs("A", x0, 1), legs("B", x1, -1), seat];
+  const steps: CustomStep[] = [
+    { title: "Take the folded stool out of the box", detail: "It comes assembled, with nothing to screw together. Hold it by the seat, legs down.", add: ["A", "B", "S"], from: { A: [0, 300, 0], B: [0, 300, 0], S: [0, 300, 0] } },
+    { title: "Open the legs", detail: "Let the two leg frames swing apart until the seat lies flat and they stand on the floor. To fold it, lift the seat by one edge." },
+  ];
+  return { parts, steps };
+}
+
 const family: Family = {
   names: ["NÄMMARÖ"],
   build(b, s) {
@@ -1280,6 +1349,9 @@ const family: Family = {
   },
   recipe(s) {
     const slug = s.slug ?? "";
+    if (/^nammaro-chair-outdoor$/.test(slug)) return foldingChair(s, false);
+    if (/^nammaro-chair$/.test(slug)) return foldingChair(s, true);
+    if (/^nammaro-stool-outdoor/.test(slug)) return foldingStool(s);
     if (/^nammaro-table-outdoor-(140|200)/.test(slug)) return longTable(s);
     if (/^nammaro-table-outdoor-75/.test(slug)) return smallTable(s);
     if (/^nammaro-table-outdoor-130/.test(slug)) return roundTable(s);

@@ -126,11 +126,11 @@ function corner(s: ProductSpec, sgn: 1 | -1, pad: boolean): CustomParams {
     { title: "Turn the cover's corners under the lid", detail: "Tuck all four corner flaps round the lid's frame and press them on." },
     { title: "Close the lid and tuck in the last flap", detail: "Lower the lid onto the box, then fold the flap at the front corner round the frame." },
     {
-      title: "Join the two backrest pieces on pins",
-      detail: "Push the two pins into the end of the short backrest, then push the long one onto them.",
-      add: ["BS", "BL"],
+      title: "Push two pins into the short backrest",
+      detail: "Into the holes in its end that faces the sofa, collar against the wood.",
       fix: [pinsBack],
     },
+    { title: "Push the long backrest onto the pins", detail: "Straight on, until the two ends meet.", add: ["BL"] },
     { title: "Push the chaise longue against the backrest", detail: "Slide it along until its back sits right behind the short backrest piece." },
     { title: "Screw four rods into sleeve nuts", detail: "By hand, a sleeve nut on the end of each rod. Click the 5 mm Allen key into the long handle: it's your extension." },
     {
@@ -279,7 +279,7 @@ function threeSeat(): CustomParams {
       tools: ["allen"],
     },
     { title: "Screw the uprights to the bottom rail", detail: "Two screws, through the rail into the outer uprights.", fix: [fx("screw", [-0.25, 0.25].map((t) => pt(t * iw, yb0, zb + 30)), [0, 1, 0], "R", undefined, SCR)], pose: "-y", tools: ["allen"] },
-    { title: "Bolt the four armrest connectors to the ends", detail: "Two on the outside of each end, slots pointing up. One bolt each.", fix: [fx("connector", conn, [0, 0, 1], "E1", undefined, { len: 120, dia: 30, name: "Armrest connector" }), fx("bolt", conn, [conn[0][0] < 0 ? 1 : 1, 0, 0], "E1", undefined, B45)], pose: "-y", tools: ["allen"] },
+    { title: "Bolt the four armrest connectors to the ends", detail: "Two on the outside of each end, slots pointing up. One bolt each.", fix: [fx("connector", conn, [0, 0, 1], "E1", undefined, { len: 120, dia: 30, name: "Armrest connector" }), ...[1, -1].map((sx) => fx("bolt", conn.filter((p) => Math.sign(p[0]) === -sx), [sx, 0, 0], sx > 0 ? "E1" : "E2", undefined, B45))], pose: "-y", tools: ["allen"] },
     { title: "Stand the frame up and bolt the rails tight", detail: "Two bolts through the top of each end into the rails.", pose: "+y", fix: [fx("bolt", ends.flatMap((x) => [BH, yb0 + 60].map((y) => pt(x, y, zm + 50))), [0, 0, -1], "E1", undefined, B30)], tools: ["allen"] },
     { title: "Screw four bolts into the bottom rail", detail: "Into the holes along its lower edge, part way only: the seat box hangs on these.", fix: [fx("bolt", [-0.375, -0.125, 0.125, 0.375].map((t) => pt(t * iw, yb0, zm)), [0, 1, 0], "R", undefined, B45)], tools: ["allen"] },
     { title: "Cut the ties on the seat box", detail: "Lay the box on the rug and throw the ties away." },
@@ -288,7 +288,7 @@ function threeSeat(): CustomParams {
     {
       title: "Push three long bolts through the back of the seat box",
       detail: "From inside the box, with the long Allen key, part way out of the back rail.",
-      fix: [fx("bolt", [-0.33, 0, 0.33].map((t) => pt(t * iw, 200, zb + 40)), [0, 0, -1], "S", "R", B150)],
+      fix: [fx("bolt", [-0.33, 0, 0.33].map((t) => pt(t * iw, yR, zs + 40)), [0, 0, -1], "S", "R", B150)],
       tools: ["allen"],
       wait: ["S"],
     },

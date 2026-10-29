@@ -135,7 +135,7 @@ function recipe(s: ProductSpec): CustomParams | null {
     {
       title: "Screw the bracket under the compartment",
       detail: "The small angle bracket joins the divider to the compartment bottom: two small screws.",
-      fix: [at("angle", [[xC + t / 2, yb, 0]], [1, 0, 0], "D2", "CB", { len: 40, dia: 30 }), at("screw", [[xC + t / 2, yb + 20, 0], [xC + 30, yb, 0]], [1, 0, 0], "D2", "CB", { len: 12, dia: 3.5 })],
+      fix: [at("angle", [[xC + t / 2, yb, 0]], [1, 0, 0], "D2", "CB", { len: 40, dia: 30 }), at("screw", [[xC + t / 2 + 2, yb + 20, 0]], [-1, 0, 0], "D2", undefined, { len: 12, dia: 3.5 }), at("screw", [[xC + 30, yb + 2, 0]], [0, -1, 0], "CB", undefined, { len: 12, dia: 3.5 })],
       tools: ["screwdriver"],
     },
     {
@@ -162,7 +162,8 @@ function recipe(s: ProductSpec): CustomParams | null {
     {
       title: "Screw the beam onto the dividers",
       detail: "Three screws down through the beam: one into each divider and one into the compartment end.",
-      fix: [at("screw", [[x1, H, 0], [xC, H, 0], [xR - 30, H, 0]], [0, -1, 0], "BM", undefined, { len: 70, dia: 6 })],
+            // behind the beam's seam screws, so they don't meet them
+      fix: [at("screw", [[x1, H, -22], [xC, H, -22], [xR - 30, H, -22]], [0, -1, 0], "BM", undefined, { len: 70, dia: 6 })],
       tools: ["screwdriver"],
     },
     {
@@ -189,8 +190,8 @@ function recipe(s: ProductSpec): CustomParams | null {
       add: ["ER"],
       fix: [
         endPegs(1),
-        at("nut", [[xR - 40, feet + t / 2, zF], [xR - 40, feet + t / 2, zK], [xR - 40, H - 30, W / 2 - 15], [xR - 40, H - 30, -W / 2 + t + 15]], [0, -1, 0], undefined, undefined, { len: 12, dia: 10, name: "Barrel nut" }),
-        at("bolt", [[L / 2, feet + t / 2, zF], [L / 2, feet + t / 2, zK], [L / 2, H - 30, W / 2 - 15], [L / 2, H - 30, -W / 2 + t + 15]], [-1, 0, 0], "ER", undefined, { len: 90, dia: 6 }),
+        at("nut", [[xR - 40, feet + t / 2, zF + 40], [xR - 40, feet + t / 2, zK], [xR - 40, H - 30, W / 2 - 15], [xR - 40, H - 30, -W / 2 + t + 15]], [0, -1, 0], undefined, undefined, { len: 12, dia: 10, name: "Barrel nut" }),
+        at("bolt", [[L / 2, feet + t / 2, zF + 40], [L / 2, feet + t / 2, zK], [L / 2, H - 30, W / 2 - 15], [L / 2, H - 30, -W / 2 + t + 15]], [-1, 0, 0], "ER", undefined, { len: 90, dia: 6 }),
         at("cam", [[xR - 40, H - 30, 0]], [0, -1, 0], "BM", undefined, CAM),
       ],
       tools: ["allen", "screwdriver"],
@@ -207,8 +208,8 @@ function recipe(s: ProductSpec): CustomParams | null {
       add: ["EL"],
       fix: [
         endPegs(-1),
-        at("nut", [[xL + 40, feet + t / 2, zF], [xL + 40, feet + t / 2, zK], [xL + 40, H - 30, W / 2 - 15], [xL + 40, H - 30, -W / 2 + t + 15]], [0, -1, 0], undefined, undefined, { len: 12, dia: 10, name: "Barrel nut" }),
-        at("bolt", [[-L / 2, feet + t / 2, zF], [-L / 2, feet + t / 2, zK], [-L / 2, H - 30, W / 2 - 15], [-L / 2, H - 30, -W / 2 + t + 15]], [1, 0, 0], "EL", undefined, { len: 90, dia: 6 }),
+        at("nut", [[xL + 40, feet + t / 2, zF + 40], [xL + 40, feet + t / 2, zK], [xL + 40, H - 30, W / 2 - 15], [xL + 40, H - 30, -W / 2 + t + 15]], [0, -1, 0], undefined, undefined, { len: 12, dia: 10, name: "Barrel nut" }),
+        at("bolt", [[-L / 2, feet + t / 2, zF + 40], [-L / 2, feet + t / 2, zK], [-L / 2, H - 30, W / 2 - 15], [-L / 2, H - 30, -W / 2 + t + 15]], [1, 0, 0], "EL", undefined, { len: 90, dia: 6 }),
         at("cam", [[xL + 40, H - 30, 0]], [0, -1, 0], "BM", undefined, CAM),
       ],
       tools: ["allen", "screwdriver"],

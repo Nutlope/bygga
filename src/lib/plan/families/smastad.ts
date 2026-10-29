@@ -651,7 +651,8 @@ function benchRecipe(s: ProductSpec): CustomParams {
       detail: "Lay the seat face down on the rug. Six bolts, by hand: two at each end and two for the rail.",
       fix: [fixAt(HW.camScrew, topPins, [0, 1, 0], "TP")],
       pose: "-y",
-      from: { TP: [0, 0, 600] },
+      from: { TP: [0, 500, 0] }, // it waits beside the sides, bolts up
+      wait: ["TP"],
       warnings: ["floor"],
     },
     { title: "Lower the sides onto the seat", detail: "Turn the sides and rail upside down and set them on the bolts. Then lock the two cam locks in the rail.", add: ["TP"], fix: [fixAt(HW.cam, [[-W / 4, H - t - 28, zr + t / 2], [W / 4, H - t - 28, zr + t / 2]], [0, 0, -1], "RL")] },
@@ -659,7 +660,7 @@ function benchRecipe(s: ProductSpec): CustomParams {
     {
       title: "Screw the foot brackets onto the sides",
       detail: "One at each end of both sides, one screw into the end of the side.",
-      fix: [-1, 1].flatMap((sx) => [fixAt({ kind: "angle", len: 40, dia: 30 }, bz.map((z) => bracket(sx, z)), [0, 1, 0], sx < 0 ? "SL" : "SR"), fixAt(HW.screwS, bz.map((z): Vec3 => [sx * xs, FT - 2, z]), [0, 1, 0], sx < 0 ? "SL" : "SR")]),
+      fix: [-1, 1].flatMap((sx) => [fixAt({ kind: "angle", len: 40, dia: 30 }, bz.map((z) => bracket(sx, z)), [0, 1, 0], sx < 0 ? "SL" : "SR"), fixAt(HW.screwS, bz.map((z): Vec3 => [sx * xs, FT - 2, z - Math.sign(z) * 24]), [0, 1, 0], sx < 0 ? "SL" : "SR")]), // beside the bracket's corner
       tools: ["screwdriver"],
     },
     {
@@ -850,7 +851,8 @@ function changingRecipe(s: ProductSpec, desk: boolean): CustomParams {
           {
             title: "Screw six shelf holders into the right compartment",
             detail: "Three on each side of it, at the height you want the shelf.",
-            fix: [{ ...fixAt({ kind: "clip", len: 20, dia: 14 }, [[xd + T, 300, -250], [xd + T, 300, -50], [xd + T, 300, 120], [xi, 300, -250], [xi, 300, -50], [xi, 300, 120]], [0, 0, 1]), name: "Shelf holder" }, fixAt({ kind: "screw", len: 12, dia: 3.5 }, [[xd + T, 296, -250], [xd + T, 296, -50], [xd + T, 296, 120], [xi, 296, -250], [xi, 296, -50], [xi, 296, 120]], [0, 0, 1])],
+            // each holder sits just under the shelf, its screw below it into the panel
+            fix: [[xd + T, 1, "DIV"], [xi, -1, "SR"]].flatMap(([x, k, on]) => [{ ...fixAt({ kind: "clip", len: 20, dia: 14 }, [-250, -50, 120].map((z): Vec3 => [+x, 293, z]), [-k, 0, 0], `${on}`), name: "Shelf holder" }, fixAt({ kind: "screw", len: 12, dia: 3.5 }, [-250, -50, 120].map((z): Vec3 => [+x, 269, z]), [-k, 0, 0], `${on}`)]),
             tools: ["screwdriver"],
           },
           { title: "Lay the shelf on the holders", detail: "Press it down until each holder clicks over its edge.", add: ["CS"], from: { CS: [0, 0, 400] } },
@@ -899,14 +901,15 @@ function changingRecipe(s: ProductSpec, desk: boolean): CustomParams {
   const dH = (i: number) => parts.find((p) => p.id === `DL${i}`)!.size[1];
   const sxs = (i: number, sx: number) => (sx < 0 ? `DL${i}` : `DR${i}`);
   const rz = [dz0 + 40, (dz0 + dz1) / 2, dz1 - 40];
+  const rm = (dz0 + dz1) / 2 + 25; // a runner's middle, clear of its middle screw
   const drawerSteps: CustomStep[] = [
-    { title: "Screw the drawer rails into the left compartment", detail: "One on each side for both drawers, three screws in each, in the holes the drawer leaflet numbers.", fix: dd.flatMap((i) => [fixAt({ kind: "runner", len: 400, dia: 20 }, [[x0, dY(i) - 2, (dz0 + dz1) / 2]], [-1, 0, 0], "SL"), fixAt({ kind: "runner", len: 400, dia: 20 }, [[x1, dY(i) - 2, (dz0 + dz1) / 2]], [1, 0, 0], "DIV"), fixAt({ kind: "screw", len: 12, dia: 4 }, rz.map((z): Vec3 => [x0, dY(i) - 2, z]), [-1, 0, 0], "SL"), fixAt({ kind: "screw", len: 12, dia: 4 }, rz.map((z): Vec3 => [x1, dY(i) - 2, z]), [1, 0, 0], "DIV")]), tools: ["screwdriver"] },
+    { title: "Screw the drawer rails into the left compartment", detail: "One on each side for both drawers, three screws in each, in the holes the drawer leaflet numbers.", fix: dd.flatMap((i) => [fixAt({ kind: "runner", len: 400, dia: 20 }, [[x0, dY(i) - 2, rm]], [-1, 0, 0], "SL"), fixAt({ kind: "runner", len: 400, dia: 20 }, [[x1, dY(i) - 2, rm]], [1, 0, 0], "DIV"), fixAt({ kind: "screw", len: 12, dia: 4 }, rz.map((z): Vec3 => [x0, dY(i) - 2, z]), [-1, 0, 0], "SL"), fixAt({ kind: "screw", len: 12, dia: 4 }, rz.map((z): Vec3 => [x1, dY(i) - 2, z]), [1, 0, 0], "DIV")]), tools: ["screwdriver"] },
     { title: "Press the stops into the drawer front panels", detail: "Lay them on a rug, inside face up. Push each stop in and slide it along until it locks.", fix: dd.map((i) => fixAt({ kind: "clip", len: 10, dia: 16 }, [-1, 1].map((sx): Vec3 => [cx + sx * (bw / 2 - 60), dY(i) + 6, dz1 - 16]), [0, 0, 1], `DP${i}`)), wait: dd.flatMap((i) => [`DP${i}`, `DL${i}`, `DR${i}`, `DT${i}`, `DB${i}`]), from: Object.fromEntries(dd.flatMap((i) => [`DP${i}`, `DL${i}`, `DR${i}`, `DT${i}`, `DB${i}`].map((id) => [id, [0, 0, 600] as Vec3]))), warnings: ["floor"] },
     { title: "Push the sides onto the front panels", detail: "Grooves facing in and down, until they click." },
     { title: "Slide in the drawer bottoms", detail: "Along the grooves, down to the front panel." },
     { title: "Lay the backs on and lock them", detail: "Two pins through each side into the back, then turn the cam locks in the back.", fix: dd.flatMap((i) => [fixAt({ kind: "camScrew", len: 30, dia: 6 }, [-1, 1].flatMap((sx) => [0.3, 0.75].map((k): Vec3 => [cx + sx * (bw / 2 - 12), dY(i) + dH(i) * k, dz0 + 8])), [1, 0, 0], `DB${i}`), fixAt({ kind: "cam", len: 12, dia: 15 }, [-1, 1].flatMap((sx) => [0.3, 0.75].map((k): Vec3 => [cx + sx * (bw / 2 - 40), dY(i) + dH(i) * k, dz0])), [0, 0, 1], `DB${i}`)]), tools: ["screwdriver"] },
     { title: "Screw the bottoms to the backs", detail: "Two small screws in each.", fix: dd.map((i) => fixAt({ kind: "screw", len: 8, dia: 3.5 }, [-1, 1].map((sx): Vec3 => [cx + sx * bw / 4, dY(i) + 8, dz0 + 8]), [0, 1, 0], `DT${i}`)), tools: ["screwdriver"] },
-    { title: "Screw the runners onto the drawers", detail: "Upside down: each runner clicks onto its side, then three screws.", fix: dd.flatMap((i) => [-1, 1].flatMap((sx) => [fixAt({ kind: "runner", len: 380, dia: 16 }, [[cx + sx * (bw / 2 - 6), dY(i), (dz0 + dz1) / 2]], [0, 1, 0], sxs(i, sx)), fixAt({ kind: "screw", len: 12, dia: 4 }, rz.map((z): Vec3 => [cx + sx * (bw / 2 - 6), dY(i) - 4, z]), [0, 1, 0], sxs(i, sx))])), tools: ["screwdriver"] },
+    { title: "Screw the runners onto the drawers", detail: "Upside down: each runner clicks onto its side, then three screws.", fix: dd.flatMap((i) => [-1, 1].flatMap((sx) => [fixAt({ kind: "runner", len: 380, dia: 16 }, [[cx + sx * (bw / 2 - 6), dY(i), rm]], [0, 1, 0], sxs(i, sx)), fixAt({ kind: "screw", len: 12, dia: 4 }, [dz0 + 70, rm - 55, dz1 - 70].map((z): Vec3 => [cx + sx * (bw / 2 - 6), dY(i) - 4, z]), [0, 1, 0], sxs(i, sx))])), tools: ["screwdriver"] },
     { title: "Slide both drawers in", detail: "Rest the runners on the rails and push until they close softly.", add: dd.flatMap((i) => [`DP${i}`, `DL${i}`, `DR${i}`, `DT${i}`, `DB${i}`]) },
     { title: "Click on the drawer fronts", detail: "Press each front on until it clicks, then line up the gaps.", add: ["DF0", "DF1"], from: { DF0: [0, 0, 300], DF1: [0, 0, 300] } },
   ];

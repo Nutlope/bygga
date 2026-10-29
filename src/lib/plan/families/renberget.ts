@@ -61,7 +61,8 @@ function chair(): CustomParams {
     { id: "BACK", name: "Backrest", size: [2 * xA - T, 1050 - seatTop, 90], pos: [0, (1050 + seatTop) / 2, zBack - 45 + T / 2], material: "soft" },
   ];
   const tips: Vec3[] = angles.map((a) => [dirOf(a)[0] * R, baseY - 35, dirOf(a)[1] * R]);
-  const hub: Vec3[] = angles.map((a) => [dirOf(a)[0] * 45, baseY + 35, dirOf(a)[1] * 45]);
+  // the screws go down through the top of the loose arm, in a row out from the hub, into the hub's tongue inside it
+  const hub: Vec3[] = [40, 65, 90, 115, 140].map((r): Vec3 => [dirOf(angles[0])[0] * r, baseY + 10, dirOf(angles[0])[1] * r]);
   const mz = [zSeat - 120, zSeat + 80];
   const mecBolts: Vec3[] = [-1, 1].flatMap((sx) => mz.map((z): Vec3 => [sx * 85, mechY0, z]));
   const side = (sx: number) => (sx < 0 ? "ARML" : "ARMR");
@@ -70,8 +71,8 @@ function chair(): CustomParams {
     { title: "Slide the loose arm into the base", detail: "Lay the base on a rug and push the fifth arm into its slot in the hub.", add: ["BASE", "ARM5"], warnings: ["floor"] },
     {
       title: "Screw the arm in place",
-      detail: "Five short screws into the hub with the Allen key. Use the short flat-headed ones.",
-      fix: [fx("screw", hub, [0, -1, 0], "BASE", { name: "Allen screw", len: 12, dia: 6, mate: "ARM5" })],
+      detail: "Five short screws down through the top of the loose arm, next to the hub. Use the short flat-headed ones.",
+      fix: [fx("screw", hub, [0, -1, 0], "ARM5", { name: "Allen screw", len: 12, dia: 6, mate: "BASE" })],
       tools: ["allen"],
     },
     {

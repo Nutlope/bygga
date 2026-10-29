@@ -7,7 +7,7 @@ import { rotate } from "../math";
  * The pouffe is a round basket: drop the loose bottom board in, then lay the lid on. No fittings.
  * The bench is built upside down: the woven box lies on its top on a rug, the two bent leg frames sit on its
  * bottom and are screwed on with twelve Allen screws and washers, then it is turned over and the lid laid on.
- * The room divider has no manual (it comes folded, ready to use) and keeps its old guide.
+ * The room divider has no manual: it comes folded and ready to use, so its guide only unfolds it.
  */
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -160,12 +160,38 @@ function bench(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+
+/** The room divider: three rattan frames hinged together, stood in a zigzag. */
+function divider(s: ProductSpec): CustomParams {
+  const W = Math.round(s.size.w * 10) || 1500, H = Math.round(s.size.h * 10) || 1700;
+  const pw = Math.round(W / 3) - 10, cane = 22, foot = 30;
+  const a = 0.45; // how far the outer panels turn from the middle one
+  const frame = (): PartPiece[] => [
+    ...[-1, 1].map((sx): PartPiece => ({ shape: "cyl", size: [cane, H, cane], pos: [sx * (pw / 2 - cane / 2), 0, 0] })),
+    ...[-1, 1].map((sy): PartPiece => ({ shape: "box", size: [pw - 2 * cane, cane, cane], pos: [0, sy * (H / 2 - foot - cane / 2), 0] })),
+    { shape: "box", size: [pw - 2 * cane, H - 2 * foot - 2 * cane, 4], pos: [0, 0, 0] },
+  ];
+  // an outer panel hinges on an edge of the middle one and turns back from it
+  const outer = (sx: number): Vec3 => [sx * (pw / 2 + (pw / 2) * Math.cos(a)), H / 2, -(pw / 2) * Math.sin(a)];
+  const parts: CustomPart[] = [
+    { id: "M", name: "Middle panel", size: [pw, H, cane], pos: [0, H / 2, 0], material: "wood", pieces: frame() },
+    ...[-1, 1].map((sx, i): CustomPart => ({ id: `O${i}`, name: "Side panel", size: [pw, H, cane], pos: outer(sx), rot: [0, sx * a, 0], material: "wood", pieces: frame() })),
+  ];
+  const steps: CustomStep[] = [
+    { title: "Lift the folded divider out of its packaging", detail: "It comes ready to use, the three panels already hinged together. Stand it on its feet.", add: ["M"], from: { M: [0, 300, 0] } },
+    { title: "Open out the side panels", detail: "Swing each one away from the middle panel on its hinges.", add: ["O0", "O1"], from: { O0: [pw * 0.6, 0, 250], O1: [-pw * 0.6, 0, 250] } },
+    { title: "Stand it in a zigzag", detail: "Keep the panels at an angle to each other so it stands steady on all six feet. It is for indoor use only." },
+  ];
+  return { parts, steps };
+}
+
 const family: Family = {
   names: ["TOLKNING"],
   recipe(s) {
     const slug = s.slug ?? "";
     if (/pouf/.test(slug) || /pouf/i.test(s.variant)) return pouffe();
     if (/bench/.test(slug)) return bench(s);
+    if (/room-divider/.test(slug) || /room divider/i.test(s.variant)) return divider(s);
     return null;
   },
 };

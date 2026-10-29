@@ -116,15 +116,16 @@ function recipe(s: ProductSpec): CustomParams {
       pose: "-y",
       warnings: ["floor"],
     },
-    { title: "Tap two dowels into each end of the rail", detail: "Push them in by hand, as far as they go.", fix: [fx("dowel", dowels(-1), [1, 0, 0], "RAIL"), fx("dowel", dowels(1), [-1, 0, 0], "RAIL")] },
+    { title: "Tap two dowels into each end of the rail", detail: "Push them in by hand, as far as they go.", fix: [fx("dowel", dowels(-1), [1, 0, 0], "RAIL", { mate: sideIds[0] }), fx("dowel", dowels(1), [-1, 0, 0], "RAIL", { mate: sideIds[1] })] },
     {
       title: "Push on a side frame and bolt it to the rail",
       detail: `The longer legs go at the front, under the arms. Drop a barrel nut into the rail's end, slot facing the bolt, and turn the bolt in by hand.`,
       add: [sideIds[0]],
+      from: { [sideIds[0]]: [-300, 0, 0] }, // along the rail's dowels
       fix: [barrel(-1), sideBolt(-1, sideIds[0])],
       tools: ["allen", "screwdriver"],
     },
-    { title: "Fit the other side frame the same way", detail: "Onto the dowels, a barrel nut in the rail, then the bolt. Leave it loose for now.", add: [sideIds[1]], fix: [barrel(1), sideBolt(1, sideIds[1])], tools: ["allen", "screwdriver"] },
+    { title: "Fit the other side frame the same way", detail: "Onto the dowels, a barrel nut in the rail, then the bolt. Leave it loose for now.", add: [sideIds[1]], from: { [sideIds[1]]: [300, 0, 0] }, fix: [barrel(1), sideBolt(1, sideIds[1])], tools: ["allen", "screwdriver"] },
     {
       title: "Bolt the legs to the shell",
       detail: "One bolt through the top of each leg into the side of the shell. Turn them in by hand until the heads touch.",

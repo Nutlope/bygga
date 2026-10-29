@@ -58,7 +58,7 @@ function recipe(s: ProductSpec): CustomParams {
       ],
     },
     ...[-1, 1].map((sx, i) =>
-      tubes(`A${i + 1}`, "Armrest", [[[sx * 240, 660, -190], [sx * xa, 680, -170], [sx * xa, 680, 140], [sx * xa, yS - 10, 160], [sx * 160, yM - 5, 160]]], "wood", 28),
+      tubes(`A${i + 1}`, "Armrest", [[[sx * 240, 660, -190], [sx * xa, 680, -170], [sx * xa, 680, 140], [sx * xa, yS - 10, 160], [sx * 160, yS - 36, 160]]], "wood", 28),
     ),
   ];
   const base = ["HB", "L1", "L2", "L3", "L4", "RG"];
@@ -103,7 +103,7 @@ function recipe(s: ProductSpec): CustomParams {
           {
             title: "Bolt its front end under the seat",
             detail: "Two bolts through the flat end into the seat.",
-            fix: [{ kind: "bolt", count: 2, len: 16, dia: 6, at: [120, 70].map((z): Vec3 => [sx * 175, yM - 10, z + 60]), dir: up, on: id, mate: "S" } as CustomFix],
+            fix: [{ kind: "bolt", count: 2, len: 16, dia: 6, at: [175, 220].map((x): Vec3 => [sx * x, yS - 30, 160]), dir: up, on: id, mate: "S" } as CustomFix],
             tools: ["allen"],
           },
         ];

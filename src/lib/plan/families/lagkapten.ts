@@ -345,11 +345,12 @@ function trestle(k: Kit, p: string, x: number, D: number, H: number) {
   for (const t of [-1, 1]) for (const s of [-1, 1]) k.part(`${p}G${t}${s}`, "Leg", [40, len, 24], [x + s * (40 + reach) / 2, (top + foot) / 2, t * zl], { mat: "wood", rot: [0, 0, s * ang] });
   const ys = 200;
   const sw = 2 * (40 + ((reach - 40) * (top - ys)) / (top - foot)) - 40;
-  k.part(`${p}S`, "Shelf", [sw, 20, 2 * zl - 40], [x, ys, 0], {
+  // its two battens reach front to back, their ends against the legs' inner edges
+  k.part(`${p}S`, "Shelf", [sw, 20, 2 * zl], [x, ys, 0], {
     mat: "wood",
     pieces: [
-      { shape: "box", size: [20, 20, 2 * zl - 40], pos: [-sw / 2 + 10, 0, 0] },
-      { shape: "box", size: [20, 20, 2 * zl - 40], pos: [sw / 2 - 10, 0, 0] },
+      { shape: "box", size: [20, 20, 2 * zl], pos: [-sw / 2 + 10, 0, 0] },
+      { shape: "box", size: [20, 20, 2 * zl], pos: [sw / 2 - 10, 0, 0] },
       ...range(5).map((i) => ({ shape: "box" as const, size: [sw - 40, 14, 50] as Vec3, pos: [0, 3, -(2 * zl - 120) / 2 + ((2 * zl - 120) * i) / 4] as Vec3 })),
     ],
   });
@@ -377,7 +378,7 @@ function trestleSteps(k: Kit, ts: { p: string; x: number }[], D: number, H: numb
   k.step({ title: "Screw the legs to the shelf", detail: "One Allen screw through each leg into the shelf end.", tools: ["allen"], kind: "bolts" }, () => {
     for (const t of ts) {
       const sw = k.hi(`${t.p}S`, 0) - k.lo(`${t.p}S`, 0);
-      for (const z of [-zl + 20, zl - 20]) for (const s of [-1, 1]) k.fit(ALLEN, [[t.x + (s * sw) / 2 + s * 10, 200, z]], [-s, 0, 0], `${t.p}G${z < 0 ? -1 : 1}${s}`, { mate: `${t.p}S` });
+      for (const z of [-zl + 6, zl - 6]) for (const s of [-1, 1]) k.fit(ALLEN, [[t.x + (s * sw) / 2 + s * 10, 200, z]], [-s, 0, 0], `${t.p}G${z < 0 ? -1 : 1}${s}`, { mate: `${t.p}S` });
     }
   });
   k.step({ title: "Tap the caps onto the feet", detail: "One on the end of each leg, with a hammer.", tools: ["hammer"], kind: "legs" }, () => {

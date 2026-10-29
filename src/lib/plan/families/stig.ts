@@ -56,7 +56,8 @@ function backrest(s: ProductSpec): CustomParams {
         [[sx * xt, yR, zbt], [sx * 152, H - 10, zbt - 45]],
       ]),
     );
-  parts.push({ id: "BR", name: "Back rail", size: [2 * xt - T, 30, 6], pos: [0, yR, zbt - T / 2 - 3], material: "metal" });
+  // its ends sit against the back legs' tubes
+  parts.push({ id: "BR", name: "Back rail", size: [2 * xt, 30, 6], pos: [0, yR, zbt - T / 2 - 3], material: "metal" });
   const xx = xb - ((xb - xt) * yX) / yR, zx = zb + ((zbt - zb) * yX) / yR;
   parts.push({ id: "X", name: "Cross tube", size: [2 * xx - T, T, T], pos: [0, yX, zx], shape: "cyl", material: "metal" });
   parts.push({ id: "BS", name: "Backrest", size: [330, 210, 14], pos: [0, H - 120, zbt - 45 + 4], rot: [-0.1, 0, 0], material: "board" });
@@ -73,39 +74,39 @@ function backrest(s: ProductSpec): CustomParams {
   const A = { len: 40, dia: 6 };
   const railBolt = (i: number, z: number, on: string) => {
     const sx = i ? 1 : -1;
-    return fx("bolt", [[sx * (xt + T / 2), yR, z]], [-sx, 0, 0], on, A);
+    return fx("bolt", [[sx * (xt + T / 2), yR - 8, z]], [-sx, 0, 0], on, A);
   };
   const steps: CustomStep[] = [
     {
       title: "Bolt a seat rail to the front legs",
       detail: "Use the straight rail, holes towards the back. One bolt through the leg's top corner, turned in by hand for now.",
       add: ["FF", "R0"],
-      fix: [railBolt(0, zt - 15, "FF")],
+      fix: [railBolt(0, zt - 4, "FF")],
       tools: ["allen"],
     },
-    { title: "Bolt on the other seat rail", detail: "The same on the right, one bolt, loose for now.", add: ["R1"], fix: [railBolt(1, zt - 15, "FF")], tools: ["allen"] },
+    { title: "Bolt on the other seat rail", detail: "The same on the right, one bolt, loose for now.", add: ["R1"], fix: [railBolt(1, zt - 4, "FF")], tools: ["allen"] },
     {
       title: "Fit a back leg to the left rail",
       detail: "One of the longer bolts through the leg into the rail's end.",
       add: ["B0"],
-      fix: [fx("bolt", [[-(xt + T / 2), yR, zbt + 10]], [1, 0, 0], "B0", { len: 55, dia: 6, name: "Long bolt" })],
+      fix: [fx("bolt", [[-(xt + T / 2), yR - 8, zbt + 4]], [1, 0, 0], "B0", { len: 55, dia: 6, name: "Long bolt" })],
       tools: ["allen"],
     },
     {
       title: "Bolt on the curved back rail",
       detail: "Curve towards the back. One bolt through the left back leg.",
       add: ["BR"],
-      fix: [fx("bolt", [[-xt, yR, zbt - T / 2]], [0, 0, 1], "B0", A)],
+      fix: [fx("bolt", [[-xt, yR, zbt - T / 2 - 6]], [0, 0, 1], "B0", A)],
       tools: ["allen"],
     },
     {
       title: "Push the other back leg on",
       detail: "Slide it onto the free ends of the back rail and the right seat rail, then a bolt through the back rail.",
       add: ["B1"],
-      fix: [fx("bolt", [[xt, yR, zbt - T / 2]], [0, 0, 1], "B1", A)],
+      fix: [fx("bolt", [[xt, yR, zbt - T / 2 - 6]], [0, 0, 1], "B1", A)],
       tools: ["allen"],
     },
-    { title: "Bolt it to the seat rail", detail: "One of the longer bolts.", fix: [fx("bolt", [[xt + T / 2, yR, zbt + 10]], [-1, 0, 0], "B1", { len: 55, dia: 6, name: "Long bolt" })], tools: ["allen"] },
+    { title: "Bolt it to the seat rail", detail: "One of the longer bolts.", fix: [fx("bolt", [[xt + T / 2, yR - 8, zbt + 4]], [-1, 0, 0], "B1", { len: 55, dia: 6, name: "Long bolt" })], tools: ["allen"] },
     {
       title: "Bolt the cross tube between the back legs",
       detail: "One bolt through each back leg into the tube's ends.",
@@ -136,7 +137,7 @@ function backrest(s: ProductSpec): CustomParams {
     {
       title: "Put the nuts on the long bolts",
       detail: "Hold each nut with the spanner inside the rail while you turn the bolt with the Allen key.",
-      fix: [fx("nut", [-1, 1].map((sx): Vec3 => [sx * (xt - T / 2 - 6), yR, zbt + 10]), [0, 0, 1], undefined, { dia: 6 })],
+      fix: [fx("nut", [-1, 1].map((sx): Vec3 => [sx * (xt - T / 2 - 6), yR - 8, zbt + 4]), [0, 0, 1], undefined, { dia: 6 })],
       tools: ["allen", "wrench"],
     },
     { title: "Tighten all six frame bolts", detail: "Stand the frame on a flat floor so all four feet touch, then tighten each bolt firmly.", tools: ["allen"], check: "square" },

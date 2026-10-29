@@ -18,8 +18,8 @@ function desk(s: ProductSpec): CustomParams {
   const xl = W / 2 - 110; // leg centre
   const sh = 30, ft = 30; // top supports, feet
   const yS = yU - sh; // underside of the supports
-  const rh = 50; // cross rail
-  const yR = yS - rh / 2;
+  const rh = 50 + sh; // cross rail, its top flush with the supports so it screws to the desk top
+  const yR = yU - rh / 2;
   const cw = 70, cd = 90;
   const parts: CustomPart[] = [
     box("R1", "Cross rail", [2 * xl - cw, rh, 15], [0, yR, -35]),
@@ -38,7 +38,7 @@ function desk(s: ProductSpec): CustomParams {
   ];
   const ends = [-1, 1];
   const legBolts = (sx: number) =>
-    fx("bolt", [-1, 1].flatMap((k) => [[sx * (xl - cw / 2 - 1), yR, k * 35], [sx * (xl - cw / 2 - 1), yR + 15, k * 35]] as Vec3[]), [sx, 0, 0], {
+    fx("bolt", [-1, 1].flatMap((k) => [[sx * (xl - cw / 2 - 1), yS - 40, k * 35], [sx * (xl - cw / 2 - 1), yS - 20, k * 35]] as Vec3[]), [sx, 0, 0], {
       len: 12, dia: 6, on: sx < 0 ? "L1" : "L2", to: ["R1", "R2"],
     });
   const quad = (x: number, y: number, z: number, dx = 15): Vec3[] => [[x - dx, y, -z], [x + dx, y, -z], [x - dx, y, z], [x + dx, y, z]];
@@ -47,7 +47,7 @@ function desk(s: ProductSpec): CustomParams {
       title: "Join the two halves of the cross rail",
       detail: "Lay them on a rug the way round shown, with the cut-outs facing the same way. Two small screws hold them together.",
       add: ["R1", "R2"],
-      fix: [fx("screw", [[0, yS, -35], [0, yS, 35]], [0, 1, 0], { len: 10, dia: 4, on: "R1", to: ["R1", "R2"] })],
+      fix: [fx("screw", [[0, yU - rh, -35], [0, yU - rh, 35]], [0, 1, 0], { len: 10, dia: 4, on: "R1", to: ["R1", "R2"] })],
       tools: ["screwdriver"],
       pose: "-y",
       warnings: ["floor"],
@@ -89,7 +89,7 @@ function desk(s: ProductSpec): CustomParams {
     {
       title: "Screw the cross rail to the top",
       detail: "Four screws through the rail.",
-      fix: [fx("screw", [[-xl / 2, yS, -35], [xl / 2, yS, -35], [-xl / 2, yS, 35], [xl / 2, yS, 35]], [0, 1, 0], { len: 16, dia: 4, to: ["R1", "R2"] })],
+      fix: [fx("screw", [[-xl / 2, yU - 6, -35], [xl / 2, yU - 6, -35], [-xl / 2, yU - 6, 35], [xl / 2, yU - 6, 35]], [0, 1, 0], { len: 16, dia: 4, to: ["R1", "R2"], mate: "T" })],
       tools: ["screwdriver"],
     },
     {
@@ -177,7 +177,7 @@ function laptopStand(s: ProductSpec): CustomParams {
       title: "Bolt the foot frame onto the column",
       detail: "Four bolts through the frame into the end of the column.",
       add: ["F"],
-      fix: [fx("bolt", [[xc - 20, 0, -20], [xc + 20, 0, -20], [xc - 20, 0, 20], [xc + 20, 0, 20]], [0, 1, 0], { len: 16, dia: 6, on: "F", mate: "C" })],
+      fix: [fx("bolt", [[xc - 20, ft - 6, -20], [xc + 20, ft - 6, -20], [xc - 20, ft - 6, 20], [xc + 20, ft - 6, 20]], [0, 1, 0], { len: 16, dia: 6, on: "F", mate: "C" })],
       tools: ["allen"],
     },
     { title: "Stand it up", detail: "Lift the lever under the top and push down or let it rise to set the height. Don't sit or lean on it.", pose: "+y" },

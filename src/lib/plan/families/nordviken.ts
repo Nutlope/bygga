@@ -167,20 +167,24 @@ function cornerBrackets(f: LegFrame, gx: number, screws: number): CustomFix[] {
 }
 
 /** A barrel nut in the top of each leg, two threaded rods through its inside corner, then a washer and a nut on each. */
-function legFix(f: LegFrame, gx: number): CustomFix[] {
+function legFix(f: LegFrame, gx: number, gzs: readonly number[] = SIDES, part: "all" | "rods" | "nuts" = "all"): CustomFix[] {
   const ys = [f.H - f.T - f.A / 2 + 18, f.H - f.T - f.A / 2 - 18];
   const out: CustomFix[] = [];
-  for (const gz of SIDES) {
+  for (const gz of gzs) {
     const id = legId(gx, gz);
     const x = gx * legX(f), z = gz * legZ(f);
     const corner = (d: number) => ys.map((y): Vec3 => [x - gx * (f.L / 2 + d * R2), y, z - gz * (f.L / 2 + d * R2)]);
     const dir: Vec3 = [gx * R2, 0, gz * R2];
-    out.push(
-      fx("connector", [[x, f.H - f.T, z]], [0, -1, 0], { on: id, name: "Barrel nut", len: 34, dia: 10 }),
-      fx("stud", corner(-4), dir, { on: id, name: "Threaded rod", len: 80, dia: 8 }),
-      fx("washer", corner(24), dir, { on: id, len: 2, dia: 16 }),
-      fx("nut", corner(26), dir, { on: id, len: 6, dia: 8 }),
-    );
+    if (part !== "nuts")
+      out.push(
+        fx("connector", [[x, f.H - f.T, z]], [0, -1, 0], { on: id, name: "Barrel nut", len: 34, dia: 10 }),
+        fx("stud", corner(-4), dir, { on: id, name: "Threaded rod", len: 80, dia: 8 }),
+      );
+    if (part !== "rods")
+      out.push(
+        fx("washer", corner(24), dir, { on: id, len: 2, dia: 16 }),
+        fx("nut", corner(26), dir, { on: id, len: 6, dia: 8 }),
+      );
   }
   return out;
 }
@@ -199,12 +203,14 @@ function lowerParts(f: LegFrame, lo: Lower): CustomPart[] {
 }
 
 /** The lower rail between two legs: a short rod and a dowel in each leg, big cam locks in the rail's ends. */
-function lowerFix(f: LegFrame, lo: Lower, gx: number): CustomFix[] {
+function lowerFix(f: LegFrame, lo: Lower, gx: number, gzs: readonly number[] = SIDES, part: "all" | "rods" | "cams" = "all"): CustomFix[] {
   const xl = gx * legX(f), zl = legZ(f);
   return [
-    ...SIDES.map((gz) => fx("stud", [[xl, lo.y + 14, gz * (zl - f.L / 2)]], [0, 0, gz], { on: legId(gx, gz), name: "Short threaded rod", len: 40, dia: 8 })),
-    ...SIDES.map((gz) => fx("dowel", [[xl, lo.y - 16, gz * (zl - f.L / 2)]], [0, 0, gz], { on: legId(gx, gz), len: 40, dia: 8 })),
-    fx("cam", SIDES.map((gz): Vec3 => [xl, lo.y - lo.h / 2, gz * (zl - f.L / 2 - 24)]), [0, 1, 0], { on: `LR${gx}`, name: "Big cam lock", len: 20, dia: 25 }),
+    ...(part === "cams" ? [] : gzs.flatMap((gz) => [
+      fx("stud", [[xl, lo.y + 14, gz * (zl - f.L / 2)]], [0, 0, gz], { on: legId(gx, gz), name: "Short threaded rod", len: 40, dia: 8 }),
+      fx("dowel", [[xl, lo.y - 16, gz * (zl - f.L / 2)]], [0, 0, gz], { on: legId(gx, gz), len: 40, dia: 8 }),
+    ])),
+    ...(part === "rods" ? [] : [fx("cam", gzs.map((gz): Vec3 => [xl, lo.y - lo.h / 2, gz * (zl - f.L / 2 - 24)]), [0, 1, 0], { on: `LR${gx}`, name: "Big cam lock", len: 20, dia: 25 })]),
   ];
 }
 
@@ -222,19 +228,50 @@ function legSteps(f: LegFrame, lo: Lower | null, two: boolean): CustomStep[] {
     repeat: lo ? undefined : 2,
     from: Object.fromEntries(legs(gx).map((id) => [id, [0, -320, 0] as Vec3])),
   });
-  const railStep = (gx: number): CustomStep => ({
-    title: "Fit the lower rail between them",
-    detail: "A short rod and a dowel in each leg, a big cam lock in each end of the rail. Push the rail on and turn both locks with the Allen key.",
-    add: [`LR${gx}`],
-    fix: lowerFix(f, lo!, gx),
-    tools: ["allen"],
-    from: { [`LR${gx}`]: [0, -260, 0] },
-  });
-  const out: CustomStep[] = [legStep(-1, true)];
-  if (lo) out.push(railStep(-1));
-  out.push(legStep(1, false));
+  const out: CustomStep[] = [];
+  if (!lo) out.push(legStep(-1, true), legStep(1, false));
+  else {
+    // as the manual does it: every leg gets its rods and dowels first, one leg at each end goes in, the lower rails
+    // push onto those along their dowels, then the other two legs push onto the rails' far ends
+    const all = SIDES.flatMap((gx) => SIDES.map((gz) => legId(gx, gz)));
+    const near = SIDES.map((gx) => legId(gx, -1)), far = SIDES.map((gx) => legId(gx, 1));
+    out.push(
+      {
+        title: "Fit the rods and dowels into the legs",
+        detail: "A barrel nut in the top of each leg and two long rods through its corner, then a short rod and a dowel in the side that faces the lower rail.",
+        fix: SIDES.flatMap((gx) => [...legFix(f, gx, SIDES, "rods"), ...lowerFix(f, lo, gx, SIDES, "rods")]),
+        wait: all,
+        from: Object.fromEntries(all.map((id) => [id, [0, -320, 0] as Vec3])),
+        tools: ["flathead"],
+      },
+      {
+        title: "Bolt the first two legs into the brackets",
+        detail: "One at each end, on the same side. A washer and a nut on each rod, tightened with the box spanner.",
+        add: near,
+        fix: SIDES.flatMap((gx) => legFix(f, gx, [-1], "nuts")),
+        tools: ["wrench"],
+        from: Object.fromEntries(near.map((id) => [id, [0, -320, 0] as Vec3])),
+      },
+      {
+        title: "Push the lower rails onto them",
+        detail: "Over the short rod and the dowel in each leg, then turn the big cam lock at that end with the Allen key.",
+        add: SIDES.map((gx) => `LR${gx}`),
+        fix: SIDES.flatMap((gx) => lowerFix(f, lo, gx, [-1], "cams")),
+        tools: ["allen"],
+        from: Object.fromEntries(SIDES.map((gx) => [`LR${gx}`, [0, 0, 260] as Vec3])),
+      },
+      {
+        title: "Push the other two legs on and bolt them",
+        detail: "Onto the far ends of the rails and into the brackets. Washers and nuts on the rods, then turn the other two cam locks.",
+        add: far,
+        fix: SIDES.flatMap((gx) => [...legFix(f, gx, [1], "nuts"), ...lowerFix(f, lo, gx, [1], "cams")]),
+        tools: ["wrench", "allen"],
+        from: Object.fromEntries(far.map((id) => [id, [0, 0, 260] as Vec3])),
+      },
+    );
+  }
   if (lo)
-    out.push(railStep(1), {
+    out.push({
       title: "Bolt the stretcher across",
       detail: "Lay it over the two lower rails and fix it with the two long bolts, one into each rail.",
       add: ["ST"],
@@ -347,10 +384,12 @@ function extendable(s: ProductSpec): CustomParams {
       tools: ["screwdriver"],
     },
     {
-      title: "Hang both frames on the centre rails",
-      detail: "The two rails go side by side, a dowel in each end. Drop them into the notches in the cross rails.",
+      title: "Press the centre rails into the frames",
+      detail: "Tap a dowel into each end of both rails. Lay them side by side and press them down into the slots in the cross rails.",
       add: SIDES.map((sz) => `C${sz}`),
-      fix: [auto("dowel", 4, { len: 30, dia: 8, to: crosses })],
+      // a dowel in each rail end (kept 24 mm apart where the rails meet), pressed down into open slots in the cross rails
+      fix: SIDES.flatMap((sz) => SIDES.map((g) => fx("dowel", [[g * xi, yU - 60, sz * 12]], [-g, 0, 0], { on: `C${sz}`, len: 30, dia: 8 }))),
+      from: { "C-1": [0, 260, 0], C1: [0, 260, 0] },
     },
     {
       title: "Screw the leaf supports onto the cross rails",
@@ -482,12 +521,16 @@ function barTable(s: ProductSpec): CustomParams {
     ...SIDES.flatMap((g) => [-Fd / 4, Fd / 4].map((z): Vec3 => [g * xe, yB, z])),
     ...SIDES.map((g): Vec3 => [g * xr, yB, 0]),
   ];
-  const knobs = SIDES.flatMap((g) => [-Fd / 4, Fd / 4].map((z): Vec3 => [g * (xe + 10), yA, z]));
+  // a little out from the apron face, so the engine keeps the knob and its bolt apart
+  const knobs = SIDES.flatMap((g) => [-Fd / 4, Fd / 4].map((z): Vec3 => [g * (xe + 13), yA, z]));
   const steps: CustomStep[] = [
     {
       title: "Screw the cam bolts into the back apron and front blocks",
       detail: "Lay the parts out on a rug. Two cam bolts in the back apron, one in each front block.",
-      add: ["BA", ...blocks],
+      add: blocks,
+      // the back apron goes on after the runners, along its cam bolts
+      wait: ["BA"],
+      from: { BA: [0, 0, -300] },
       fix: [
         fx("camScrew", SIDES.map((g): Vec3 => [g * xr, yA, -(zF - 20)]), [0, 0, -1], { on: "BA" }),
         ...SIDES.map((g) => fx("camScrew", [[g * (xr + 15), yA, zF - 10]], [g, 0, 0], { on: `FB${g}` })),
@@ -506,6 +549,8 @@ function barTable(s: ProductSpec): CustomParams {
     {
       title: "Lock the runners to the back apron",
       detail: "Turn the back apron so its cam bolts face the runners, push it on and turn the two cam locks.",
+      add: ["BA"],
+      from: { BA: [0, 0, -260] },
       fix: [auto("cam", 2, { to: ["BA"] })],
       tools: ["screwdriver"],
     },
@@ -522,7 +567,7 @@ function barTable(s: ProductSpec): CustomParams {
       detail: "Two on the outside of each end apron, each held by a bolt from the inside.",
       fix: [
         ...SIDES.map((g) => fx("knob", knobs.filter((p) => Math.sign(p[0]) === g), [-g, 0, 0], { on: `E${g}`, len: 25, dia: 30 })),
-        ...SIDES.map((g) => fx("bolt", near(knobs.filter((p) => Math.sign(p[0]) === g), [-g * 20, 0, 0]), [g, 0, 0], { on: `E${g}`, len: 30, dia: 4, name: "Knob bolt" })),
+        ...SIDES.map((g) => fx("bolt", near(knobs.filter((p) => Math.sign(p[0]) === g), [-g * 23, 0, 0]), [g, 0, 0], { on: `E${g}`, len: 30, dia: 4, name: "Knob bolt" })),
       ],
       tools: ["screwdriver"],
     },
@@ -559,7 +604,12 @@ function barTable(s: ProductSpec): CustomParams {
       title: "Join the drawer sides to the front",
       detail: "Two dowels and two cam bolts in the front's back face. Push the sides on and turn their cam locks.",
       add: ["DF", "DS-1", "DS1"],
-      fix: [auto("dowel", 2, { to: ["DF"], len: 30, dia: 8 }), auto("camScrew", 2, { to: ["DF"] }), auto("cam", 2, { to: ["DF"] })],
+      // into the front's back face, where each side meets it (not its ends, which only sit near the runners)
+      fix: [
+        fx("dowel", SIDES.map((g): Vec3 => [g * (dx - 8), yA - 30, zF - 20]), [0, 0, 1], { on: "DF", len: 30, dia: 8 }),
+        fx("camScrew", SIDES.map((g): Vec3 => [g * (dx - 8), yA + 10, zF - 20]), [0, 0, 1], { on: "DF" }),
+        ...SIDES.map((g) => fx("cam", [[g * (dx - 16), yA + 10, zF - 44]], [g, 0, 0], { on: `DS${g}` })),
+      ],
       tools: ["screwdriver"],
       from: { DF: [0, 0, 700], "DS-1": [-120, 0, 700], DS1: [120, 0, 700] },
     },
@@ -574,7 +624,7 @@ function barTable(s: ProductSpec): CustomParams {
     {
       title: "Screw on the handle",
       detail: "Two bolts from inside the drawer front.",
-      fix: [fx("handle", [[0, yA, zF]], [0, 0, -1], { on: "DF", name: "Cup handle", len: 96, dia: 30 }), fx("bolt", [[-40, yA, zF - 20], [40, yA, zF - 20]], [0, 0, 1], { on: "DF", len: 30, dia: 4, name: "Handle bolt" })],
+      fix: [fx("handle", [[0, yA, zF + 4]], [0, 0, -1], { on: "DF", name: "Cup handle", len: 96, dia: 30 }), fx("bolt", [[-28, yA, zF - 20], [28, yA, zF - 20]], [0, 0, 1], { on: "DF", len: 30, dia: 4, name: "Handle bolt" })],
       tools: ["screwdriver"],
     },
     {

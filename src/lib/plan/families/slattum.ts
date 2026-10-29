@@ -21,7 +21,7 @@ const BOLT: HwDef = { kind: "bolt", len: 50, dia: 6 };
 const BOLT_M: HwDef = { kind: "bolt", len: 35, dia: 6 };
 const BOLT_S: HwDef = { kind: "bolt", len: 15, dia: 6 };
 const HOLDER: HwDef = { kind: "cap", len: 18, dia: 22, name: "Slat holder" };
-const SPACER: HwDef = { kind: "spacer", len: 50, dia: 25, name: "Spacer tube" };
+const SPACER: HwDef = { kind: "spacer", len: 25, dia: 25, name: "Spacer tube" };
 
 interface StepIn {
   title: string;
@@ -124,7 +124,7 @@ function build(b: PlanBuilder, s: ProductSpec) {
   const xr = W / 2 - 55; // rails and legs
   const yr = 300; // rail centre
   const S = 30; // rail tube
-  const yMid = 220; // the crossbar's lowered middle
+  const yMid = yr - S - SPACER.len; // the crossbar's lowered middle, a spacer's length under the centre beam
 
   k.part("HB", "Headboard", [W, 850 - yb, T], [0, (850 + yb) / 2, -L / 2 + T / 2], { mat: "soft" });
   k.part("FB", "Footboard", [W, 400 - yb, T], [0, (400 + yb) / 2, L / 2 - T / 2], { mat: "soft" });

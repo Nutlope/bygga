@@ -2,7 +2,7 @@ import type { Family } from "./family";
 import type { CustomFix, CustomParams, CustomPart, PartPiece, ProductSpec, Vec3 } from "../../types";
 
 /**
- * KYRRE, read from the stool's manual. The seat is a rounded triangle of birch plywood; each of the three bent legs
+ * KYRRE, read from the stool's manual. The seat is one rounded triangle of birch plywood; each of the three bent legs
  * runs up from the floor and turns in under the seat as a short flat arm. With the seat upside down on a rug, each
  * arm takes two Allen screws, sunk flush, then a glide is pressed into each foot.
  */
@@ -36,15 +36,9 @@ function stool(s: ProductSpec): CustomParams {
   const xb = SW / 2 - R, zf = 125, zb = zf - (SD - 2 * R);
   const corners: [number, number][] = [[0, zf], [-xb, zb], [xb, zb]];
 
-  // the seat: a disc at each corner, a strip along each edge and a disc in the middle
-  const seatAbs: PartPiece[] = corners.map(([x, z]) => ({ shape: "cyl", size: [2 * R, SEAT_T, 2 * R], pos: [x, bot + SEAT_T / 2, z] }));
-  corners.forEach(([x0, z0], i) => {
-    const [x1, z1] = corners[(i + 1) % 3];
-    const dx = x1 - x0, dz = z1 - z0;
-    seatAbs.push({ shape: "box", size: [Math.hypot(dx, dz), SEAT_T, 2 * R], pos: [(x0 + x1) / 2, bot + SEAT_T / 2, (z0 + z1) / 2], rot: [0, Math.atan2(-dz, dx), 0] });
-  });
+  // the seat: one rounded triangle of plywood
+  const seatAbs: PartPiece[] = [{ shape: "slab", size: [SW, SEAT_T, SD], pos: [0, bot + SEAT_T / 2, 0], outline: [[0, zf + R], [-SW / 2, zb - R], [SW / 2, zb - R]], round: 95 }];
   const zIn = zb + 85;
-  seatAbs.push({ shape: "cyl", size: [170, SEAT_T, 170], pos: [0, bot + SEAT_T / 2, zIn] });
   const parts: CustomPart[] = [part("SEAT", "Seat", seatAbs, [-SW / 2, bot, zb - R], [SW / 2, top, zf + R], "wood")];
 
   // legs: where each meets the seat and where it stands, splayed out to IKEA's footprint

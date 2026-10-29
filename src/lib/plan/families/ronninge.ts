@@ -154,7 +154,7 @@ function chairRecipe(): CustomParams {
     {
       title: "Screw the brackets to the seat",
       detail: "One screw up through the foot of each bracket. Then turn the chair over.",
-      fix: [fx("screw", S.flatMap((g) => zBr.map((z) => pt(g * (xBr - 2), YS, z))), [0, 1, 0], { len: 16, dia: 4 })],
+      fix: [fx("screw", S.flatMap((g) => zBr.map((z) => pt(g * (xBr - 24), YS, z))), [0, 1, 0], { len: 16, dia: 4 })],
       tools: ["screwdriver"],
     },
     { title: "Turn the chair over", detail: "Check the bolts again after a couple of weeks.", pose: "+y" },
@@ -455,7 +455,7 @@ function trolleyRecipe(): CustomParams {
     {
       title: "Tap small dowels into the drawer sides",
       detail: "Two in the front end of each side.",
-      fix: S.map((sx, i) => fx("dowel", [dy0 + 18, dy1 - 26].map((y) => pt(sx * dsx, y, DZ1 - 18)), [0, 0, -1], { on: `DS${i}`, len: 25, dia: 6 })),
+      fix: S.map((sx, i) => fx("dowel", [dy0 + 10, dy1 - 10].map((y) => pt(sx * dsx, y, DZ1 - 18)), [0, 0, -1], { on: `DS${i}`, len: 25, dia: 6 })),
       tools: ["hammer"],
     },
     {

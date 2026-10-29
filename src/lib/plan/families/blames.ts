@@ -108,10 +108,11 @@ function recipe(s: ProductSpec): CustomParams | null {
   // each side: a short screw into the footrest rung, long ones into the two seat rails and the top rail
   const screwSide = (sx: number, long: boolean) => {
     const sid = sx < 0 ? "SL" : "SR";
-    const pts: Vec3[] = long ? [[sx * xin, railY, zF], [sx * xin, railY, zB], [sx * trX, H - 40, -100]] : [[sx * fr[0], 290, fr[2]]];
+    // each starts on the outside of the leg and runs through it into the rail
+    const pts: Vec3[] = long ? [[sx * (xin + 22), railY, zF], [sx * (xin + 22), railY, zB], [sx * (trX + 40), H - 40, -100]] : [[sx * fr[0], 290, fr[2]]];
     const dir: Vec3 = [-sx, 0, 0];
     return [
-      at("nut", pts.map((p) => [p[0] - sx * 25, p[1], p[2]] as Vec3), [0, -1, 0], undefined, undefined, BARREL),
+      at("nut", pts.map((p) => [p[0] - sx * ((long ? 70 : 45) - 10), p[1], p[2]] as Vec3), [0, -1, 0], undefined, undefined, BARREL),
       at("bolt", pts, dir, sid, undefined, long ? { len: 70, dia: 6 } : { len: 45, dia: 6 }),
     ];
   };
@@ -153,7 +154,7 @@ function recipe(s: ProductSpec): CustomParams | null {
         title: "Screw the two tray holders onto the front legs",
         detail: "One on the outside of each front leg, at the top.",
         fix: [-1, 1].flatMap((sx, i) => [
-          at("clip", [holders[i]], [-sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { name: "Tray holder", len: 30, dia: 30 }),
+          at("clip", [[holders[i][0] + sx * 30, holders[i][1], holders[i][2]]], [-sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { name: "Tray holder", len: 30, dia: 30 }),
           at("screw", [holders[i]], [-sx, 0, 0], sx < 0 ? "SL" : "SR", undefined, { len: 20, dia: 4 }),
         ]),
         tools: ["screwdriver"],

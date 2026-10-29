@@ -48,6 +48,22 @@ const leaning = (id: string, name: string, x0: number, x1: number, y0: number, h
 };
 
 /** Mirrors a recipe left to right. */
+/** The back bar: an upright behind the chaise longue with a foot that lies on the chaise frame's top, bolted down through it. */
+function backBar(id: string, x: number, FB: number, SEAT: number, zb: number): CustomPart {
+  const yc = FB + 260, zc = zb + 125;
+  return {
+    id,
+    name: "Back bar",
+    size: [40, 520, 250],
+    pos: [x, yc, zc],
+    material: "metal",
+    pieces: [
+      { shape: "box", size: [40, 520, 8], pos: [0, 0, -121] },
+      { shape: "box", size: [40, 8, 250], pos: [0, SEAT + 4 - yc, 0] },
+    ],
+  };
+}
+
 function mirror(p: CustomParams): CustomParams {
   const fx = (v: Vec3): Vec3 => [-v[0], v[1], v[2]];
   return {
@@ -98,7 +114,7 @@ function twoChaises(s: ProductSpec): CustomParams {
     parts.push(box(q.c, "Chaise longue frame", q.xa, q.xb, LEG, SEAT, zSeat0, zb + Dc));
     const l = legsOf(q.lg, [q.xa + 60, q.xb - 60], [zSeat0 + 70, zb + Dc - 60]);
     parts.push(leaning(q.bc, "Chaise backrest frame", q.xa, q.xb, FB, backH - FB, zb, bt, tilt));
-    parts.push({ id: q.bar, name: "Back bar", size: [40, 520, 8], pos: [q.xa + 40, FB + 260, zb + 4], material: "metal" });
+    parts.push(backBar(q.bar, q.xa + 40, FB, SEAT, zb));
     return l;
   });
   const cushions: string[] = [];
@@ -143,16 +159,16 @@ function twoChaises(s: ProductSpec): CustomParams {
     if (i) steps.push({ title: "Screw two rods into the left armrest and push the chaise onto them", detail: "This armrest goes on the outer chaise. Rods into the holes low down on its inside, then a washer and a wing knob on each, from inside the chaise.", fix: [rods(xc2, -1, lowPts, "AR", q.c), ...knobs(xc2, -1, lowPts, q.c)], warnings: ["hand"] });
     steps.push({
       title: `Bolt the back bar to ${which}`,
-      detail: "At the back corner on the sofa side, foot down. The carriage bolt goes through its foot, with a washer and a wing knob underneath.",
+      detail: "At the back corner on the sofa side, foot down. Its foot lies on the chaise frame; the carriage bolt goes down through it, with a washer and a wing knob under the frame top.",
       add: [q.bar],
-      fix: [at("bolt", [[q.xa + 40, SEAT, zb + 40]], [0, -1, 0], q.c, undefined, CARRIAGE), at("washer", [[q.xa + 40, FB + 2, zb + 40], [q.xa + 40, FB, zb + 40]], [0, 1, 0], q.c, undefined, WASHER), at("nut", [[q.xa + 40, FB - 4, zb + 40]], [0, 1, 0], q.c, undefined, KNOB)],
+      fix: [at("bolt", [[q.xa + 40, SEAT + 8, zb + 100]], [0, -1, 0], q.c, undefined, CARRIAGE), at("washer", [[q.xa + 40, SEAT - 50, zb + 100], [q.xa + 40, SEAT - 52, zb + 100]], [0, 1, 0], q.c, undefined, WASHER), at("nut", [[q.xa + 40, SEAT - 56, zb + 100]], [0, 1, 0], q.c, undefined, KNOB)],
       warnings: ["hand"],
     });
     const barPts: [number, number][] = [[q.xa + 40, zb + 120], [q.xa + 40, zb + 220]];
     steps.push({
       title: "Push the two rods with collars down through the bar",
       detail: "Through the bar's holes into the chaise frame, a washer and a wing knob on each from underneath.",
-      fix: [at("stud", barPts.map(([x, z]) => [x, SEAT - 5, z] as Vec3), [0, -1, 0], q.c, q.bar, COLLAR_ROD), at("washer", barPts.map(([x, z]) => [x, FB, z] as Vec3), [0, 1, 0], q.c, undefined, WASHER), at("nut", barPts.map(([x, z]) => [x, FB - 4, z] as Vec3), [0, 1, 0], q.c, undefined, KNOB)],
+      fix: [at("stud", barPts.map(([x, z]) => [x, SEAT + 8, z] as Vec3), [0, -1, 0], q.c, q.bar, COLLAR_ROD), at("washer", barPts.map(([x, z]) => [x, FB, z] as Vec3), [0, 1, 0], q.c, undefined, WASHER), at("nut", barPts.map(([x, z]) => [x, FB - 4, z] as Vec3), [0, 1, 0], q.c, undefined, KNOB)],
       warnings: ["hand"],
     });
   });
@@ -224,7 +240,7 @@ function recipe(s: ProductSpec): CustomParams | null {
     parts.push(box("C", "Chaise longue frame", xs1, xc1, LEG, SEAT, zSeat0, zb + Dc));
     chaiseLegs = legsOf("LC", [xs1 + 60, xc1 - 60], [zSeat0 + 70, zb + Dc - 60]);
     parts.push(leaning("BC", "Chaise backrest frame", xs1, xc1, FB, backH - FB, zb, bt, tilt));
-    parts.push({ id: "BAR", name: "Back bar", size: [40, 520, 8], pos: [xs1 + 40, FB + 260, zb + 4], material: "metal" });
+    parts.push(backBar("BAR", xs1 + 40, FB, SEAT, zb));
   }
   // back cushions: two on either sofa section, one on the chaise longue
   const cushions: string[] = [];
@@ -303,16 +319,16 @@ function recipe(s: ProductSpec): CustomParams | null {
     steps.push({ title: "Screw two rods into the right armrest and push the chaise onto them", detail: "Rods into the holes low down on its inside. Then a washer and a wing knob on each, from inside the chaise.", fix: [rods(xc1, -1, [[yLow, zA], [yLow, zB]], "AR", "C"), ...knobs(xc1, -1, [[yLow, zA], [yLow, zB]], "C")], warnings: ["hand"] });
     steps.push({
       title: "Bolt the back bar to the chaise longue",
-      detail: "At the back corner on the sofa side, foot down. The carriage bolt goes through its foot, with a washer and a wing knob underneath.",
+      detail: "At the back corner on the sofa side, foot down. Its foot lies on the chaise frame; the carriage bolt goes down through it, with a washer and a wing knob under the frame top.",
       add: ["BAR"],
-      fix: [at("bolt", [[xs1 + 40, SEAT, zb + 40]], [0, -1, 0], "C", undefined, CARRIAGE), at("washer", [[xs1 + 40, FB + 2, zb + 40], [xs1 + 40, FB, zb + 40]], [0, 1, 0], "C", undefined, WASHER), at("nut", [[xs1 + 40, FB - 4, zb + 40]], [0, 1, 0], "C", undefined, KNOB)],
+      fix: [at("bolt", [[xs1 + 40, SEAT + 8, zb + 100]], [0, -1, 0], "C", undefined, CARRIAGE), at("washer", [[xs1 + 40, SEAT - 50, zb + 100], [xs1 + 40, SEAT - 52, zb + 100]], [0, 1, 0], "C", undefined, WASHER), at("nut", [[xs1 + 40, SEAT - 56, zb + 100]], [0, 1, 0], "C", undefined, KNOB)],
       warnings: ["hand"],
     });
     const barPts: [number, number][] = [[xs1 + 40, zb + 120], [xs1 + 40, zb + 220]];
     steps.push({
       title: "Push the two rods with collars down through the bar",
       detail: "Through the bar's holes into the chaise frame, a washer and a wing knob on each from underneath.",
-      fix: [at("stud", barPts.map(([x, z]) => [x, SEAT - 5, z] as Vec3), [0, -1, 0], "C", "BAR", COLLAR_ROD), at("washer", barPts.map(([x, z]) => [x, FB, z] as Vec3), [0, 1, 0], "C", undefined, WASHER), at("nut", barPts.map(([x, z]) => [x, FB - 4, z] as Vec3), [0, 1, 0], "C", undefined, KNOB)],
+      fix: [at("stud", barPts.map(([x, z]) => [x, SEAT + 8, z] as Vec3), [0, -1, 0], "C", "BAR", COLLAR_ROD), at("washer", barPts.map(([x, z]) => [x, FB, z] as Vec3), [0, 1, 0], "C", undefined, WASHER), at("nut", barPts.map(([x, z]) => [x, FB - 4, z] as Vec3), [0, 1, 0], "C", undefined, KNOB)],
       warnings: ["hand"],
     });
     const joinPts: [number, number][] = [[yLow, zA], [yLow, zf - 140]];

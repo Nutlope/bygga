@@ -66,7 +66,7 @@ function desk(): CustomParams {
       ...[ZF - 15, zMid, -ZF + 15].map((z) => box([-XF + 15, yF0, z - 15], [XF - 15, yF1, z + 15])),
       ...[-1, 1].map((sx) => box([sx * (XF + 15), yF0 - 40, -60], [sx * (XF + 25), yF0, -40])),
     ], "metal"),
-    ...[-1, 1].map((sx): CustomPart => ({ ...panel(sx < 0 ? "HGL" : "HGR", "Hinge", [sx * 300 - 40, yF1, zMid - 30], [sx * 300 + 40, yT0, zMid + 30]), material: "metal" })),
+    ...[-1, 1].map((sx): CustomPart => ({ ...panel(sx < 0 ? "HGL" : "HGR", "Hinge", [sx * 300 - 40, yF1, zMid - 20], [sx * 300 + 40, yT0, zMid + 60]), material: "metal" })),
     panel("TOP", "Desk top", [-400, yT0, -105], [400, yT1, ZF]),
     // the shelf unit at the back
     panel("HB", "Shelf bottom", [-400, yH0, zH0], [400, yH1, zH1]),
@@ -82,7 +82,8 @@ function desk(): CustomParams {
   const legId = (sx: number, sz: number) => `LL${sx < 0 ? 0 : 1}${sz < 0 ? 0 : 1}`;
   const legScrews = (sx: number) => [-1, 1].flatMap((sz) => [230, 265].map((y) => fx("screw", [[sx * (xL + 18), y, sz * zAt(y)]], [-sx, 0, 0], sx < 0 ? "LFL" : "LFR", { ...SHORT, mate: legId(sx, sz) })));
   const plateScrews = (sx: number) => fx("screw", [-1, 1].flatMap((sz) => [-25, 25].map((dz): Vec3 => [sx * xL, yF0 - 6, sz * zTop + dz])), [0, 1, 0], sx < 0 ? "LFL" : "LFR", { ...SHORT, mate: "FR" });
-  const hingeTop = (sx: number) => fx("screw", [-30, 0, 30].map((dx): Vec3 => [sx * 300 + dx, yT0, zMid]), [0, 1, 0], sx < 0 ? "HGL" : "HGR", { ...SHORT, mate: "TOP" });
+  // the hinge reaches forward from the cross tube to under the top's back edge
+  const hingeTop = (sx: number) => fx("screw", [-30, 0, 30].map((dx): Vec3 => [sx * 300 + dx, yT0, zMid + 45]), [0, 1, 0], sx < 0 ? "HGL" : "HGR", { ...SHORT, mate: "TOP" });
   const spacers: Vec3[] = [[-300, yF1, -ZF + 15], [0, yF1, -ZF + 15], [300, yF1, -ZF + 15], [-200, yF1, zMid], [200, yF1, zMid]];
   const yM = (yH0 + yH1) / 2;
   const steps: CustomStep[] = [
@@ -119,7 +120,7 @@ function desk(): CustomParams {
       title: "Turn it over and fit the hinges",
       detail: "Stand the desk on its feet. One screw holds each hinge on the cross tube.",
       add: ["HGL", "HGR"],
-      fix: [-1, 1].map((sx) => fx("screw", [[sx * 300, yT0, zMid + 22]], [0, -1, 0], sx < 0 ? "HGL" : "HGR", { ...SHORT, mate: "FR" })),
+      fix: [-1, 1].map((sx) => fx("screw", [[sx * 300, yT0, zMid]], [0, -1, 0], sx < 0 ? "HGL" : "HGR", { ...SHORT, mate: "FR" })),
       tools: ["allen"],
       pose: "+y",
     },

@@ -71,7 +71,8 @@ function desk(s: ProductSpec): CustomParams {
   });
 
   const joints = [-1, 1].flatMap((j) => [j * (xj - 40), j * (xj + 40)].flatMap((x) => [yB - 10, yB + 10].map((y): Vec3 => [x, y, BEAM_D / 2])));
-  const colScrews = (sx: number, i: number) => fx("screw", [-1, 1].flatMap((sz) => [yB - 10, yB + 10].map((y): Vec3 => [sx * xc, y, sz * (BEAM_D / 2 - 3)])), [0, 0, 1], i ? "BEAM_R" : "BEAM_L", { len: 12, dia: 6, mate: cols[i] });
+  // two through each side wall of the beam end, going in towards the column
+  const colScrews = (sx: number, i: number) => [-1, 1].map((sz) => fx("screw", [yB - 12, yB + 12].map((y): Vec3 => [sx * xc, y, sz * (BEAM_D / 2 - 3)]), [0, 0, -sz], i ? "BEAM_R" : "BEAM_L", { len: 12, dia: 6, mate: cols[i] }));
   const brScrews = (sx: number, i: number) => fx("screw", [-14, 14].map((z): Vec3 => [sx * (xe + 30), yB, z]), [-sx, 0, 0], brackets[i], { len: 12, dia: 6, mate: i ? "BEAM_R" : "BEAM_L" });
   const topBolts = (sx: number, i: number) => fx("bolt", [-1, 1].flatMap((sz) => [brD / 2 - 30, brD / 2 - 90].map((z): Vec3 => [sx * (xe + 15), yB - BEAM_H / 2, sz * z])), [0, 1, 0], brackets[i], { len: 20, dia: 6, mate: "TOP" });
   const feet = [-1, 1].flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xc, 0, sz * zFoot]));
@@ -93,7 +94,7 @@ function desk(s: ProductSpec): CustomParams {
       tools: ["allen"],
     },
     { title: "Turn the beam over and fit the columns", detail: "Push one column into the bracket at each end, the flat side to the end.", add: cols },
-    { title: "Screw the columns to the beam", detail: "Four screws for each, two through each side of the beam end.", fix: [colScrews(-1, 0), colScrews(1, 1)], tools: ["allen"] },
+    { title: "Screw the columns to the beam", detail: "Four screws for each, two through each side of the beam end.", fix: [...colScrews(-1, 0), ...colScrews(1, 1)], tools: ["allen"] },
     { title: "Screw on the end brackets", detail: "One across each end of the beam, two screws each. Their curved edges face out.", add: brackets, fix: [brScrews(-1, 0), brScrews(1, 1)], tools: ["allen"] },
     {
       title: "Lay the frame on the top and bolt it on",
@@ -217,8 +218,9 @@ function unitDrawer(b: PlanBuilder, s: ProductSpec, d: ReturnType<typeof unitDim
     b.step({ title, detail, tools: o.tools, scene, pose: o.pose ?? "+z", kind: "drawer" }, body);
   const tabs = file ? 6 : 4;
   const boxScrews: FitOpts[] = [-1, 1].flatMap((g) => Array.from({ length: tabs / 2 }, (_, k) => ({ on: sides[g < 0 ? 0 : 1], at: [g * (dw / 2 - 10), yb + ((k + 1) * d.bh) / (tabs / 2 + 1), zb] as Vec3, dir: [0, 0, 1] as Vec3, mate: front })));
-  const couplings: FitOpts[] = [-1, 1].map((g) => ({ on: bottom, at: [g * (dw / 2 - 30), yb, zb - 40], dir: [0, 1, 0], hole: false }));
-  const couplingScrews: FitOpts[] = [-1, 1].flatMap((g) => [-62, -18].map((dz): FitOpts => ({ on: bottom, at: [g * (dw / 2 - 30), yb, zb - 40 + dz], dir: [0, 1, 0] })));
+  // each coupling is held by two short screws from below, through its plate into the drawer bottom
+  const couplings: FitOpts[] = [-1, 1].map((g) => ({ on: bottom, at: [g * (dw / 2 - 30), yb, zb - 80], dir: [0, 1, 0], hole: false }));
+  const couplingScrews: FitOpts[] = [-1, 1].flatMap((g) => [-24, 24].map((dz): FitOpts => ({ on: bottom, at: [g * (dw / 2 - 30), yb - 10, zb - 80 + dz], dir: [0, 1, 0] })));
   const name = file ? "the file drawer" : "the small drawer";
 
   st(`Hook a side onto the back of ${name}`, "Slide the hooks on the side's edge into the slots in the back and push it down.", () => {
@@ -246,7 +248,7 @@ function unitDrawer(b: PlanBuilder, s: ProductSpec, d: ReturnType<typeof unitDim
     st("Screw the support wheel under the back", "Turn the drawer over again. Two screws through its plate into the bottom.", () => {
       stage(wheel, [0, -160, 0]);
       b.then(0.1);
-      b.fits(PAN_SCREW, [-12, 12].map((x): FitOpts => ({ on: wheel, at: [x, yb, zb - dd + 40], dir: [0, 1, 0], mate: bottom })), 0.1);
+      b.fits(PAN_SCREW, [-12, 12].map((x): FitOpts => ({ on: wheel, at: [x, yb - 6, zb - dd + 40], dir: [0, 1, 0], mate: bottom })), 0.1);
     }, { tools: ["screwdriver"], pose: "-y" });
   void D;
   return all;

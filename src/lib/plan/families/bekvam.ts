@@ -176,21 +176,23 @@ function ladder(s: ProductSpec): CustomParams {
   const span = 2 * xi;
   const xRise = bk.y1 - 40 - yRail - 40;
   const xLen = Math.hypot(span - 40, xRise), xAng = Math.atan2(xRise, span - 40);
+  const bz = -D / 4 + 10; // the frame's middle; its pieces sit relative to it
   const backPieces: PartPiece[] = [
-    ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [SX, lb.len, 40], pos: [sx * xs, lb.c[1] - yc, lb.c[0]], rot: [lb.a, 0, 0] })),
-    { shape: "box", size: [span, 40, 20], pos: [0, bk.y1 - 40 - yc, zb(bk.y1 - 40)] },
-    { shape: "box", size: [span, 40, 20], pos: [0, yRail - yc, zb(yRail)] },
-    { shape: "box", size: [xLen, 30, 14], pos: [0, (yRail + bk.y1 - 40) / 2 - yc, zMid], rot: [0, 0, xAng] },
-    { shape: "box", size: [xLen, 30, 14], pos: [0, (yRail + bk.y1 - 40) / 2 - yc, zMid], rot: [0, 0, -xAng] },
+    ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [SX, lb.len, 40], pos: [sx * xs, lb.c[1] - yc, lb.c[0] - bz], rot: [lb.a, 0, 0] })),
+    { shape: "box", size: [span, 40, 20], pos: [0, bk.y1 - 40 - yc, zb(bk.y1 - 40) - bz] },
+    { shape: "box", size: [span, 40, 20], pos: [0, yRail - yc, zb(yRail) - bz] },
+    { shape: "box", size: [xLen, 30, 14], pos: [0, (yRail + bk.y1 - 40) / 2 - yc, zMid - bz], rot: [0, 0, xAng] },
+    { shape: "box", size: [xLen, 30, 14], pos: [0, (yRail + bk.y1 - 40) / 2 - yc, zMid - bz], rot: [0, 0, -xAng] },
   ];
-  parts.push({ id: "B", name: "Back frame", size: [W, bk.y1, D / 2], pos: [0, yc, -D / 4 + 10], pieces: backPieces, material: "wood" });
+  parts.push({ id: "B", name: "Back frame", size: [W, bk.y1, D / 2], pos: [0, yc, bz], pieces: backPieces, material: "wood" });
   // the stays: a flat steel bar on the outside of each side, from stile to back leg
   const yStay = Math.round(top * 0.47);
   for (const [i, sx] of [-1, 1].entries()) {
     const z0 = zb(yStay), z1 = zf(yStay);
     parts.push({ id: `R${i}`, name: i ? "Stay, right" : "Stay, left", size: [4, 22, z1 - z0], pos: [sx * (W / 2 + 2), yStay, (z0 + z1) / 2], material: "metal" });
   }
-  const hingeAt = (sx: number): Vec3 => [sx * xi, top - 30, fr.z1 - 20];
+  const hingeY = top - 40;
+  const hingeAt = (sx: number, dy = 0): Vec3 => [sx * xi, hingeY + dy, zf(hingeY + dy)];
   const stile = (sx: number) => (sx < 0 ? "L0" : "L1");
   const stepScrews = stepYs.map((y): Vec3 => [0, y, zf(y) + 10]);
   const steps: CustomStep[] = [
@@ -208,7 +210,8 @@ function ladder(s: ProductSpec): CustomParams {
       detail: "On the inside, two short screws each. The pivot points back.",
       fix: [
         ...[-1, 1].map((sx) => fx("hinge", [hingeAt(sx)], [sx, 0, 0], stile(sx), { name: "Hinge bracket" })),
-        ...[-1, 1].map((sx) => fx("screw", [15, -15].map((dz): Vec3 => [sx * xi, top - 30, fr.z1 - 20 + dz]), [sx, 0, 0], stile(sx), { len: 16, dia: 4 })),
+        // one above and one below the pivot, far enough apart to show as two
+        ...[-1, 1].map((sx) => fx("screw", [24, -24].map((dy) => hingeAt(sx, dy)), [sx, 0, 0], stile(sx), { len: 16, dia: 4 })),
       ],
       tools: ["allen"],
     },
@@ -402,7 +405,7 @@ function trolley(s: ProductSpec): CustomParams {
       detail: "Four screws through each castor plate into the end of the leg. Use the longer screws here.",
       fix: [
         ...castorLegs.map((g) => fx("castor", [[g.sx * lx, CASTOR, g.sz * lz]], [0, 1, 0], g.id)),
-        ...castorLegs.map((g) => fx("screw", [-1, 1].flatMap((a) => [-1, 1].map((b): Vec3 => [g.sx * lx + a * 14, CASTOR, g.sz * lz + b * 14])), [0, 1, 0], g.id, { len: 30, dia: 4 })),
+        ...castorLegs.map((g) => fx("screw", [-1, 1].flatMap((a) => [-1, 1].map((b): Vec3 => [g.sx * lx + a * 16, CASTOR, g.sz * lz + b * 16])), [0, 1, 0], g.id, { len: 30, dia: 4 })),
       ],
       tools: ["screwdriver"],
     },

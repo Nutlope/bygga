@@ -1,6 +1,7 @@
 import type { Family } from "./family";
-import type { PartMaterial, PartPiece, Pose, ProductSpec, StepKind, ToolId, Vec3, WarnId } from "../../types";
+import type { PartMaterial, PartPiece, Pose, ProductSpec, RowUnit, StepKind, ToolId, Vec3, WarnId } from "../../types";
 import { HW, type FitOpts, type HwDef, type PlanBuilder } from "../builder";
+import { buildUnits, unitOf as rowUnitOf } from "../units";
 
 /**
  * BILLY, read from its manuals. The frame is built lying on one side: dowels go into the ends of the plinth, the bottom,
@@ -610,7 +611,7 @@ function drawerKit(k: Kit, u: Unit, f: Frame) {
 
 function build(b: PlanBuilder, s: ProductSpec): boolean {
   const u = unitOf(s);
-  if (!u) return false;
+  if (!u) return combo(b, s);
   const k = new Kit(b);
   if (u.H === 0) {
     // the height extension on its own
@@ -641,8 +642,99 @@ function build(b: PlanBuilder, s: ProductSpec): boolean {
   return true;
 }
 
+/* ---------- sets of bookcases side by side ---------- */
+
+/**
+ * The wide BILLY sets are 40 and 80 cm bookcases standing side by side, read from IKEA's photos: 120 is three
+ * narrow ones, 160 two wide ones, 200 a narrow one between two wide ones, 240 three wide ones. Each is built from
+ * its own manual and none are joined to each other; each one is fixed to the wall on its own.
+ */
+interface Col {
+  w: 40 | 80;
+  name: string;
+  variant: string;
+}
+
+const GLASS = "Bookcase with glass doors";
+const PANEL = "Bookcase with panel/glass doors";
+/** Sets whose page title doesn't say which doors each bookcase has; the photo does. */
+const OWN_DOORS: Record<string, string[]> = {
+  "billy-oxberg-bookcase-120-x-30-x-237": [PANEL],
+  "billy-oxberg-bookcase-doors-200-x-30-x-106": [GLASS],
+  "billy-oxberg-bookcase-panel-glass-doors-160-x-30": [PANEL, GLASS],
+};
+
+function columns(s: ProductSpec): Col[] | null {
+  const W = Math.round(s.size.w * 10);
+  const widths: (40 | 80)[] | null = W === 1200 ? [40, 40, 40] : W === 1600 ? [80, 80] : W === 2000 ? [80, 40, 80] : W === 2400 ? [80, 80, 80] : null;
+  if (!widths) return null;
+  const name = s.name.toUpperCase();
+  const doors = /OXBERG|HÖGADAL|HOGADAL|HÖGBO|HOGBO/.test(name);
+  const own = OWN_DOORS[s.slug ?? ""];
+  let j = 0;
+  return widths.map((w, i) => {
+    // the narrow one in the middle of the 200 cm sets with doors stands open
+    if (!doors || (W === 2000 && i === 1)) return { w, name: "BILLY", variant: "Bookcase" };
+    const variant = own ? own[Math.min(own.length - 1, j++)] : s.variant;
+    return { w, name: s.name, variant };
+  });
+}
+
+const doorsOf = (c: Col) => (c.name === "BILLY" ? "" : /panel\/glass|pnl\/glss/i.test(c.variant) ? "panel" : /glass/i.test(c.variant) ? "glass" : "solid");
+const COUNTS = ["", "", "two", "three"];
+
+function combo(b: PlanBuilder, s: ProductSpec): boolean {
+  const cols = columns(s);
+  if (!cols) return false;
+  const keyOf = (c: Col) => `${c.w}|${c.name}|${c.variant}`;
+  const groupIds = [...new Set(cols.map(keyOf))];
+  const byUnit = new Map<RowUnit, Col>();
+  // a unit's shelf parameters carry its group, so frames with different doors aren't taken as copies of each other
+  const units: RowUnit[] = cols.map((c) => {
+    const u: RowUnit = { w: c.w, shelf: { rows: groupIds.indexOf(keyOf(c)) } };
+    byUnit.set(u, c);
+    return u;
+  });
+  const { cabinet: _c, ...rest } = s;
+  void _c;
+  const set: ProductSpec = { ...rest, archetype: "shelf", row: { n: cols.length, of: "bookcase", join: false, units } };
+  const n0 = b.steps.length;
+  buildUnits(b, set, (bb, spec) => {
+    const c = byUnit.get(rowUnitOf(spec)!)!;
+    build(bb, { ...spec, name: c.name, variant: c.variant });
+  });
+
+  // the row code's titles for the other bookcases, in its order: the commonest (widest) first, then the others
+  const groups = groupIds.map((k) => cols.map((c, i) => (keyOf(c) === k ? i : -1)).filter((i) => i >= 0));
+  const first = [...groups].sort((a, c) => c.length - a.length || cols[c[0]].w - cols[a[0]].w)[0];
+  const order = [first, ...groups.filter((g) => g !== first)];
+  const mixed = new Set(cols.map((c) => c.w)).size > 1;
+  const f = cols[first[0]];
+  const builds = b.steps.slice(n0).filter((st) => /^Build .* the same way$/.test(st.title));
+  order
+    .map((g) => ({ g, k: g === first ? g.length - 1 : g.length }))
+    .filter((x) => x.k > 0)
+    .forEach(({ g, k }, i) => {
+      const st = builds[i];
+      if (!st) return;
+      const c = cols[g[0]];
+      const size = mixed ? (c.w === 40 ? "narrow " : "wide ") : "";
+      const dc = doorsOf(c), df = doorsOf(f);
+      const what = k > 1 ? `${COUNTS[k]} ${g === first ? "more " : ""}${size}bookcases` : `${g === first ? "another" : "the"} ${size}bookcase`;
+      const with_ = dc === df ? "" : dc === "" ? " without doors" : dc === "glass" ? " with glass doors" : dc === "panel" ? " with panel and glass doors" : " with doors";
+      st.title = `Build ${what}${with_} the same way`;
+      const diff = [c.w < f.w ? "just narrower" : c.w > f.w ? "just wider" : "", dc === df ? "" : dc === "" ? "leave its doors off" : "with its own doors"].filter(Boolean);
+      st.detail = `Every step as for the first one${diff.length ? ", " + diff.join(", ") : ""}. Stand ${k > 1 ? "each one" : "it"} in its place in the row.`;
+    });
+  return true;
+}
+
 const family: Family = {
   names: ["BILLY"],
   build,
+  row(b, s) {
+    if (unitOf(s)) return false;
+    return combo(b, s);
+  },
 };
 export default family;

@@ -56,8 +56,9 @@ function recipe(s: ProductSpec): CustomParams {
   const BOLT = { len: 12, dia: 6 };
   const shelfBolts = (sx: number, ys: number[]): CustomFix[] =>
     ys.map((y, i) => fx("bolt", [-1, 1].map((sz): Vec3 => [sx * (W / 2), y - TT / 2, sz * (zP - 40)]), [-sx, 0, 0], sx < 0 ? "F1" : "F2", { mate: `S${shelves.indexOf(y) + 1 || i + 1}`, ...BOLT }));
-  const panelScrews = (id: string, y0: number, y1: number): CustomFix =>
-    fx("screw", [y0, y1].flatMap((y) => [-1, 1].map((sx): Vec3 => [sx * (sw / 2 - 30), y, -D / 2 + 10])), [0, 0, 1], id, { len: 10, dia: 4 });
+  // the two panels share the middle shelf: the upper one's screws sit further in, clear of the lower one's
+  const panelScrews = (id: string, y0: number, y1: number, inset = 30): CustomFix =>
+    fx("screw", [y0, y1].flatMap((y) => [-1, 1].map((sx): Vec3 => [sx * (sw / 2 - inset), y, -D / 2 + 10])), [0, 0, 1], id, { len: 10, dia: 4 });
   const steps: CustomStep[] = [
     {
       title: "Screw the castors into the side frames",
@@ -89,7 +90,7 @@ function recipe(s: ProductSpec): CustomParams {
       add: ["B1"],
       fix: [panelScrews("B1", shelves[0] - TT / 2, shelves[1] - TT / 2)],
     },
-    { title: "Screw on the upper back panel", detail: "Between the middle and top shelves, four screws.", add: ["B2"], fix: [panelScrews("B2", shelves[1] - TT / 2, shelves[2] - TT / 2)] },
+    { title: "Screw on the upper back panel", detail: "Between the middle and top shelves, four screws.", add: ["B2"], fix: [panelScrews("B2", shelves[1] - TT / 2, shelves[2] - TT / 2, 70)] },
     { title: "Stand it up", detail: "Tip it up onto its castors and lock two of them.", pose: "+y" },
     { title: "Hang the back door", detail: "Lift it into the inner groove under the middle shelf, then lower it into the track on the bottom shelf.", add: ["D2"], from: { D2: [0, 40, 260] } },
     { title: "Hang the front door", detail: "The same way, in the outer groove. Check both slide freely.", add: ["D1"], from: { D1: [0, 40, 260] } },

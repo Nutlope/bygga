@@ -42,7 +42,7 @@ function chair(s: ProductSpec): CustomParams {
     SX.map((sx) => at("dowel", [[sx * (xi - t / 2), y, z - 12], [sx * (xi - t / 2), y, z + 12]], [sx, 0, 0], cross, L(sx, l, r), { len: 30, dia: 8 }));
   const frameBolts = (y: number, z: number, cross: string, l: string, r: string) => [
     at("bolt", [[-(xi + t / 2), y, z]], [1, 0, 0], l, cross, { len: 60, dia: 6 }),
-    at("bolt", [[xi + t / 2, y, z - 10], [xi + t / 2, y, z + 10]], [-1, 0, 0], r, cross, { len: 60, dia: 6 }),
+    at("bolt", [[xi + t / 2, y, z - 12], [xi + t / 2, y, z + 12]], [-1, 0, 0], r, cross, { len: 60, dia: 6 }),
   ];
   const legDowels = SX.flatMap((sx) => [
     at("dowel", [[sx * xi, runH, zFront - 10], [sx * xi, runH, zFront + 10]], [0, -1, 0], L(sx, "FL", "FRL"), L(sx, "RL", "RR"), { len: 40, dia: 8 }),

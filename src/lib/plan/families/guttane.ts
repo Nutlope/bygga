@@ -50,7 +50,7 @@ function recipe(s: ProductSpec): CustomParams | null {
   const ends = [-1, 1];
   const railEnd = (sx: number): Vec3 => [sx * railLen / 2, railY, 0];
   const nuts = ends.map((sx): Vec3 => [sx * (railLen / 2 - 35), railY - railH / 2, 0]);
-  const bolts = ends.map((sx): Vec3 => [sx * (xl + railT / 2), railY, 0]);
+  const bolts = ends.map((sx): Vec3 => [sx * (xl + railT / 2), railY - 18, 0]); // below the dowel, level with the barrel nut
   const screwsAt = (sx: number): Vec3[] => [-zl, -zl / 2, zl / 2, zl].map((z) => [sx * xl, topY0 - 25, z]);
   const feet = ends.flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xl, 0, sz * zl]));
 

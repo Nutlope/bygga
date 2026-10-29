@@ -286,7 +286,7 @@ function drawersOf(g: Geo): Dw[] {
       const fy = all ? g.ySide + 3 + (dr.rows - 1 - r) * (fh + 3) : g.yTopU - fh - 2;
       const fx = all ? -c.W / 2 + 3 + fw / 2 + ci * (fw + 3) : g.colX(ci);
       const sideH = Math.max(60, Math.min(fh - 50, 150));
-      out.push({ i: i++, col: ci, fx, fy, fw, fh, bx: g.colX(ci), bw: g.cw - 30, by: fy + (all ? 25 : 15), sideH });
+      out.push({ i: i++, col: ci, fx, fy, fw, fh, bx: g.colX(ci), bw: g.cw - 30, by: all ? Math.max(fy + 25, g.yBotU + 6) : fy + 15, sideH }); // a box never sinks into the bottom panel
     }
   return out;
 }
@@ -361,11 +361,14 @@ function caseBuild(b: PlanBuilder, c: CaseCfg) {
       stage: hosts.map((id, k) => ({ id, pos: [(k - (hosts.length - 1) / 2) * (H - ySide + 80), 0, 0], rot: [0, 0, (id === "SR" ? -1 : 1) * (Math.PI / 2)] })),
       fit: hosts.flatMap((id) => {
         const mine = pts.filter((p) => hostAt(p.x) === id);
-        const sides = id === "SL" || id === "SR" ? mine : mine;
+        // each screw starts inside the drawer's opening and goes out into the panel the runner sits on
         return [
-          fit(runner, sides.map((p) => [p.x - p.sx * 0, p.y, zr] as Vec3), [0, 1, 0], { on: id, hole: false }),
-          fit(RUNNER_SCREW, sides.flatMap((p) => [zr - Dc / 3, zr + Dc / 3].map((z) => [p.x - p.sx * 6, p.y + 10, z] as Vec3)), [0, 0, 1], { on: id }),
-        ].map((f, k) => (k ? { ...f, dir: [Math.sign(id === "SL" ? -1 : 1), 0, 0] as Vec3 } : f));
+          fit(runner, mine.map((p) => [p.x, p.y, zr] as Vec3), [0, 1, 0], { on: id, hole: false }),
+          ...[-1, 1].flatMap((sx) => {
+            const pp = mine.filter((p) => p.sx === sx);
+            return pp.length ? [fit(RUNNER_SCREW, pp.flatMap((p) => [zr - Dc / 3, zr + Dc / 3].map((z) => [p.x - sx * 6, p.y + 10, z] as Vec3)), [sx, 0, 0], { on: id })] : [];
+          }),
+        ];
       }),
       tools: ["screwdriver"],
       warnings: ["floor"],
@@ -1241,7 +1244,7 @@ function deskDrawer(b: PlanBuilder, g: { W: number; D: number; dw: number; yU: n
       kind: "runners",
       scene: "main",
       pose: "-y",
-      fit: [fit(runner, [-1, 1].map((sx) => [sx * (dw / 2), y0 + 4, zm] as Vec3), [0, 1, 0], { hole: false }), fit(RUNNER_SCREW, [-1, 1].flatMap((sx) => [zm - dd / 3, zm + dd / 3].map((z) => [sx * (dw / 2), y0 + 14, z] as Vec3)), [1, 0, 0])],
+      fit: [fit(runner, [-1, 1].map((sx) => [sx * (dw / 2), y0 + 4, zm] as Vec3), [0, 1, 0], { hole: false }), ...[-1, 1].map((sx) => fit(RUNNER_SCREW, [zm - dd / 3, Math.min(zm + dd / 3, zr - 75)].map((z) => [sx * (dw / 2 - 4), y0 + 14, z] as Vec3), [sx, 0, 0]))],
       tools: ["screwdriver"],
     },
     {
@@ -1255,7 +1258,7 @@ function deskDrawer(b: PlanBuilder, g: { W: number; D: number; dw: number; yU: n
       tools: ["screwdriver"],
       warnings: ["floor", "face"],
     },
-    { title: "Slide in the bottom and fit the back", detail: "Bottom down the grooves, back over it, then two screws through each side.", kind: "drawer", scene: "drawer", stage: [{ id: "B", pos: rel("B"), from: [0, 0, -300] }, { id: "K", pos: rel("K"), from: [0, 0, -200] }], fit: [fit(RUNNER_SCREW, [-1, 1].map((sx) => [sx * (bw / 2), y0 + 8 + sh / 2, zb + 6] as Vec3), [-1, 0, 0], { on: "K" })].map((f) => ({ ...f, dir: [1, 0, 0] as Vec3 })), tools: ["screwdriver"] },
+    { title: "Slide in the bottom and fit the back", detail: "Bottom down the grooves, back over it, then two screws through each side.", kind: "drawer", scene: "drawer", stage: [{ id: "B", pos: rel("B"), from: [0, 0, -300] }, { id: "K", pos: rel("K"), from: [0, 0, -200] }], fit: [-1, 1].map((sx) => fit(RUNNER_SCREW, [[sx * (bw / 2), y0 + 8 + sh / 2, zb + 6]], [-sx, 0, 0], { on: "K" })), tools: ["screwdriver"] },
     { title: "Turn the desk over and slide the drawer in", detail: "Set it on the runners and push until it clicks.", kind: "drawer", scene: "main", pose: "+y", add: ["F", "L", "R", "B", "K"], from: [0, 0, 420] },
   ];
   run(b, parts, steps);
@@ -1460,6 +1463,7 @@ interface BedCfg {
   slats: boolean; // a slatted base comes with it
   storage: boolean;
   beamLegs: number; // legs under the centre beam
+  drawers4?: boolean; // the king: four drawers, two each side, on runners on the head and foot rails and two hung bars
 }
 
 function bedBuild(b: PlanBuilder, c: BedCfg) {
@@ -1477,10 +1481,13 @@ function bedBuild(b: PlanBuilder, c: BedCfg) {
   ];
   for (const p of posts) parts.push({ id: p.id, name: p.h > ft ? "Head post" : "Foot post", size: [pd, p.h, pd], pos: [p.x, p.h / 2, p.z], cyl: true, mat: "wood" });
   parts.push(box("HB", "Headboard", [inW, H - 120 - (y0 + rh + 40), rt], [0, (H - 120 + y0 + rh + 40) / 2, -pz]));
-  parts.push(box("HR", "Head rail", [inW, rh, rt], [0, ry, -pz]));
-  parts.push(box("FB", "Footboard", [inW, rh, rt], [0, ry, pz]));
+  // with four drawers the head rail and footboard reach down so the end runners have something to screw into
+  const eh = c.drawers4 ? rh + y0 - 40 : rh, ey = c.drawers4 ? 40 + eh / 2 : ry;
+  parts.push(box("HR", "Head rail", [inW, eh, rt], [0, ey, -pz]));
+  parts.push(box("FB", "Footboard", [inW, eh, rt], [0, ey, pz]));
   for (const sx of [-1, 1]) parts.push(box(`SR${sx}`, "Side rail", [rt, rh, inD], [sx * px, ry, 0]));
-  for (const sx of [-1, 1]) parts.push(box(`ST${sx}`, "Slat strip", [20, 30, inD - 20], [sx * (px - rt / 2 - 10), y0 + 25, 0], "wood"));
+  const stx = c.drawers4 ? 6 : 0; // room for the hanging brackets between the rail and the strip
+  for (const sx of [-1, 1]) parts.push(box(`ST${sx}`, "Slat strip", [20, 30, inD - 20], [sx * (px - rt / 2 - 10 - stx), y0 + 25, 0], "wood"));
   parts.push(box("BM", "Centre beam", [40, 40, inD - 10], [0, y0 + 20, 0], "metal"));
   const legIds = range(c.beamLegs).map((i) => {
     const z = -inD / 2 + (inD * (i + 1)) / (c.beamLegs + 1);
@@ -1500,7 +1507,10 @@ function bedBuild(b: PlanBuilder, c: BedCfg) {
   });
 
   const steps: St[] = [];
-  const pc = (id: string) => parts.find((p) => p.id === id)!.pos;
+  const pc = (id: string): Vec3 => {
+    const p = parts.find((q) => q.id === id)!.pos;
+    return id === "HR" || id === "FB" ? [p[0], ry, p[2]] : p; // fittings stay at the rail height
+  };
   const lay = (ids: string[]) => ids.map((id, k) => ({ id, pos: [(k - (ids.length - 1) / 2) * 140, 0, 0] as Vec3, rot: [Math.PI / 2, 0, 0] as Vec3 }));
   steps.push({
     title: "Tap the glides into the posts",
@@ -1621,6 +1631,7 @@ function bedBuild(b: PlanBuilder, c: BedCfg) {
     tools: ["screwdriver"],
     check: "square",
   });
+  if (c.drawers4) steps.push(...kingSupports(parts, { px, pz, rt }));
   steps.push({
     title: "Screw the slat strips inside the side rails",
     detail: "Along the bottom inside edge of each rail, eight screws each.",
@@ -1654,8 +1665,181 @@ function bedBuild(b: PlanBuilder, c: BedCfg) {
     from: [0, 0, -500],
   };
   run(b, c.storage ? parts.filter((p) => p.id !== "SB") : parts, c.storage ? steps : [...steps, slatStep]);
-  if (c.storage) bedDrawers(b, { px, pz, inD, y0, rt, pd });
+  if (c.storage && c.drawers4) kingDrawers(b, { px, pz, inW, y0, rt });
+  else if (c.storage) bedDrawers(b, { px, pz, inD, y0, rt, pd });
   if (c.storage) run(b, [{ ...parts.find((p) => p.id === "SB")!, id: "SB2" }], [{ ...slatStep, add: ["SB2"] }]);
+}
+
+/*
+ * The king storage bed: four drawers, two under each side rail, staggered so they never meet. Each drawer runs on two
+ * metal runners: the head drawer on the left between the head rail and the first bar, the foot drawer on the right
+ * between the second bar and the footboard, the middle ones between the bars. The two bars hang from the side rails
+ * on a bracket at each end.
+ */
+const KING_RUNNER_Y = 100;
+const ARM_SCREW: HwDef = { kind: "screw", len: 16, dia: 5 };
+const HANG_STUD: HwDef = { kind: "stud", len: 12, dia: 10, name: "Hanging stud" };
+const RUNNER_CLIP: HwDef = { kind: "clip", len: 30, dia: 20, name: "Runner lock" };
+const DRAWER_PIN: HwDef = { kind: "camScrew", len: 30, dia: 8 };
+
+function kingLayout(g: { px: number; pz: number; rt: number }) {
+  const zH = -g.pz + g.rt / 2, zF = g.pz - g.rt / 2; // inner faces of the head rail and footboard
+  const span = (zF - zH - 40) / 3;
+  const z1 = zH + span + 10, z2 = z1 + 20 + span;
+  // each drawer: its side, and the two support faces it runs between (support id, face z, which way the drawer is)
+  type Face = { on: string; z: number; g: 1 | -1 };
+  const dws: { i: number; sx: number; a: Face; c: Face }[] = [
+    { i: 0, sx: -1, a: { on: "HR", z: zH, g: 1 }, c: { on: "BAR0", z: z1 - 10, g: -1 } },
+    { i: 1, sx: -1, a: { on: "BAR0", z: z1 + 10, g: 1 }, c: { on: "BAR1", z: z2 - 10, g: -1 } },
+    { i: 2, sx: 1, a: { on: "BAR0", z: z1 + 10, g: 1 }, c: { on: "BAR1", z: z2 - 10, g: -1 } },
+    { i: 3, sx: 1, a: { on: "BAR1", z: z2 + 10, g: 1 }, c: { on: "FB", z: zF, g: -1 } },
+  ];
+  return { z1, z2, dws };
+}
+
+function kingRunners(g: { px: number; pz: number; rt: number; inW: number }) {
+  const xo = g.px + g.rt / 2;
+  const bd = Math.min(600, g.inW / 2 - 60);
+  const runLen = Math.round((bd - 40) / 10) * 10;
+  const { dws } = kingLayout(g);
+  const runner: HwDef = { kind: "runner", len: runLen, dia: 40 };
+  const list = dws.flatMap((d) => [d.a, d.c].map((f) => {
+    const xc = d.sx * (xo - 18 - bd / 2);
+    const n = f.on === "HR" || f.on === "FB" ? 3 : 5;
+    return {
+      on: f.on,
+      runner: fit(runner, [[xc, KING_RUNNER_Y, f.z + f.g * 7]], [0, 1, 0], { on: f.on, hole: false, twist: Math.PI / 2 }),
+      screws: fit(RUNNER_SCREW, range(n).map((k) => [xc + (k - (n - 1) / 2) * (runLen / n), KING_RUNNER_Y, f.z + f.g * 2] as Vec3), [0, 0, -f.g], { on: f.on }),
+    };
+  }));
+  return { xo, bd, list };
+}
+
+/** The steps that fit the runners and hang the bars, between joining the frame and the slat strips. Adds the bars and brackets to `parts`. */
+function kingSupports(parts: Part[], g: { px: number; pz: number; rt: number }): St[] {
+  const inW = 2 * g.px - 60;
+  const { z1, z2 } = kingLayout(g);
+  const { list } = kingRunners({ ...g, inW });
+  const xa = g.px - g.rt / 2 - 3; // bracket centre, against the rail's inner face
+  const barW = 2 * (xa - 3);
+  const armH = 230, armY = KING_RUNNER_Y - 20 + armH / 2;
+  const zs = [z1, z2];
+  zs.forEach((z, i) => {
+    parts.push(box(`BAR${i}`, "Drawer bar", [barW, 40, 20], [0, KING_RUNNER_Y, z], "metal"));
+    for (const sx of [-1, 1]) parts.push(box(`ARM${i}${sx}`, "Hanging bracket", [6, armH, 50], [sx * xa, armY, z], "metal"));
+  });
+  const barIds = [0, 1].flatMap((i) => [`BAR${i}`, `ARM${i}-1`, `ARM${i}1`]);
+  const scene = (id: string): Vec3 => {
+    const p = parts.find((q) => q.id === id)!.pos;
+    const i = Number(id.replace(/\D/g, "").slice(0, 1));
+    return [p[0], p[1], (i - 0.5) * 320];
+  };
+  const ends = list.filter((r) => r.on === "HR" || r.on === "FB");
+  const onBars = list.filter((r) => r.on.startsWith("BAR"));
+  const hangY = 280, screwY = 240;
+  return [
+    {
+      title: "Screw a runner inside the head rail",
+      detail: "On the left, low down, its front end at the side rail. Three screws.",
+      kind: "runners",
+      fit: [ends[0].runner, ends[0].screws],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Screw a runner inside the footboard",
+      detail: "The same way, on the right.",
+      kind: "runners",
+      fit: [ends[1].runner, ends[1].screws],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Screw the hanging brackets onto the bars",
+      detail: "Lay both bars on the rug. One bracket on each end, two screws each.",
+      kind: "screws",
+      scene: "bars",
+      stage: barIds.map((id) => ({ id, pos: scene(id) })),
+      fit: zs.flatMap((z, i) => [-1, 1].map((sx) => fit(ARM_SCREW, [-8, 8].map((dy) => [sx * (xa + 3), KING_RUNNER_Y + dy, z] as Vec3), [-sx, 0, 0], { on: `ARM${i}${sx}`, mate: `BAR${i}` }))),
+      tools: ["screwdriver"],
+      warnings: ["floor"],
+    },
+    {
+      title: "Screw the runners onto the bars",
+      detail: "Six runners: the first bar takes three, the second bar three, each facing the drawer it carries.",
+      kind: "runners",
+      scene: "bars",
+      fit: onBars.flatMap((r) => [r.runner, r.screws]),
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Hang the bars inside the side rails",
+      detail: "Screw the hanging studs into the rails, hook each bracket over its stud, then fix it with a screw.",
+      kind: "screws",
+      pre: [-1, 1].map((sx) => fit(HANG_STUD, zs.map((z) => [sx * (g.px - g.rt / 2), hangY, z] as Vec3), [sx, 0, 0], { on: `SR${sx}` })),
+      add: barIds,
+      from: [0, 260, 0],
+      fit: [-1, 1].flatMap((sx) => zs.map((z, i) => fit(ARM_SCREW, [[sx * (xa - 3), screwY, z]], [sx, 0, 0], { on: `ARM${i}${sx}`, mate: `SR${sx}` }))),
+      tools: ["screwdriver"],
+    },
+  ];
+}
+
+/** The king's four drawers: built on their fronts, then pushed onto the runners from the sides of the bed. */
+function kingDrawers(b: PlanBuilder, g: { px: number; pz: number; inW: number; y0: number; rt: number }) {
+  const { dws } = kingLayout(g);
+  const { xo, bd } = kingRunners(g);
+  const dh = g.y0 - 30, sh = dh - 40;
+  const lim = g.pz - 34; // the fronts stay clear of the posts
+  const parts: Part[] = [];
+  const geo = dws.map((d) => {
+    const z0 = d.a.z + 14, z1 = d.c.z - 14, bw = z1 - z0, zc = (z0 + z1) / 2;
+    const f0 = Math.max(d.a.z - 6, -lim), f1 = Math.min(d.c.z + 6, lim);
+    const xin = (o: number) => d.sx * (xo - o); // o mm in from the bed's side
+    parts.push(box(`F${d.i}`, "Drawer front", [18, dh - 6, f1 - f0], [xin(9), 30 + dh / 2, (f0 + f1) / 2]));
+    parts.push(box(`L${d.i}`, "Drawer side", [bd, sh, 12], [xin(18 + bd / 2), 40 + sh / 2, z0 + 6]));
+    parts.push(box(`R${d.i}`, "Drawer side", [bd, sh, 12], [xin(18 + bd / 2), 40 + sh / 2, z1 - 6]));
+    parts.push(box(`B${d.i}`, "Drawer bottom", [bd - 12, 3, bw - 12], [xin(18 + bd / 2), 44, zc], "fiber"));
+    parts.push(box(`K${d.i}`, "Drawer back", [12, sh - 12, bw - 24], [xin(18 + bd - 6), 46 + (sh - 12) / 2, zc]));
+    return { ...d, z0, z1, xin };
+  });
+  const ys = [40 + sh / 2 - 30, 40 + sh / 2 + 30];
+  const joins = (d: (typeof geo)[number]): Fit[] => [
+    fit(DRAWER_PIN, [d.z0 + 6, d.z1 - 6].flatMap((z) => ys.map((y) => [d.xin(18), y, z] as Vec3)), [d.sx, 0, 0], { on: `F${d.i}` }),
+    fit(HW.cam, [d.z0 + 6, d.z1 - 6].flatMap((z) => ys.map((y) => [d.xin(48), y, z] as Vec3)), [0, 1, 0], { on: `L${d.i}` }),
+  ];
+  const c0 = parts.find((p) => p.id === "F0")!.pos;
+  const rel = (id: string): Vec3 => {
+    const p = parts.find((q) => q.id === id)!.pos;
+    return [p[0] - c0[0], p[1] - c0[1], p[2] - c0[2]];
+  };
+  const ids = (i: number) => [`F${i}`, `L${i}`, `R${i}`, `B${i}`, `K${i}`];
+  const from: Record<string, Vec3> = {};
+  for (const d of geo) for (const id of ids(d.i)) from[id] = [d.sx * 520, 0, 0];
+  const steps: St[] = [
+    {
+      title: "Build the drawers on their fronts",
+      detail: "Pins into the front, sides onto them, bottom down the grooves, back across the ends. Turn the four cam locks.",
+      kind: "cams",
+      scene: "drawer",
+      pose: "+y",
+      stage: ids(0).map((id) => ({ id, pos: rel(id) })),
+      fit: joins(geo[0]),
+      tools: ["screwdriver"],
+      repeat: 4,
+      warnings: ["floor"],
+    },
+    {
+      title: "Put in all four drawers",
+      detail: "From the sides of the bed: pull the runners out, set each drawer on them and push it in until the locks click.",
+      kind: "drawer",
+      scene: "main",
+      pose: "+y",
+      add: geo.flatMap((d) => ids(d.i)),
+      from,
+      preset: geo.slice(1).flatMap((d) => joins(d).map((f) => ({ ...f, hole: false as const }))),
+      fit: geo.map((d) => fit(RUNNER_CLIP, [d.z0 + 6, d.z1 - 6].map((z) => [d.xin(40), 40, z] as Vec3), [0, 1, 0], { on: `B${d.i}`, hole: false })),
+    },
+  ];
+  run(b, parts, steps);
 }
 
 /** Two drawers under one side rail, at the foot end, on runners screwed to three supports. */
@@ -1664,9 +1848,11 @@ function bedDrawers(b: PlanBuilder, g: { px: number; pz: number; inD: number; y0
   const depth = 560, dh = y0 - 30;
   const xo = px + rt / 2; // outer face of the right rail
   const len = inD / 2 - 60; // two drawers along the foot half
-  const z0 = 40;
+  const z0 = inD / 2 - 60 - len; // the last support stays clear of the footboard and under the beam
   const zs = [z0, z0 + len / 2 + 9, z0 + len + 18];
-  const parts: Part[] = zs.map((z, i) => box(`SP${i}`, "Drawer support", [depth, dh, 18], [xo - rt - depth / 2, 30 + dh / 2, z]));
+  // each support runs from the side rail to under the centre beam, so both ends have something to screw into
+  const sl = Math.max(depth, xo - rt + 20);
+  const parts: Part[] = zs.map((z, i) => box(`SP${i}`, "Drawer support", [sl, dh, 18], [xo - rt - sl / 2, 30 + dh / 2, z]));
   const dws = [0, 1].map((i) => ({ i, z: (zs[i] + zs[i + 1]) / 2, w: zs[i + 1] - zs[i] - 18 - 20 }));
   for (const d of dws) {
     const sh = dh - 40, bw = d.w, bd = depth - 40;
@@ -1708,7 +1894,7 @@ function bedDrawers(b: PlanBuilder, g: { px: number; pz: number; inD: number; y0
       pose: "+y",
       add: zs.map((_, i) => `SP${i}`),
       from: [0, -200, 0],
-      fit: [fit(STRIP_SCREW, zs.flatMap((z) => [[xo - rt - 10, 30 + dh, z], [xo - rt - depth + 10, 30 + dh, z]] as Vec3[]), [0, 1, 0])],
+      fit: [fit(STRIP_SCREW, zs.flatMap((z) => [[xo - rt - 10, 30 + dh - 12, z], [0, 30 + dh - 12, z]] as Vec3[]), [0, 1, 0])],
       tools: ["screwdriver"],
     },
     {
@@ -1956,7 +2142,7 @@ function bedCfg(s: ProductSpec): BedCfg | null {
     case "tonstad-bed-frame-standard-double-135-x-190":
       return { W, D, H, slats: true, storage: false, beamLegs: 1 };
     case "tonstad-bed-frame-storage-standard-king-150-x-20":
-      return { W, D, H, slats: true, storage: true, beamLegs: 1 };
+      return { W, D, H, slats: true, storage: true, beamLegs: 1, drawers4: true };
   }
   return null;
 }

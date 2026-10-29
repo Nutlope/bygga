@@ -44,7 +44,7 @@ function drawer(W: number, H: number, D: number, x0: number, y0: number): { part
     { id: "DB", name: "Drawer bottom", size: [W - 2 * t, 5, D - 2 * t], pos: [x0, y0 + 12, 0], material: "fiber" },
   ];
   const screws = (side: number, end: number) =>
-    at("screw", [y0 + 30, y0 + H - 30].map((y): Vec3 => [x0 + side * (W / 2), y, end * ze]), [-side, 0, 0], side < 0 ? "DS1" : "DS2", end < 0 ? "DE1" : "DE2", { len: 16, dia: 4 });
+    at("screw", [y0 + 30, y0 + H - 45].map((y): Vec3 => [x0 + side * (W / 2), y, end * ze]), [-side, 0, 0], side < 0 ? "DS1" : "DS2", end < 0 ? "DE1" : "DE2", { len: 16, dia: 4 });
   const steps: CustomStep[] = [
     {
       title: "Screw a drawer side to one end",
@@ -175,7 +175,7 @@ function dressingTable(): CustomParams {
     {
       title: "Screw the shelf to the back and divider",
       detail: "Four long screws through the shelf, two into each board.",
-      fix: [at("bolt", [-200, -100].map((x): Vec3 => [x, yS0, zB]), [0, 1, 0], "S", "B", BOLT), at("bolt", [-120, 120].map((z): Vec3 => [xd, yS0, z]), [0, 1, 0], "S", "V", BOLT)],
+      fix: [at("bolt", [-200, -100].map((x): Vec3 => [x, yS0, zB]), [0, 1, 0], "S", "B", BOLT), at("bolt", [-50, 50].map((z): Vec3 => [xd, yS0, z]), [0, 1, 0], "S", "V", BOLT)],
       tools: ["allen"],
     },
     {

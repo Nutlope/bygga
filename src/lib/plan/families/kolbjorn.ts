@@ -441,7 +441,7 @@ function build90(b: PlanBuilder, s: ProductSpec, W: number, H: number) {
   const backW = (2 * inner) / 3;
   const panelH = panelY1 - panelY0, panelC = (panelY0 + panelY1) / 2;
   const railYs = [H - 220, H - 760];
-  const railX0 = divX + 22, railX1 = inner;
+  const railX0 = divX + 22, railX1 = W / 2 - 3; // out to the right side panel, where its end is screwed
   const railZ = -40;
   const shelfYs = [0.3, 0.52, 0.74].map((t) => Math.round(panelY0 + t * panelH));
   const leftW = divX - 2 + inner;
@@ -538,7 +538,7 @@ function build90(b: PlanBuilder, s: ProductSpec, W: number, H: number) {
       detail: "One end on its bracket, the other to the right side. Two screws at each end.",
       fix: [
         { ...RAIL_SCREW, count: 2, at: railYs.map((y) => [railX0 + 10, y + 12, railZ] as Vec3), dir: [0, -1, 0] },
-        { ...RAIL_SCREW, count: 2, at: railYs.map((y) => [inner, y, railZ] as Vec3), dir: [1, 0, 0] },
+        { ...RAIL_SCREW, count: 2, at: railYs.map((y) => [railX1 - 6, y, railZ] as Vec3), dir: [1, 0, 0] },
       ],
       tools: ["screwdriver"],
     },

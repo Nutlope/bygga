@@ -209,13 +209,13 @@ function boxSteps(b: PlanBuilder, s: ProductSpec) {
   }));
   // upside down, side by side on the floor in their own scene
   const flip: Vec3 = [Math.PI, 0, 0];
-  const show = (keys: string[], i: number) => {
+  const show = (keys: string[], i: number, from: Vec3 = [0, 200, 0]) => {
     const pivot: Vec3 = [x0, 125, boxes[i].z0];
     const at: Vec3 = [(i - 0.5) * (BX + 250), 125, 0];
     for (const k of keys) {
       const it = b.partItem(k);
       const p = rotate([it.final.pos[0] - pivot[0], it.final.pos[1] - pivot[1], it.final.pos[2] - pivot[2]], flip);
-      b.stage(k, [p[0] + at[0], p[1] + at[1], p[2] + at[2]], flip, [0, 200, 0]);
+      b.stage(k, [p[0] + at[0], p[1] + at[1], p[2] + at[2]], flip, from);
     }
   };
   const scene = "boxes";
@@ -233,7 +233,8 @@ function boxSteps(b: PlanBuilder, s: ProductSpec) {
   });
   b.step({ title: "Tap the dowels into the box sides", detail: "Two in one end of each side panel, the end that meets the panel with the cam bolts.", tools: ["hammer"], scene, kind: "dowels" }, () => {
     b.stagger(0.2);
-    boxes.forEach((bxx, i) => show(bxx.sides, i));
+    // they slide onto the end along its cam bolts
+    boxes.forEach((bxx, i) => show(bxx.sides, i, [-250, 0, 0]));
     b.then(0.15);
     b.fits(DOWEL, both((bxx) => [-1, 1].flatMap((g) => [yA + 30, yB - 30].map((y): FitOpts => ({ on: bxx.sides[g < 0 ? 0 : 1], at: [fx, y, zSide(bxx, g)], dir: [1, 0, 0], mate: bxx.front })))), 0.05);
   });
@@ -259,11 +260,9 @@ function boxSteps(b: PlanBuilder, s: ProductSpec) {
     b.stagger(0.25);
     boxes.forEach((bxx, i) => show([bxx.bottoms[1]], i));
   });
-  b.step({ title: "Screw the bottom to the frame", detail: "Ten screws through the bottom into the edges of the sides and the end panels.", tools: ["allen"], scene, kind: "screws" }, () => {
-    const pts = (bxx: (typeof boxes)[number]): FitOpts[] => [
-      ...[-1, 1].flatMap((g) => [-0.3, 0, 0.3].map((f): FitOpts => ({ on: bxx.bottoms[g < 0 ? 0 : 1], at: [x0 + f * BX, 40, zSide(bxx, g)], dir: [0, 1, 0], mate: bxx.sides[g < 0 ? 0 : 1] }))),
-      ...[bx - BT / 2 + 20, fx + BT / 2 - 20].flatMap((x) => [-1, 1].map((g): FitOpts => ({ on: bxx.bottoms[g < 0 ? 0 : 1], at: [x, 40, bxx.z0 + g * BZ * 0.25], dir: [0, 1, 0] }))),
-    ];
+  b.step({ title: "Screw the bottom to the frame", detail: "Ten screws through the bottom into the edges of the two sides, five along each.", tools: ["allen"], scene, kind: "screws" }, () => {
+    const pts = (bxx: (typeof boxes)[number]): FitOpts[] =>
+      [-1, 1].flatMap((g) => [-0.4, -0.2, 0, 0.2, 0.4].map((f): FitOpts => ({ on: bxx.bottoms[g < 0 ? 0 : 1], at: [x0 + f * BX, 40, zSide(bxx, g)], dir: [0, 1, 0], mate: bxx.sides[g < 0 ? 0 : 1] })));
     b.fits(BOX_SCREW, both(pts), 0.04);
   });
   const castorAt = (bxx: (typeof boxes)[number]): Vec3[] => [
@@ -283,7 +282,7 @@ function boxSteps(b: PlanBuilder, s: ProductSpec) {
 
 /* ---------------------------------------------------------------- desk */
 
-function deskRecipe(s: ProductSpec): CustomParams {
+function deskRecipe(s: ProductSpec): CustomParams & { drawerParts: CustomPart[]; drawer: DeskDrawer } {
   void s;
   const TW = 1220, TD = 600, TT = 22, TY = 740; // top surface 74 cm up
   const GH = 90, GT = 18; // gallery
@@ -317,12 +316,12 @@ function deskRecipe(s: ProductSpec): CustomParams {
   const dLen = dz1 - dz0;
   const DS = OX - 13; // outside of the drawer sides, a runner's width in from the guides
   const dy0 = AY0 + 6, dh = 66;
-  parts.push(
+  const drawerParts: CustomPart[] = [
     { id: "DF", name: "Drawer front", size: [2 * OX - 4, AH - 4, AT], pos: [0, ay, FZ - AT / 2] },
     ...[-1, 1].map((g, i): CustomPart => ({ id: `DS${i}`, name: "Drawer side", size: [14, dh, dLen], pos: [g * (DS - 7), dy0 + dh / 2, (dz0 + dz1) / 2] })),
     { id: "DB", name: "Drawer bottom", size: [2 * DS - 28, 4, dLen - 14], pos: [0, dy0 + 10, (dz0 + dz1) / 2 + 3], material: "fiber" },
     { id: "DK", name: "Drawer back", size: [2 * DS - 28, dh - 14, 14], pos: [0, dy0 + 14 + (dh - 14) / 2, dz0 + 7] },
-  );
+  ];
 
   const pt = (x: number, y: number, z: number): Vec3 => [x, y, z];
   const legs = [0, 1].flatMap((i) => [0, 1].map((j) => ({ id: `L${i}${j}`, sx: sg(i), sz: sg(j) })));
@@ -375,18 +374,23 @@ function deskRecipe(s: ProductSpec): CustomParams {
         ...[0, 1].map((i): CustomFix => ({ kind: "camScrew", count: 1, on: `FR${i}`, at: [pt(sg(i) * GX + sg(i) * 4, ay, FZ - AT)], dir: [0, 0, 1] })),
       ],
       tools: ["screwdriver"],
+      wait: ["BA", "FR0", "FR1"],
+      from: { BA: [0, 0, -300], FR0: [0, 0, 300], FR1: [0, 0, 300] },
     },
     {
       title: "Tap the big dowels into the drawer guides",
       detail: "One in each end of both guides.",
-      fix: [0, 1].map((i): CustomFix => ({ kind: "dowel", count: 2, len: 40, dia: 10, on: `DG${i}`, at: [-1, 1].map((g) => pt(sg(i) * GX, ay + 18, g * (FZ - AT))), dir: [0, 0, 1] })),
+      // each goes into its end of the guide, the back one forwards and the front one backwards
+      fix: [0, 1].flatMap((i) => [-1, 1].map((g): CustomFix => ({ kind: "dowel", count: 1, len: 40, dia: 10, on: `DG${i}`, at: [pt(sg(i) * GX, ay + 25, g * (FZ - AT))], dir: [0, 0, -g] }))),
       tools: ["hammer"],
+      wait: ["DG0", "DG1"],
+      from: { DG0: [0, 0, 300], DG1: [0, 0, 300] },
     },
     {
       title: "Fit the drawer guides between the back rail and the front pieces",
       detail: "The cam bolts go into the holes in the guides' faces.",
       add: ["BA", "DG0", "DG1", "FR0", "FR1"],
-      from: { BA: [0, -260, 0], DG0: [0, -260, 0], DG1: [0, -260, 0], FR0: [0, -260, 0], FR1: [0, -260, 0] },
+      from: { BA: [0, 0, -300], DG0: [0, 0, 300], DG1: [0, 0, 300], FR0: [0, 0, 300], FR1: [0, 0, 300] },
     },
     {
       title: "Lock the guides with the cam locks",
@@ -415,7 +419,7 @@ function deskRecipe(s: ProductSpec): CustomParams {
       detail: "Three knobs on the outside, each held by a screw from the inside. You can hang small things on them later.",
       fix: [
         { kind: "knob", count: 3, on: "SA1", at: [-120, 0, 120].map((z) => pt(FX, ay, z)), dir: [-1, 0, 0] },
-        { kind: "screw", name: "Knob screw", count: 3, len: 35, dia: 4, on: "SA1", at: [-120, 0, 120].map((z) => pt(FX - AT, ay, z)), dir: [1, 0, 0] },
+        { kind: "screw", name: "Knob screw", count: 3, len: 35, dia: 4, on: "SA1", at: [-120, 0, 120].map((z) => pt(FX - AT - 5, ay, z)), dir: [1, 0, 0] },
       ],
       tools: ["screwdriver"],
     },
@@ -484,59 +488,69 @@ function deskRecipe(s: ProductSpec): CustomParams {
       tools: ["screwdriver"],
     },
     { title: "Stand the desk on its legs", detail: "Two of you lift it over, so the legs don't take the weight on one corner.", pose: "+y", people: 2, kind: "standup" },
-    {
-      title: "Screw the cam bolts into the drawer front",
-      detail: "Two in the inside face, one near each end.",
-      add: ["DF"],
-      fix: [{ kind: "camScrew", count: 2, on: "DF", at: [-1, 1].map((g) => pt(g * (DS - 7), ay, FZ - AT)), dir: [0, 0, 1] }],
-      tools: ["screwdriver"],
-      from: { DF: [0, 0, 400] },
-    },
-    {
-      title: "Tap the small dowels into the drawer sides",
-      detail: "One in the front end of each side.",
-      fix: [0, 1].map((i): CustomFix => ({ kind: "dowel", count: 1, len: 25, dia: 6, on: `DS${i}`, at: [pt(sg(i) * (DS - 7), dy0 + 20, dz1)], dir: [0, 0, 1] })),
-      tools: ["hammer"],
-    },
-    { title: "Fit the drawer sides to the front", detail: "Groove facing in and down, for the bottom.", add: ["DS0", "DS1"], from: { DS0: [0, 0, 400], DS1: [0, 0, 400] } },
-    {
-      title: "Lock the sides with the cam locks",
-      detail: "One in each side near the front, turned clockwise.",
-      fix: [0, 1].map((i): CustomFix => ({ kind: "cam", count: 1, on: `DS${i}`, at: [pt(sg(i) * (DS - 14), ay, dz1 - 30)], dir: [sg(i), 0, 0] })),
-      tools: ["flathead"],
-    },
-    { title: "Slide in the drawer bottom", detail: "Smooth side up, along the grooves until it meets the front.", add: ["DB"], from: { DB: [0, 0, 500] } },
-    {
-      title: "Hammer on the drawer back",
-      detail: "Lay it over the end of the bottom and knock the two expanding dowels through the sides into it.",
-      add: ["DK"],
-      fix: [{ kind: "dowel", name: "Expanding dowel", count: 2, len: 35, dia: 8, at: [-1, 1].map((g) => pt(g * DS, dy0 + 40, dz0 + 7)), dir: [-1, 0, 0] }],
-      tools: ["hammer"],
-      from: { DK: [0, 0, 500] },
-    },
-    {
-      title: "Screw the runner parts onto the drawer",
-      detail: "Click each one onto the bottom edge of a side, then two screws at the back.",
-      fix: [0, 1].map((i): CustomFix => ({ kind: "screw", count: 2, len: 12, dia: 4, on: `DS${i}`, at: [dz0 + 20, dz0 + 80].map((z) => pt(sg(i) * DS, dy0 + 10, z)), dir: [-sg(i), 0, 0] })),
-      tools: ["screwdriver"],
-    },
-    {
-      title: "Screw the knob onto the drawer front",
-      detail: "The screw goes in from the inside.",
-      fix: [
-        { kind: "knob", count: 1, on: "DF", at: [pt(0, ay, FZ)], dir: [0, 0, -1] },
-        { kind: "screw", name: "Knob screw", count: 1, len: 25, dia: 4, on: "DF", at: [pt(0, ay, FZ - AT)], dir: [0, 0, 1] },
-      ],
-      tools: ["screwdriver"],
-    },
-    { title: "Push the drawer onto the runners", detail: "Tilt it in at the front, lower it onto the runners and push until it closes softly.", kind: "drawer" },
-    {
-      title: "Press in the cable covers",
-      detail: "One in each hole at the back corners of the top.",
-      fix: [{ kind: "cap", name: "Cable cover", count: 2, len: 12, dia: 60, at: [-1, 1].map((g) => pt(g * (TW / 2 - 110), TY, -TD / 2 + 90)), dir: [0, -1, 0] }],
-    },
   ];
-  return { parts, steps };
+  return { parts, steps, drawerParts, drawer: { ay, FZ, AT, DS, dy0, dz0, dz1, TW, TD, TY } };
+}
+
+type DeskDrawer = { ay: number; FZ: number; AT: number; DS: number; dy0: number; dz0: number; dz1: number; TW: number; TD: number; TY: number };
+
+/** The drawer, built face down on the floor as the manual does it, then pushed onto the runners; the cable covers last. */
+function deskDrawerSteps(b: PlanBuilder, parts: CustomPart[], d: DeskDrawer) {
+  const { ay, FZ, AT, DS, dy0, dz0, dz1, TW, TD, TY } = d;
+  const key = (id: string) => {
+    const p = parts.find((x) => x.id === id)!;
+    return b.place(b.part(p.name, p.size, { material: p.material ?? "board" }), p.pos);
+  };
+  const DF = key("DF"), DSs = [key("DS0"), key("DS1")], DB = key("DB"), DK = key("DK");
+  const scene = "drawer";
+  // face down: the front lies on the floor and the drawer is built upwards from it, its back at the top
+  const face: Vec3 = [Math.PI / 2, 0, 0];
+  const pivot: Vec3 = [0, ay, FZ];
+  const lay = (keys: string[], up = 0, from: Vec3 | undefined = [0, 250, 0]) => {
+    for (const k of keys) {
+      const it = b.partItem(k);
+      const q = rotate([it.final.pos[0] - pivot[0], it.final.pos[1] - pivot[1], it.final.pos[2] - pivot[2]], face);
+      b.stage(k, [q[0], q[1] + up, q[2]], face, from);
+    }
+  };
+  const step = (title: string, detail: string, body: () => void, o: { tools?: ("hammer" | "flathead" | "screwdriver")[]; kind?: "cams" | "dowels" | "join" | "screws" | "drawer" | "general"; main?: boolean } = {}) =>
+    b.step({ title, detail, kind: o.kind ?? "general", tools: o.tools, scene: o.main ? undefined : scene, pose: o.main ? "+y" : undefined }, body);
+  const sides = (f: (k: string, g: number) => FitOpts[]) => DSs.flatMap((k, i) => f(k, sg(i)));
+
+  step("Screw the cam bolts into the drawer front", "Lay the front face down on a rug: two cam bolts in the inside face, one near each end.", () => {
+    lay([DF]);
+    b.then(0.15);
+    b.fits(CAM_BOLT, [-1, 1].map((g): FitOpts => ({ on: DF, at: [g * (DS - 7), ay, FZ - AT], dir: [0, 0, 1] })), 0.1);
+  }, { tools: ["screwdriver"], kind: "cams" });
+  step("Tap the small dowels into the drawer sides", "One in the front end of each side.", () => {
+    lay(DSs, 260);
+    b.then(0.15);
+    b.fits({ kind: "dowel", len: 25, dia: 6 }, sides((k, g) => [{ on: k, at: [g * (DS - 7), dy0 + 20, dz1], dir: [0, 0, -1], mate: DF }]), 0.1);
+  }, { tools: ["hammer"], kind: "dowels" });
+  step("Stand the sides on the front", "Grooves facing in and toward the bottom edge, dowels and cam bolts in their holes.", () => lay(DSs, 0, undefined), { kind: "join" });
+  step("Lock the sides with the cam locks", "One in each side near the front, turned clockwise.", () =>
+    b.fits(CAM, sides((k, g) => [{ on: k, at: [g * (DS - 14), ay, dz1 - 30], dir: [g, 0, 0] }]), 0.1),
+  { tools: ["flathead"], kind: "cams" });
+  step("Slide in the drawer bottom", "Smooth side up, down the grooves until it meets the front.", () => lay([DB], 0, [0, 400, 0]), { kind: "join" });
+  step("Lower the back onto the bottom", "Tilt it in over the end of the bottom, between the sides.", () => lay([DK], 0, [0, 250, 0]), { kind: "join" });
+  step("Hammer the expanding dowels in", "One through each side into the back.", () =>
+    b.fits({ kind: "dowel", len: 35, dia: 8, name: "Expanding dowel" }, sides((k, g) => [{ on: k, at: [g * DS, dy0 + 40, dz0 + 7], dir: [-g, 0, 0], mate: DK }]), 0.15),
+  { tools: ["hammer"], kind: "dowels" });
+  step("Screw the runner parts onto the drawer", "Click each one onto the bottom edge of a side, then two screws at the back.", () =>
+    b.fits({ kind: "screw", len: 12, dia: 4 }, sides((k, g) => [dz0 + 20, dz0 + 80].map((z): FitOpts => ({ on: k, at: [g * DS, dy0 + 10, z], dir: [-g, 0, 0] }))), 0.08),
+  { tools: ["screwdriver"], kind: "screws" });
+  step("Screw the knob onto the drawer front", "The screw goes in from the inside.", () => {
+    b.fit({ kind: "knob", len: 25, dia: 30 }, { on: DF, at: [0, ay, FZ], dir: [0, 0, -1], hole: false });
+    b.fit({ kind: "screw", len: 25, dia: 4, name: "Knob screw" }, { on: DF, at: [0, ay, FZ - AT], dir: [0, 0, 1] });
+  }, { tools: ["screwdriver"], kind: "screws" });
+  step("Push the drawer onto the runners", "Tilt it in at the front, lower it onto the runners and push until it closes softly.", () => {
+    b.stagger(0.05);
+    for (const k of [DF, ...DSs, DB, DK]) b.add(k, [0, 0, 450]);
+  }, { kind: "drawer", main: true });
+  const top = b.items.find((i) => i.kind === "part" && b.parts.find((t) => t.id === i.ref)?.name === "Desk top")?.key;
+  step("Press in the cable covers", "One in each hole at the back corners of the top.", () =>
+    b.fits({ kind: "cap", len: 12, dia: 60, name: "Cable cover" }, [-1, 1].map((g): FitOpts => ({ on: top, at: [g * (TW / 2 - 110), TY, -TD / 2 + 90], dir: [0, -1, 0], hole: false })), 0.15),
+  { main: true });
 }
 
 /* ---------------------------------------------------------------- family */
@@ -548,11 +562,16 @@ const withStorage = (s: ProductSpec) => /storage/i.test(s.variant) || /storage/.
 const family: Family = {
   names: ["SMYGA"],
   recipe(s) {
-    if (isDesk(s)) return deskRecipe(s);
     if (isBed(s) && !withStorage(s)) return bedRecipe(s);
     return null;
   },
   build(b, s) {
+    if (isDesk(s)) {
+      const { drawerParts, drawer, ...custom } = deskRecipe(s);
+      buildCustom(b, { ...s, custom });
+      deskDrawerSteps(b, drawerParts, drawer);
+      return true;
+    }
     if (!isBed(s) || !withStorage(s)) return false;
     buildCustom(b, { ...s, custom: bedRecipe(s) });
     boxSteps(b, s);

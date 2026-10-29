@@ -12,8 +12,9 @@ import { buildCustom } from "../custom";
  * stacks on a bigger one on four sleeves and screws. LÄTTHET legs, SPILDRA tops, HJÄLPA shelves, rails, baskets,
  * drawers and soft-closing hinges follow their own manuals. The open units are a different system: four welded
  * steel frames bolted into a tube while it lies on its side.
- * Combinations of frames of different heights (most of the "wardrobe with 3/4/6 doors" sets) aren't covered: the
- * row code would repeat one frame, so those keep the old guide.
+ * The "wardrobe with 3/4/6 doors" sets are rows of frames of different heights, read from their parts lists and
+ * photos: each column built the same way, joined with plates, small frames stacked on tall ones, a SPILDRA top on
+ * each low column, and on the 300 cm set frames hung on LÄTTHET suspension rails beside the stack.
  */
 
 const t = 16; // panel thickness
@@ -72,14 +73,90 @@ interface Layout {
   legs: boolean;
   top: boolean; // a SPILDRA top
   wallLast: boolean; // a frame in a row: its wall fixing waits until they all stand together
+  leg?: number; // leg height, mm (LÄTTHET 11 cm unless said)
+  feet?: boolean; // LÄTTHET adjustable feet instead of legs: 1 cm
+  colTops?: string[]; // a SPILDRA top on each of these frames instead of one across the whole width
 }
 
-const COMBOS_OLD = /^platsa-wardrobe-(3-doors|4-doors|w-6-doors-240|w-6-doors-300)/;
+const FEET = 10;
+const legH = (L: Layout) => (L.legs ? (L.leg ?? LEG) : L.feet ? FEET : 0);
+
+/** The wardrobe sets of different heights, column by column from the left: frame heights from the bottom up. */
+function comboOf(slug: string, W: number, H: number, D: number): Layout | null {
+  type Col = { hs: number[]; o: Partial<Frame>[] };
+  const sh = (...ys: number[]): Inside[] => ys.map((y) => ({ kind: "shelf", y }));
+  const leg = 110;
+  let cols: Col[], feet = false, tops: [number, number][] = []; // [column, frame index] with a SPILDRA top
+  if (slug === "platsa-wardrobe-3-doors-180-x-57-x-133") {
+    cols = [{ hs: [400], o: [{ door: "L", inside: sh(200) }] }, { hs: [600], o: [{ door: "L", inside: sh(300) }] }, { hs: [1200], o: [{ door: "L", inside: sh(600) }] }];
+    tops = [[0, 0], [1, 0], [2, 0]];
+  } else if (slug === "platsa-wardrobe-3-doors-180-x-57-x-181") {
+    cols = [
+      { hs: [1800], o: [{ door: "L", inside: [{ kind: "shelf", y: 400 }, { kind: "rail", y: 1700 }] }] },
+      { hs: [1200], o: [{ door: "L", inside: sh(300, 600, 900) }] },
+      { hs: [600], o: [{ door: "L", inside: [{ kind: "basket", y: 60 }, { kind: "basket", y: 300 }] }] },
+    ];
+    feet = true;
+    tops = [[1, 0], [2, 0]];
+  } else if (slug === "platsa-wardrobe-3-doors-180-x-42-x-191") {
+    cols = [
+      { hs: [1800], o: [{ door: "L", inside: [{ kind: "shelf", y: 300 }, { kind: "shelf", y: 600 }, { kind: "rail", y: 1700 }] }] },
+      { hs: [400], o: [{ door: "L", inside: [{ kind: "shoe", y: 60 }] }] },
+      { hs: [400], o: [{ door: "R", inside: [{ kind: "shoe", y: 60 }] }] },
+    ];
+    tops = [[1, 0], [2, 0]];
+  } else if (slug === "platsa-wardrobe-3-doors-180-x-57-x-191") {
+    cols = [{ hs: [1800], o: [{ door: "L", inside: [{ kind: "shelf", y: 300 }, { kind: "shelf", y: 700 }, { kind: "rail", y: 1700 }] }] }, { hs: [400], o: [{ door: "L", inside: sh(200) }] }, { hs: [400], o: [{ door: "R", inside: sh(200) }] }];
+    tops = [[1, 0], [2, 0]];
+  } else if (slug === "platsa-wardrobe-4-doors-240-x-57-x-191") {
+    cols = [0, 1, 2].map((): Col => ({ hs: [400], o: [{ door: "L", inside: sh(200) }] }));
+    cols.push({ hs: [1800], o: [{ door: "L", inside: sh(300, 600, 900, 1200, 1500) }] });
+    tops = [[0, 0], [1, 0], [2, 0]];
+  } else if (slug === "platsa-wardrobe-w-6-doors-240-x-57-x-221" || slug === "platsa-wardrobe-w-6-doors-240-x-57-x-231") {
+    cols = [
+      { hs: [600], o: [{ door: "L", inside: sh(300) }] },
+      { hs: [600, 400], o: [{ door: "L", inside: [{ kind: "basket", y: 60 }, { kind: "basket", y: 300 }] }, { door: "L" }] },
+      { hs: [1800], o: [{ door: "L", inside: [{ kind: "rail", y: 900 }, { kind: "rail", y: 1700 }] }] },
+      { hs: [1800, 400], o: [{ door: "R", inside: [{ kind: "rail", y: 1700 }] }, { door: "R" }] },
+    ];
+    feet = slug.endsWith("221");
+    tops = [[0, 0], [1, 1]];
+  } else if (slug === "platsa-wardrobe-w-6-doors-300-x-42-x-241") {
+    // the 180 frame in the middle with a 60 frame on it, two more 60 frames hung on the wall each side
+    const col = (x: number, i: number): Frame => ({ id: "", x, y: FEET + 1800, w: 600, h: 600, door: i % 2 ? "R" : "L", inside: sh(300) });
+    const fs: Frame[] = [
+      { id: "", x: 0, y: FEET, w: 600, h: 1800, door: "L", inside: [{ kind: "shelf", y: 300 }, { kind: "shelf", y: 600 }, { kind: "rail", y: 1700 }] },
+      col(0, 0),
+      ...[-1200, -600, 600, 1200].map((x, i) => col(x, i + 1)),
+    ];
+    return { W, H, D, df: D - DOOR, frames: fs.map((f, i) => ({ ...f, id: `F${i}` })), legs: false, feet: true, top: false, wallLast: true };
+  } else return null;
+  const y0 = feet ? FEET : leg;
+  const x0 = -W / 2 + 300;
+  const frames: Frame[] = [];
+  const topIds: string[] = [];
+  // bottom frames first, left to right, then the stacked ones
+  const all = cols.flatMap((c, ci) => {
+    let y = y0;
+    return c.hs.map((h, k) => {
+      const f: Frame = { id: "", x: x0 + ci * 600, y, w: 600, h, inside: [], ...c.o[k] };
+      y += h;
+      return { f, ci, k };
+    });
+  });
+  for (const e of [...all.filter((e) => e.k === 0), ...all.filter((e) => e.k > 0)]) {
+    e.f.id = `F${frames.length}`;
+    frames.push(e.f);
+    if (tops.some(([c, k]) => c === e.ci && k === e.k)) topIds.push(e.f.id);
+  }
+  return { W, H, D, df: D - DOOR, frames, legs: !feet, feet, leg, top: false, colTops: topIds, wallLast: true };
+}
 
 function layoutOf(s: ProductSpec): Layout | null {
   const slug = s.slug ?? "";
   const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
-  if (COMBOS_OLD.test(slug)) return null;
+  const combo = comboOf(slug, W, H, D);
+  if (combo) return combo;
   const col = (x: number, w: number, hs: number[], o: (i: number) => Partial<Frame> = () => ({}), y0 = 0): Frame[] => {
     let y = y0;
     return hs.map((h, i) => {
@@ -168,9 +245,9 @@ const spacerXs = (f: Frame) => [f.x - f.w / 2 + 120, f.x + f.w / 2 - 120];
 const spacers = (f: Frame, g: FrameGeo) => fixAt(SPACER, spacerXs(f).map((x): Vec3 => [x, f.y + f.h - t / 2, g.z0]), [0, 0, 1], `${f.id}T`);
 const caps = (f: Frame, g: FrameGeo) => fixAt(SPACER_CAP, spacerXs(f).map((x): Vec3 => [x, f.y + f.h - t / 2, g.z0 - 24]), [0, 0, 1], `${f.id}T`);
 
-function legParts(f: Frame, g: FrameGeo): CustomPart[] {
+function legParts(f: Frame, g: FrameGeo, h = LEG): CustomPart[] {
   return [-1, 1].flatMap((sx) =>
-    [g.z0 + 45, g.zf - 45].map((z, k): CustomPart => ({ id: `${f.id}G${sx < 0 ? "L" : "R"}${k}`, name: "Leg", size: [45, LEG, 45], pos: [f.x + sx * (f.w / 2 - 40), LEG / 2, z], material: "wood" })),
+    [g.z0 + 45, g.zf - 45].map((z, k): CustomPart => ({ id: `${f.id}G${sx < 0 ? "L" : "R"}${k}`, name: "Leg", size: [45, h, 45], pos: [f.x + sx * (f.w / 2 - 40), h / 2, z], material: "wood" })),
   );
 }
 const legPts = (f: Frame, g: FrameGeo, y: number): Vec3[] => [-1, 1].flatMap((sx) => [g.z0 + 45, g.zf - 45].map((z): Vec3 => [f.x + sx * (f.w / 2 - 40), y, z]));
@@ -178,7 +255,8 @@ const legPts = (f: Frame, g: FrameGeo, y: number): Vec3[] => [-1, 1].flatMap((sx
 /** Join plates round the front edges of two frames side by side, two screws in each. */
 function joinFixes(a: Frame, b: Frame, g: FrameGeo): CustomFix[] {
   const xj = a.x + a.w / 2;
-  const ys = a.h >= 1200 ? [a.y + a.h - 400, a.y + a.h - 1100] : [a.y + a.h / 2];
+  const h = Math.min(a.h, b.h), y0 = Math.max(a.y, b.y); // frames of different heights: only where both sides are
+  const ys = h >= 1200 ? [y0 + h - 400, y0 + h - 1100] : [y0 + h / 2];
   return [
     fixAt(JOIN_PLATE, ys.map((y): Vec3 => [xj, y, g.zf - 30]), [0, 0, -1], `${a.id}R`, `${b.id}L`),
     fixAt(SMALL_SCREW, ys.flatMap((y): Vec3[] => [[xj - t, y + 30, g.zf - 20], [xj - t, y - 30, g.zf - 20]]), [1, 0, 0], `${a.id}R`),
@@ -195,12 +273,15 @@ function stackFixes(lo: Frame, up: Frame, g: FrameGeo): CustomFix[] {
 function framesRecipe(L: Layout, g: FrameGeo): { recipe: CustomParams; tops: Frame[] } {
   const parts: CustomPart[] = [];
   const steps: CustomStep[] = [];
-  const bottoms = L.frames.filter((f) => f.y <= (L.legs ? LEG : 0) + 1);
-  const stacked = L.frames.filter((f) => !bottoms.includes(f));
+  const base = legH(L), LH = L.leg ?? LEG;
+  const bottoms = L.frames.filter((f) => f.y <= base + 1);
+  const below = (up: Frame) => L.frames.find((o) => Math.abs(o.x - up.x) < 1 && Math.abs(o.y + o.h - up.y) < 1);
+  const stacked = L.frames.filter((f) => !bottoms.includes(f) && below(f));
+  const hung = L.frames.filter((f) => !bottoms.includes(f) && !below(f));
   const isTop = (f: Frame) => !L.frames.some((o) => o !== f && Math.abs(o.x - f.x) < 1 && o.y > f.y);
   const tops = L.frames.filter(isTop);
   for (const f of L.frames) parts.push(...framePanels(f, g, L.df));
-  if (L.legs) for (const f of bottoms) parts.push(...legParts(f, g));
+  if (L.legs) for (const f of bottoms) parts.push(...legParts(f, g, LH));
 
   const first = bottoms[0];
   const tall = first.h >= 1200;
@@ -230,20 +311,22 @@ function framesRecipe(L: Layout, g: FrameGeo): { recipe: CustomParams; tops: Fra
     steps.push({
       title: "Screw the legs on",
       detail: "Screw a rod and sleeve into each leg with the spanner, then turn the legs into the bottom by hand.",
-      add: legParts(first, g).map((p) => p.id),
-      fix: [fixAt(LEG_SLEEVE, legPts(first, g, LEG), [0, 1, 0]), fixAt(ROD, legPts(first, g, LEG - 25), [0, 1, 0])],
+      add: legParts(first, g, LH).map((p) => p.id),
+      fix: [fixAt(LEG_SLEEVE, legPts(first, g, LH), [0, 1, 0]), fixAt(ROD, legPts(first, g, LH - 25), [0, 1, 0])],
       tools: ["wrench"],
     });
     steps.push({ title: "Screw the feet into the legs", detail: "All the way in for now. They level it later.", fix: [fixAt(LEG_FOOT, legPts(first, g, 0), [0, 1, 0])] });
   }
+  if (L.feet) steps.push({ title: "Screw in the adjustable feet", detail: "Four into the holes under the bottom, all the way in for now. They level it later.", fix: [fixAt(LEG_FOOT, legPts(first, g, FEET), [0, 1, 0], `${first.id}B`)] });
 
   // the other columns, built the same way and stood next to it
   const others = bottoms.slice(1);
   if (others.length) {
     const fix: CustomFix[] = others.flatMap((f) => rivets(f, g));
     if (others.some(isTop)) fix.push(...others.filter(isTop).map((f) => spacers(f, g)));
-    const add = others.flatMap((f) => [...panels(f), ...(L.legs ? legParts(f, g).map((p) => p.id) : [])]);
-    if (L.legs) for (const f of others) fix.push(fixAt(LEG_SLEEVE, legPts(f, g, LEG), [0, 1, 0]), fixAt(ROD, legPts(f, g, LEG - 25), [0, 1, 0]), fixAt(LEG_FOOT, legPts(f, g, 0), [0, 1, 0]));
+    const add = others.flatMap((f) => [...panels(f), ...(L.legs ? legParts(f, g, LH).map((p) => p.id) : [])]);
+    if (L.legs) for (const f of others) fix.push(fixAt(LEG_SLEEVE, legPts(f, g, LH), [0, 1, 0]), fixAt(ROD, legPts(f, g, LH - 25), [0, 1, 0]), fixAt(LEG_FOOT, legPts(f, g, 0), [0, 1, 0]));
+    if (L.feet) for (const f of others) fix.push(fixAt(LEG_FOOT, legPts(f, g, FEET), [0, 1, 0], `${f.id}B`));
     steps.push({
       title: others.length > 1 ? "Build the other frames the same way" : "Build the second frame the same way",
       detail: "Every step as for the first one, lying on its front.",
@@ -268,7 +351,7 @@ function framesRecipe(L: Layout, g: FrameGeo): { recipe: CustomParams; tops: Fra
       tools: ["screwdriver"],
     });
   for (const up of stacked) {
-    const lo = L.frames.find((o) => Math.abs(o.x - up.x) < 1 && Math.abs(o.y + o.h - up.y) < 1)!;
+    const lo = below(up)!;
     steps.push({
       title: "Build the small frame the same way",
       detail: "Lying on its front, then stand it up.",
@@ -285,6 +368,49 @@ function framesRecipe(L: Layout, g: FrameGeo): { recipe: CustomParams; tops: Fra
       warnings: ["two"],
     });
   }
+  if (hung.length) {
+    // frames on the wall beside the stack: a suspension rail for each, then the frame hooked on and joined to its neighbour
+    for (const f of hung) parts.push({ id: `${f.id}S`, name: "Suspension rail", size: [f.w - 40, 40, 6], pos: [f.x, f.y + f.h - 70, g.z0 - 3], material: "metal" });
+    const railPts = hung.flatMap((f) => [-1, 1].map((sx): Vec3 => [f.x + sx * (f.w / 2 - 80), f.y + f.h - 70, g.z0 - 6]));
+    steps.push({
+      title: "Screw the suspension rails to the wall",
+      detail: "Level with the top of the frame on the stack, one rail for each frame. Wall screws and plugs aren't included: pick ones made for your wall.",
+      add: hung.map((f) => `${f.id}S`),
+      fix: [
+        { kind: "plug", count: railPts.length, at: railPts.map((p): Vec3 => [p[0], p[1], p[2] - 30]), dir: [0, 0, -1] },
+        { kind: "screw", count: railPts.length, len: 50, dia: 5, at: railPts, dir: [0, 0, -1] },
+      ],
+      tools: ["drill", "level", "screwdriver"],
+      wall: true,
+      warnings: ["wall"],
+    });
+    const hp = (f: Frame, sx: number) => f.x + sx * (f.w / 2 - t);
+    steps.push({
+      title: hung.length > 1 ? "Build the wall frames the same way" : "Build the wall frame the same way",
+      detail: "Lying on its front. Then screw a suspension fitting into each top back corner, inside, two screws each.",
+      add: hung.flatMap(panels),
+      fix: [
+        ...hung.flatMap((f) => rivets(f, g)),
+        ...hung.map((f) => spacers(f, g)),
+        ...hung.map((f) => fixAt({ kind: "hook", len: 40, dia: 30 }, [-1, 1].map((sx): Vec3 => [hp(f, sx), f.y + f.h - 70, g.z0 + 25]), [0, 0, 1], `${f.id}T`)),
+        ...hung.flatMap((f) => [-1, 1].map((sx) => fixAt(SMALL_SCREW, [-26, 26].map((dy): Vec3 => [hp(f, sx) - sx * 4, f.y + f.h - 70 + dy, g.z0 + 25]), [sx, 0, 0], `${f.id}${sx < 0 ? "L" : "R"}`))),
+      ].slice(0, 24),
+      from: Object.fromEntries(hung.flatMap(panels).map((id) => [id, [0, 0, -500] as Vec3])),
+      wait: hung.flatMap(panels),
+    });
+    steps.push({
+      title: hung.length > 1 ? "Hang the frames on the rails" : "Hang the frame on the rail",
+      detail: "Together: lift each one so its fittings hook over the rail, then slide it against the frame beside it.",
+      add: hung.flatMap(panels),
+      from: Object.fromEntries(hung.flatMap(panels).map((id) => [id, [0, 120, 260] as Vec3])),
+      people: 2,
+      warnings: ["two"],
+    });
+    const row = L.frames.filter((f) => hung.some((h) => Math.abs(h.y - f.y) < 1)).sort((a, b) => a.x - b.x);
+    const pairs = row.slice(1).map((f, i) => [row[i], f] as const).filter(([a, b]) => Math.abs(a.x + a.w / 2 - (b.x - b.w / 2)) < 1);
+    if (pairs.length)
+      steps.push({ title: "Join the wall frames to their neighbours", detail: "A plate round the front edges between each pair, two screws on each side.", fix: pairs.flatMap(([a, b]) => joinFixes(a, b, g)).slice(0, 24), tools: ["screwdriver"] });
+  }
   steps.push({ title: "Screw the caps onto the spacers", detail: "Turn them on by hand at the back of the top.", fix: tops.map((f) => caps(f, g)) });
   steps.push({
     title: "Push it against the wall",
@@ -292,6 +418,16 @@ function framesRecipe(L: Layout, g: FrameGeo): { recipe: CustomParams; tops: Fra
     warnings: ["tip"],
   });
   if (L.legs) steps.push({ title: "Level it on the feet", detail: "Turn the feet with the spanner until it stands level and steady.", tools: ["wrench", "level"] });
+  if (L.feet) steps.push({ title: "Level it on the feet", detail: "Turn the adjustable feet until it stands level and steady.", tools: ["level"] });
+  if (L.colTops?.length) {
+    const tf = L.frames.filter((f) => L.colTops!.includes(f.id));
+    const pts = (f: Frame, y: number) => [-1, 1].flatMap((sx) => [g.z0 + 80, g.zf - 80].map((z): Vec3 => [f.x + sx * (f.w / 2 - t - 60), y, z]));
+    const top = (f: Frame) => `${f.id}TOP`;
+    for (const f of tf) parts.push({ id: top(f), name: "Top", size: [f.w, 20, L.D], pos: [f.x, f.y + f.h + 10, 0], material: "board" });
+    steps.push({ title: tf.length > 1 ? "Press the sleeves into the low frames' tops" : "Press the sleeves into the low frame's top", detail: "Four in the holes near the corners of each.", fix: tf.map((f) => fixAt(SLEEVE, pts(f, f.y + f.h), [0, -1, 0], `${f.id}T`)) });
+    steps.push({ title: tf.length > 1 ? "Lay the tops on" : "Lay the top on", detail: "Lower each straight onto its sleeves, flush at the back.", add: tf.map(top), from: Object.fromEntries(tf.map((f) => [top(f), [0, 260, 0] as Vec3])) });
+    steps.push({ title: "Screw them on from inside", detail: "Four screws up through each frame's top into the sleeves.", fix: tf.map((f) => fixAt(STACK_SCREW, pts(f, f.y + f.h - t - 20), [0, 1, 0], `${f.id}T`, top(f))), tools: ["screwdriver"] });
+  }
   if (L.top) {
     const tf = tops;
     const pts = (f: Frame, y: number) => [-1, 1].flatMap((sx) => [g.z0 + 80, g.zf - 80].map((z): Vec3 => [f.x + sx * (f.w / 2 - t - 60), y, z]));
@@ -578,7 +714,11 @@ function openRecipe(o: Open): { frame: CustomParams; inside: CustomParams | null
   });
   const parts = [side(-1), end(false), end(true), side(1)];
   const corners = (sx: number): Vec3[] => [H - b / 2, b / 2].flatMap((y) => [-D / 2 + b / 2, D / 2 - b / 2].map((z): Vec3 => [sx * (W / 2), y, z]));
-  const small = (sx: number, n: number): Vec3[] => [H - b - 2, b + 2].flatMap((y) => [-D / 2 + b / 2].map((z): Vec3 => [sx * (W / 2 - b - 10), y, z])).concat(n > 2 ? [H - b - 2, b + 2].map((y): Vec3 => [sx * (W / 2 - b - 10), y, D / 2 - b / 2]) : []);
+  // from inside the corner: up into the top frame, down into the bottom one
+  const small = (sx: number, n: number, side: string): CustomFix[] =>
+    ([[H - b - 2, 1, "ET"], [b + 2, -1, "EB"]] as const).map(([y, d, on]) =>
+      fixAt(SMALL_SCREW, [-D / 2 + b / 2, ...(n > 2 ? [D / 2 - b / 2] : [])].map((z): Vec3 => [sx * (W / 2 - b - 10), y, z]), [0, d, 0], on, side),
+    );
   const half = o.screws / 2;
   const tall = H >= 1200;
   const steps: CustomStep[] = [
@@ -592,13 +732,13 @@ function openRecipe(o: Open): { frame: CustomParams; inside: CustomParams | null
       warnings: ["floor"],
       people: tall ? 2 : 1,
     },
-    { title: "Screw the corners together", detail: "The small screws go in from inside, where the frames meet.", fix: [fixAt(SMALL_SCREW, small(-1, half), [0, 1, 0], "EB", "SL")], tools: ["screwdriver"] },
+    { title: "Screw the corners together", detail: "The small screws go in from inside, where the frames meet.", fix: small(-1, half, "SL"), tools: ["screwdriver"] },
     { title: "Lay the other side frame on", detail: "Line its holes up with the ends of both frames.", add: ["SR"] },
     { title: "Bolt it on", detail: "Two bolts at each end. Now tighten all eight.", fix: [fixAt(FRAME_BOLT, corners(1), [-1, 0, 0], "SR", "ET")], tools: ["allen"], check: "square" },
     {
       title: tall ? "Stand it up together and screw the last corners" : "Stand it up and screw the last corners",
       detail: "The rest of the small screws, from inside where the side meets the frames.",
-      fix: [fixAt(SMALL_SCREW, small(1, half), [0, 1, 0], "EB", "SR")],
+      fix: small(1, half, "SR"),
       tools: ["screwdriver"],
       pose: "+y",
       people: tall ? 2 : 1,
@@ -673,6 +813,13 @@ const family: Family = {
       return true;
     }
     const L = layoutOf(s);
+    if (!L) return false;
+    buildFrames(b, s, L);
+    return true;
+  },
+  // the wardrobe sets are rows of frames of different heights: drawn whole, not as one frame repeated
+  row(b, s) {
+    const L = comboOf(s.slug ?? "", s.size.w * 10, s.size.h * 10, s.size.d * 10);
     if (!L) return false;
     buildFrames(b, s, L);
     return true;

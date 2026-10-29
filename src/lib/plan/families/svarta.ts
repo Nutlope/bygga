@@ -100,7 +100,8 @@ function bed(s: ProductSpec, loft: boolean): CustomParams {
   ];
   parts.push(compound("LD", "Ladder", ladderPieces));
 
-  const supports = bases.map((y, i) => compound(`S${i}`, "Centre support", [{ shape: "box", size: [40, 25, 2 * zp - RT], pos: [0, y - RH - 12, 0] }]));
+  // between the two long rails, at their height, so the bolts go through each rail into its ends
+  const supports = bases.map((y, i) => compound(`S${i}`, "Centre support", [{ shape: "box", size: [60, 25, 2 * zp - RT], pos: [0, y - RH / 2, 0] }]));
   parts.push(...supports);
   const meshes = bases.flatMap((y, i) =>
     [-1, 1].map((sx): CustomPart => ({ id: `M${i}${sx < 0 ? "a" : "b"}`, name: "Mesh base", size: [xr - 10, 20, 2 * zp - RT], pos: [sx * (xr / 2 + 2), y + 10, 0], material: "metal" })),
@@ -109,10 +110,11 @@ function bed(s: ProductSpec, loft: boolean): CustomParams {
 
   // two connector bolts through the end frame into each end of a rail
   const conn = (y: number, z: number, ids: [string, string]): CustomFix[] =>
-    [-1, 1].map((sx, i) => fx("bolt", [-18, 18].map((dy): Vec3 => [sx * (L / 2), y + dy, z]), { name: "Connector bolt", len: 70, dia: 6, dir: [-sx, 0, 0], on: i ? "E2" : "E1", mate: ids[1] }));
+    [-1, 1].map((sx, i) => fx("bolt", [-12, 12].map((dy): Vec3 => [sx * (L / 2), y + dy, z]), { name: "Connector bolt", len: 70, dia: 6, dir: [-sx, 0, 0], on: i ? "E2" : "E1", mate: ids[1] }));
   const tops: Vec3[] = [[-L / 2, H - 20, -zp], [L / 2, H - 20, -zp], [L / 2, H - 20, zp]];
   const topFix: CustomFix[] = [
-    fx("bolt", tops, { name: "Connector bolt", len: 70, dia: 6, dir: [1, 0, 0] }),
+    // each one in through the post, towards the middle of the bed
+    ...tops.map((p) => fx("bolt", [p], { name: "Connector bolt", len: 70, dia: 6, dir: [-Math.sign(p[0]), 0, 0] })),
     fx("screw", [[xo, H - 20, zp]], { len: 20, dia: 6, dir: [0, 0, -1], on: "GF" }),
   ];
   const meshScrews = (y: number): Vec3[] => [-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => [0.15, 0.85].map((f): Vec3 => [sx * xr * f, y + 20, sz * (zp - 10)])));
@@ -185,9 +187,9 @@ function bed(s: ProductSpec, loft: boolean): CustomParams {
     detail: "Across the middle, from the front rail to the back. A bolt, a spacer and a cap nut at each end, plus a wood screw.",
     add: supports.map((p) => p.id),
     fix: bases.flatMap((y, i) => [
-      fx("bolt", supportBolts(y), { len: 20, dia: 6, dir: [0, 0, 1], on: `S${i}` }),
-      fx("nut", supportBolts(y).map((p): Vec3 => [p[0], p[1], p[2] - Math.sign(p[2]) * RT]), { name: "Cap nut", len: 10, dia: 16, dir: [0, 0, 1] }),
-      fx("screw", supportBolts(y).map((p): Vec3 => [p[0] + 15, p[1] - 10, p[2]]), { name: "Wood screw", len: 16, dia: 4, dir: [0, 0, 1], on: `S${i}` }),
+      ...supportBolts(y).map((p) => fx("bolt", [p], { len: 20, dia: 6, dir: [0, 0, -Math.sign(p[2])], on: `S${i}` })),
+      ...supportBolts(y).map((p) => fx("nut", [[p[0], p[1], p[2] - Math.sign(p[2]) * RT]], { name: "Cap nut", len: 10, dia: 16, dir: [0, 0, -Math.sign(p[2])] })),
+      ...supportBolts(y).map((p) => fx("screw", [[p[0] + 24, p[1] - 6, p[2]]], { name: "Wood screw", len: 16, dia: 4, dir: [0, 0, -Math.sign(p[2])], on: `S${i}` })),
     ]),
     tools: ["allen", "screwdriver"],
   });

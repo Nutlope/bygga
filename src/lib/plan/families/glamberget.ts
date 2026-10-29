@@ -86,7 +86,7 @@ function divider(s: ProductSpec): CustomParams {
     return [
       at("washer", [[x, yUpBar, 0]], [0, -1, 0], `FU${i}`, `FL${i}`, { len: 3, dia: 30 }),
       at("stud", [[x, yArmLo + 30, 0]], [0, -1, 0], i === 0 ? "AB0" : "AB2", `FU${i}`, ROD_L),
-      at("bolt", [[x, 0, 0]], [0, 1, 0], `FL${i}`, `FU${i}`, { name: "Connector bolt", len: 20, dia: 8 }),
+      at("bolt", [[x, yLowBar, 0]], [0, 1, 0], `FL${i}`, `FU${i}`, { name: "Connector bolt", len: 20, dia: 8 }),
     ];
   };
   const joint = (k: number, y: number, rod: typeof ROD_L, on: string, mate: string) => at("stud", [[xs[k], y, 0]], [0, -1, 0], on, mate, rod);
@@ -102,7 +102,7 @@ function divider(s: ProductSpec): CustomParams {
       title: "Press two glides into each lower foot bar",
       detail: "One at each end, on the side without the sunk hole.",
       add: ["FL0", "FL1"],
-      fix: [at("glide", feet.flatMap((x) => [[x, 0, -barL + 50], [x, 0, 10]] as Vec3[]), [0, 1, 0], undefined, undefined, GLIDE)],
+      fix: [at("glide", feet.flatMap((x) => [[x, 0, -barL + 50], [x, 0, -40]] as Vec3[]), [0, 1, 0], undefined, undefined, GLIDE)],
     },
     {
       title: "Bolt each foot together with a bottom arm",
@@ -214,6 +214,7 @@ function wardrobe(s: ProductSpec): CustomParams {
   // a cylinder lies along x by turning it, so give its size as it stands
   parts[parts.length - 1].size = [25, xIn - T / 2, 25];
 
+  const onDoor = (pts: Vec3[], d: (typeof doors)[number]) => pts.filter((p) => Math.abs(p[0] - d.x) < doorW / 2 && p[2] === d.z);
   const inset = (d: (typeof doors)[number], y: number, k: number): Vec3 => [Math.round(d.x + k * (doorW / 2 - 60)), y, d.z];
   const tops = doors.flatMap((d) => [-1, 1].map((k) => inset(d, yDoor + doorH / 2, k)));
   const bottoms = doors.flatMap((d) => [-1, 1].map((k) => inset(d, yDoor - doorH / 2, k)));
@@ -224,8 +225,8 @@ function wardrobe(s: ProductSpec): CustomParams {
   const hangDoor = (d: (typeof doors)[number], back: boolean): CustomStep => ({
     title: back ? "Hang the back door" : d.id === "DA" ? "Hang the first front door on the inner track" : "Hang the last door on the outer track",
     detail: "Tilt the top in first: push the guides up into the top track and lock their tabs, then lower the rollers into the bottom track and press until they click.",
-    add: [d.id, `E${d.id}`],
-    from: { [d.id]: [0, 0, back ? -300 : 300], [`E${d.id}`]: [0, 0, back ? -300 : 300] },
+    add: [d.id],
+    from: { [d.id]: [0, 0, back ? -300 : 300] },
     people: 2,
     warnings: ["two"],
   });
@@ -245,15 +246,16 @@ function wardrobe(s: ProductSpec): CustomParams {
       fix: [at("dowel", [-1, 1].map((sx) => [sx * (footX - 15), 90, 0] as Vec3), [-1, 0, 0], "RL", undefined, { len: 40, dia: 10 })],
       tools: ["hammer"],
     },
-    { title: "Press a glide under each foot", detail: "Two under each foot, into the holes in the bottom edge.", add: ["FT0", "FT1"], fix: [at("glide", [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx * footX, 0, sz * (D / 2 - 120)] as Vec3)), [0, 1, 0], undefined, undefined, { name: "Glide", len: 6, dia: 40 })] },
+    { title: "Press a glide under each foot", detail: "Two under each foot, into the holes in the bottom edge.", add: ["FT0", "FT1"], from: { FT0: [-300, 0, 0], FT1: [300, 0, 0] }, fix: [at("glide", [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx * footX, 0, sz * (D / 2 - 120)] as Vec3)), [0, 1, 0], undefined, undefined, { name: "Glide", len: 6, dia: 40 })] },
     {
       title: "Screw the rail between the feet",
       detail: "Its dowels go into the feet, then one Allen screw through each foot into the rail.",
-      fix: [at("screw", [-1, 1].map((sx) => [sx * (footX + 15), 90, 0] as Vec3), [-1, 0, 0], "FT1", "RL", { len: 70, dia: 6 })],
+      fix: [-1, 1].map((sx, i) => at("screw", [[sx * (footX + 15), 90, 0]], [-sx, 0, 0], `FT${i}`, "RL", { len: 70, dia: 6 })),
       tools: ["allen"],
       warnings: ["floor"],
     },
-    { title: "Tap dowels into the tops of the feet", detail: "Three large dowels in each foot.", fix: [{ kind: "dowel", count: 6, len: 40, dia: 10, to: ["FT0", "FT1"] }], tools: ["hammer"] },
+    // the dowels sit between the screw holes along the top of each foot
+    { title: "Tap dowels into the tops of the feet", detail: "Three large dowels in each foot.", fix: [-1, 1].map((sx, i) => at("dowel", [-100, 60, 120].map((z) => [sx * footX, yB, z] as Vec3), [0, -1, 0], `FT${i}`, "BT", { len: 40, dia: 10 })), tools: ["hammer"] },
     {
       title: "Screw the bottom onto the feet",
       detail: "Cam bolts facing up. Six Allen screws from above through the bottom into the feet.",
@@ -267,10 +269,11 @@ function wardrobe(s: ProductSpec): CustomParams {
     { title: "Lock the bottom with nine cam locks", detail: "Push them into the holes in the sides and divider, arrows to the edge, and turn clockwise.", fix: [{ kind: "cam", count: 9, to: ["BT"] }], tools: ["screwdriver"] },
     {
       title: "Slide the back panel in",
-      detail: "Two dowels in its ends, then push it in between the side and the divider so the cam bolts go into its holes.",
+      detail: "Two dowels in the end by the divider. Angle it in past the side, then push it across so the dowels and the cam bolts go into the divider.",
       add: ["BK"],
-      fix: [{ kind: "dowel", count: 2, len: 30, dia: 8, to: ["BK"] }],
-      from: { BK: [0, 0, -300] },
+      // dowels in the end that meets the divider: it slides along them onto the divider's cam bolts
+      fix: [at("dowel", [0.3, 0.7].map((f) => [-T / 2, Math.round(yIn0 + hIn * f), zBackPanel] as Vec3), [-1, 0, 0], "BK", "DV", { len: 30, dia: 8 })],
+      from: { BK: [-300, 0, 0] },
       tools: ["hammer"],
     },
     {
@@ -307,34 +310,37 @@ function wardrobe(s: ProductSpec): CustomParams {
     {
       title: "Screw the top plates onto the doors",
       detail: "Lay the three doors flat. Two plates on the top edge of each.",
-      fix: [at("plate", tops, [0, -1, 0], undefined, undefined, { name: "Top guide plate", len: 6, dia: 40 }), at("screw", tops.map((p) => [p[0], p[1], p[2]] as Vec3), [0, -1, 0], undefined, undefined, { len: 12, dia: 4 })],
+      wait: doors.map((d) => d.id),
+      fix: doors.flatMap((d) => [at("plate", onDoor(tops, d), [0, -1, 0], d.id, undefined, { name: "Top guide plate", len: 6, dia: 40 }), at("screw", onDoor(tops, d).map((p) => [p[0] + 25, p[1], p[2]] as Vec3), [0, -1, 0], d.id, undefined, { len: 12, dia: 4 })]),
       tools: ["screwdriver"],
     },
     {
       title: "Screw the rollers under the doors",
       detail: "Two rollers on the bottom edge of each door, two screws each.",
-      fix: [at("roller", bottoms, [0, 1, 0], undefined, undefined, { name: "Bottom roller" }), at("screw", bottoms.flatMap((p) => [-12, 12].map((dx) => [p[0] + dx, p[1], p[2]] as Vec3)), [0, 1, 0], undefined, undefined, { len: 12, dia: 4 })],
+      fix: doors.flatMap((d) => [at("roller", onDoor(bottoms, d), [0, 1, 0], d.id, undefined, { name: "Bottom roller" }), at("screw", onDoor(bottoms, d).flatMap((p) => [-25, 25].map((dx) => [p[0] + dx, p[1], p[2]] as Vec3)), [0, 1, 0], d.id, undefined, { len: 12, dia: 4 })]),
       tools: ["screwdriver"],
     },
     {
       title: "Fit the top guides on the front doors",
       detail: "A guide and a pad on each top plate of the two front doors, two pins each.",
-      fix: [
-        at("clip", tops.slice(0, 4), [0, -1, 0], undefined, undefined, { name: "Top guide", len: 20, dia: 30 }),
-        at("spacer", tops.slice(0, 4), [0, -1, 0], undefined, undefined, { name: "Pad", len: 3, dia: 30 }),
-        at("pin", tops.slice(0, 4).flatMap((p) => [-10, 10].map((dx) => [p[0] + dx, p[1], p[2]] as Vec3)), [0, -1, 0], undefined, undefined, { name: "Pin", len: 12, dia: 5 }),
-      ],
+      fix: doors.slice(0, 2).flatMap((d) => [
+        at("clip", onDoor(tops, d), [0, -1, 0], d.id, undefined, { name: "Top guide", len: 20, dia: 30 }),
+        at("spacer", onDoor(tops, d), [0, -1, 0], d.id, undefined, { name: "Pad", len: 3, dia: 30 }),
+        at("pin", onDoor(tops, d).flatMap((p) => [-25, 25].map((dx) => [p[0] + dx, p[1], p[2]] as Vec3)), [0, -1, 0], d.id, undefined, { name: "Pin", len: 12, dia: 5 }),
+      ]),
     },
-    { title: "Tap dowels into the edge strips", detail: "Four small dowels in each of the three pine strips.", fix: doors.map((d) => at("dowel", stripPts(d), [d.edge, 0, 0], `E${d.id}`, d.id, { len: 25, dia: 6 })), tools: ["hammer"] },
-    {
-      title: "Screw the edge strips onto the doors",
-      detail: "Push each strip onto its door's edge, then four screws through the door into it.",
-      fix: doors.map((d) => at("screw", stripPts(d).map((p) => [p[0], p[1] + 40, p[2]] as Vec3), [d.edge, 0, 0], d.id, `E${d.id}`, { len: 30, dia: 4 })),
-      tools: ["screwdriver"],
-    },
+    { title: "Tap dowels into the edge strips", detail: "Four small dowels in each of the three pine strips.", wait: doors.map((d) => `E${d.id}`), fix: doors.map((d) => at("dowel", stripPts(d), [d.edge, 0, 0], `E${d.id}`, d.id, { len: 25, dia: 6 })), tools: ["hammer"] },
     hangDoor(doors[2], true),
     hangDoor(doors[0], false),
     { ...hangDoor(doors[1], false), detail: "The same way, on the outermost track. Turn the roller screws if a door needs raising or lowering so the gaps are even." },
+    {
+      title: "Screw the edge strips onto the doors",
+      detail: "Push each strip onto its door's free edge, over the dowels, then four screws through the door into it.",
+      add: doors.map((d) => `E${d.id}`),
+      from: Object.fromEntries(doors.map((d) => [`E${d.id}`, [d.edge * 250, 0, 0] as Vec3])),
+      fix: doors.map((d) => at("screw", stripPts(d).map((p) => [p[0], p[1] + 40, p[2]] as Vec3), [d.edge, 0, 0], d.id, `E${d.id}`, { len: 30, dia: 4 })),
+      tools: ["screwdriver"],
+    },
     {
       title: "Push in the shelf supports and lay in a shelf",
       detail: "Six supports at the height you want, then lay the shelf on them.",

@@ -428,13 +428,15 @@ function storageBench(b: PlanBuilder, s: ProductSpec) {
   const zfB = D / 2 - 20; // back face of the drawer front
   const yd = 435, dl = D - 60, zd = zfB - dl / 2;
   const bw = 2 * (xd - 8);
-  const zDB = zd - dl / 2 + 8;
+  // the back lies over the ends of the sides, like the front: everything joins along the depth, from above
+  const zdE = zd - dl / 2;
+  const zDB = zdE - 8;
   const dParts: SubPart[] = [
     { id: "DF", name: "Drawer front", size: [2 * xi - 4, 150, T], pos: [0, 455, D / 2 - 11] },
     { id: "DSL", name: "Drawer side", size: [16, 90, dl], pos: [-xd, yd, zd] },
     { id: "DSR", name: "Drawer side", size: [16, 90, dl], pos: [xd, yd, zd] },
-    { id: "DB", name: "Drawer back", size: [bw, 90, 16], pos: [0, yd, zDB] },
-    { id: "DD", name: "Drawer bottom", size: [bw, 3, zfB - (zDB + 8)], pos: [0, yd - 40, (zfB + zDB + 8) / 2], material: "fiber" },
+    { id: "DB", name: "Drawer back", size: [2 * xd + 16, 90, 16], pos: [0, yd, zDB] },
+    { id: "DD", name: "Drawer bottom", size: [bw, 3, zfB - zdE], pos: [0, yd - 40, (zfB + zdE) / 2], material: "fiber" },
   ];
   const dk = placeAll(b, dParts);
   const sds = [-1, 1] as const;
@@ -448,7 +450,7 @@ function storageBench(b: PlanBuilder, s: ProductSpec) {
       stage: { DF: [[0, 0, 0], [0, 0, -160]], DB: [[0, -320, 0], [0, 0, -160]] },
       fix: [
         ...sds.map((sx) => ({ def: CAM_BOLT, on: "DF", at: [[sx * xd, yd, zfB]] as Vec3[], dir: [0, 0, 1] as Vec3, mate: dside(sx) })),
-        ...sds.map((sx) => ({ def: CAM_BOLT, on: "DB", at: [[sx * (bw / 2), yd, zDB]] as Vec3[], dir: [-sx, 0, 0] as Vec3, mate: dside(sx) })),
+        ...sds.map((sx) => ({ def: CAM_BOLT, on: "DB", at: [[sx * xd, yd, zdE]] as Vec3[], dir: [0, 0, -1] as Vec3, mate: dside(sx) })),
       ],
     },
     { title: "Tap the stop wire into the back", detail: "Into the two holes in the middle of its top edge, until it sits flat.", kind: "general", tools: ["hammer"], fix: [{ def: STOP, on: "DB", at: [[0, yd + 45, zDB]], dir: [0, -1, 0], hole: false }] },
@@ -457,17 +459,17 @@ function storageBench(b: PlanBuilder, s: ProductSpec) {
       detail: "Two at each end of both sides, grooves facing in.",
       kind: "dowels",
       tools: ["hammer"],
-      stage: { DSL: [[-260, 0, 0], [0, 160, 0]], DSR: [[260, 0, 0], [0, 160, 0]] },
+      stage: { DSL: [[-260, 0, 0], [0, 0, -160]], DSR: [[260, 0, 0], [0, 0, -160]] },
       fix: sds.flatMap((sx) => [
-        { def: DOWEL, on: dside(sx), at: [yd - 25, yd + 25].map((y) => [sx * xd, y, zfB] as Vec3), dir: [0, 0, 1] as Vec3, mate: "DF" },
-        { def: DOWEL, on: dside(sx), at: [yd - 25, yd + 25].map((y) => [sx * (xd - 8), y, zDB] as Vec3), dir: [-sx, 0, 0] as Vec3, mate: "DB" },
+        { def: DOWEL, on: dside(sx), at: [yd - 25, yd + 25].map((y) => [sx * xd, y, zfB] as Vec3), dir: [0, 0, -1] as Vec3, mate: "DF" },
+        { def: DOWEL, on: dside(sx), at: [yd - 25, yd + 25].map((y) => [sx * xd, y, zdE] as Vec3), dir: [0, 0, 1] as Vec3, mate: "DB" },
       ]),
     },
-    { title: "Push the sides onto the front", detail: "Onto its dowels and bolts, grooves facing in and down.", kind: "join", stage: { DSL: [[0, 0, 0], [-200, 0, 0]], DSR: [[0, 0, 0], [200, 0, 0]] } },
+    { title: "Push the sides onto the front", detail: "Stand them down onto its dowels and bolts, grooves facing in.", kind: "join", stage: { DSL: [[0, 0, 0], [0, 0, -200]], DSR: [[0, 0, 0], [0, 0, -200]] } },
     { title: "Lock the front with two cam locks", detail: "One in each side, near the front.", kind: "cams", tools: ["screwdriver"], fix: [{ def: CAM, on: "DSL", at: [[-xd - 8, yd, zfB - 25]], dir: [1, 0, 0] }, { def: CAM, on: "DSR", at: [[xd + 8, yd, zfB - 25]], dir: [-1, 0, 0] }] },
     { title: "Slide the bottom into the grooves", detail: "Smooth side up, all the way to the front.", kind: "drawer", stage: { DD: [[0, 0, 0], [0, 0, -420]] } },
-    { title: "Fit the back", detail: "Down between the sides onto its dowels, over the end of the bottom.", kind: "join", stage: { DB: [[0, 0, 0], [0, 0, -300]] } },
-    { title: "Lock the back with two cam locks", detail: "One in each side, at the back.", kind: "cams", tools: ["screwdriver"], fix: [{ def: CAM, on: "DSL", at: [[-xd - 8, yd, zDB]], dir: [1, 0, 0] }, { def: CAM, on: "DSR", at: [[xd + 8, yd, zDB]], dir: [-1, 0, 0] }] },
+    { title: "Fit the back", detail: "Lower it onto the ends of the sides, over the end of the bottom, onto its dowels.", kind: "join", stage: { DB: [[0, 0, 0], [0, 0, -300]] } },
+    { title: "Lock the back with two cam locks", detail: "One in each side, at the back.", kind: "cams", tools: ["screwdriver"], fix: [{ def: CAM, on: "DSL", at: [[-xd - 8, yd, zdE + 25]], dir: [1, 0, 0] }, { def: CAM, on: "DSR", at: [[xd + 8, yd, zdE + 25]], dir: [-1, 0, 0] }] },
     {
       title: "Screw the runner parts onto the drawer",
       detail: "One along the bottom of each side, two screws each.",
@@ -483,17 +485,19 @@ function storageBench(b: PlanBuilder, s: ProductSpec) {
   const zbF = D / 2 - 20;
   const bl = D - 90;
   const zb = zbF - bl / 2;
-  const zXB = zb - bl / 2 + 9;
+  // the back lies over the ends of the sides, joined along the depth like the front
+  const zE = zb - bl / 2;
+  const zXB = zE - T / 2;
   const iw = 2 * (xb - 9);
-  const zc = [zbF - 20, zXB + 9 + 20];
+  const zc = [zbF - 20, zE + 38];
   const bParts: SubPart[] = [
     { id: "XF", name: "Box front", size: [2 * xi - 4, 335, T], pos: [0, 197.5, D / 2 - 11] },
     { id: "XSL", name: "Box side", size: [T, 330, bl], pos: [-xb, 185, zb] },
     { id: "XSR", name: "Box side", size: [T, 330, bl], pos: [xb, 185, zb] },
-    { id: "XD", name: "Box bottom", size: [iw, 3, zbF - zXB - 9], pos: [0, 52, (zbF + zXB + 9) / 2], material: "fiber" },
+    { id: "XD", name: "Box bottom", size: [iw, 3, zbF - zE], pos: [0, 52, (zbF + zE) / 2], material: "fiber" },
     { id: "XC0", name: "Castor batten", size: [iw, 30, 40], pos: [0, 35, zc[0]] },
     { id: "XC1", name: "Castor batten", size: [iw, 30, 40], pos: [0, 35, zc[1]] },
-    { id: "XB", name: "Box back", size: [iw, 300, T], pos: [0, 200, zXB] },
+    { id: "XB", name: "Box back", size: [2 * xb + T, 300, T], pos: [0, 200, zXB] },
   ];
   const bk = placeAll(b, bParts);
   const bside = (sx: number) => (sx < 0 ? "XSL" : "XSR");
@@ -512,13 +516,13 @@ function storageBench(b: PlanBuilder, s: ProductSpec) {
       detail: "Two at each end of both sides.",
       kind: "dowels",
       tools: ["hammer"],
-      stage: { XSL: [[-260, 0, 0], [0, 160, 0]], XSR: [[260, 0, 0], [0, 160, 0]] },
+      stage: { XSL: [[-260, 0, 0], [0, 0, -160]], XSR: [[260, 0, 0], [0, 0, -160]] },
       fix: sds.flatMap((sx) => [
-        { def: DOWEL, on: bside(sx), at: [70, 320].map((y) => [sx * xb, y, zbF] as Vec3), dir: [0, 0, 1] as Vec3, mate: "XF" },
-        { def: DOWEL, on: bside(sx), at: [160, 240].map((y) => [sx * (xb - 9), y, zXB] as Vec3), dir: [-sx, 0, 0] as Vec3, mate: "XB" },
+        { def: DOWEL, on: bside(sx), at: [70, 320].map((y) => [sx * xb, y, zbF] as Vec3), dir: [0, 0, -1] as Vec3, mate: "XF" },
+        { def: DOWEL, on: bside(sx), at: [160, 240].map((y) => [sx * xb, y, zE] as Vec3), dir: [0, 0, 1] as Vec3, mate: "XB" },
       ]),
     },
-    { title: "Push the sides onto the front", detail: "Grooves facing in, onto the dowels and bolts.", kind: "join", stage: { XSL: [[0, 0, 0], [-200, 0, 0]], XSR: [[0, 0, 0], [200, 0, 0]] } },
+    { title: "Push the sides onto the front", detail: "Stand them down onto the dowels and bolts, grooves facing in.", kind: "join", stage: { XSL: [[0, 0, 0], [0, 0, -200]], XSR: [[0, 0, 0], [0, 0, -200]] } },
     { title: "Lock them with four cam locks", detail: "Two in each side, near the front.", kind: "cams", tools: ["screwdriver"], fix: sds.map((sx) => ({ def: CAM, on: bside(sx), at: [120, 280].map((y) => [sx * (xb + 9), y, zbF - 25] as Vec3), dir: [-sx, 0, 0] as Vec3 })) },
     { title: "Slide the bottom into the grooves", detail: "Smooth side in, down to the front.", kind: "drawer", stage: { XD: [[0, 0, 0], [0, 0, -420]] } },
     {
@@ -547,13 +551,13 @@ function storageBench(b: PlanBuilder, s: ProductSpec) {
       detail: "Two in each end, by hand.",
       kind: "cams",
       stage: { XB: [[0, -420, 0], [0, 0, -160]] },
-      fix: sds.map((sx) => ({ def: CAM_BOLT, on: "XB", at: [100, 300].map((y) => [sx * (iw / 2), y, zXB] as Vec3), dir: [-sx, 0, 0] as Vec3 })),
+      fix: sds.map((sx) => ({ def: CAM_BOLT, on: "XB", at: [100, 300].map((y) => [sx * xb, y, zE] as Vec3), dir: [0, 0, -1] as Vec3 })),
     },
     { title: "Tap the stop wire into the back", detail: "Into the holes in the middle of its top edge.", kind: "general", tools: ["hammer"], fix: [{ def: STOP, on: "XB", at: [[0, 350, zXB]], dir: [0, -1, 0], hole: false }] },
-    { title: "Press the back on", detail: "Between the sides, onto the dowels, its edge over the bottom.", kind: "join", stage: { XB: [[0, 0, 0], [0, 0, -300]] } },
-    { title: "Lock the back with four cam locks", detail: "Two in each side, at the back.", kind: "cams", tools: ["screwdriver"], fix: sds.map((sx) => ({ def: CAM, on: bside(sx), at: [100, 300].map((y) => [sx * (xb + 9), y, zXB] as Vec3), dir: [-sx, 0, 0] as Vec3 })) },
+    { title: "Press the back on", detail: "Lower it onto the ends of the sides, onto the dowels, its edge over the bottom.", kind: "join", stage: { XB: [[0, 0, 0], [0, 0, -300]] } },
+    { title: "Lock the back with four cam locks", detail: "Two in each side, at the back.", kind: "cams", tools: ["screwdriver"], fix: sds.map((sx) => ({ def: CAM, on: bside(sx), at: [100, 300].map((y) => [sx * (xb + 9), y, zE + 25] as Vec3), dir: [-sx, 0, 0] as Vec3 })) },
     { title: "Press the bumpers into the top edges", detail: "Two along the top of each side.", kind: "general", fix: sds.map((sx) => ({ def: { kind: "glide", len: 6, dia: 12, name: "Bumper" } as HwDef, on: bside(sx), at: [-60, 120].map((z) => [sx * xb, 350, z] as Vec3), dir: [0, -1, 0] as Vec3, hole: false })) },
-    { title: "Fit the pivots", detail: "One low on the outside of each side, at the back. They let the box tip out.", kind: "hinges", tools: ["screwdriver"], fix: sds.map((sx) => ({ def: { kind: "hinge", len: 30, dia: 24, name: "Pivot" } as HwDef, on: bside(sx), at: [[sx * (xb + 9), 70, zXB + 30]], dir: [-sx, 0, 0] as Vec3 })) },
+    { title: "Fit the pivots", detail: "One low on the outside of each side, at the back. They let the box tip out.", kind: "hinges", tools: ["screwdriver"], fix: sds.map((sx) => ({ def: { kind: "hinge", len: 30, dia: 24, name: "Pivot" } as HwDef, on: bside(sx), at: [[sx * (xb + 9), 70, zE + 30]], dir: [-sx, 0, 0] as Vec3 })) },
   ]);
   pushIn(b, bk, "Roll the box in", "Tip it slightly so the pivots find their place, then roll it in under the drawer.");
   return true;

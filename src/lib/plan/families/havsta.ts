@@ -830,7 +830,7 @@ function buildSideboard(k: Kit, gd: Guide) {
         const x = t.x + g * (t.w / 2), on = Math.abs(x) > xIn(f) - 1 ? (x < 0 ? "L" : "R") : x < 0 ? "HB0" : "HB1";
         const z = t.z1 - 10 - len / 2;
         k.fit(runnerDef(len), [[x - g * 6, t.y + 20, z]], [g, 0, 0], { on, hole: false, gap: 0.15 });
-        k.fit(RUNNER_SCREW, [z - len / 3, z + len / 3].map((zz): Vec3 => [x - g * 12, t.y + 20, zz]), [g, 0, 0], { on, gap: 0.05 });
+        k.fit(RUNNER_SCREW, [z - len / 3, z + len / 3].map((zz): Vec3 => [x - g * 3, t.y + 20, zz]), [g, 0, 0], { on, gap: 0.05 });
       }
     }
   });
@@ -1100,8 +1100,9 @@ function buildChest(k: Kit, gd: Guide) {
     );
     k.step({ title: "Press the top board on", detail: "Line it up all round and press it down onto the fittings.", kind: "join" }, () => k.add(["TOP"], [0, 260, 0]));
   }
-  k.step({ title: "Fit the back rail under the top", detail: `Tap ${cols === 2 ? 4 : 3} dowels into its top edge, push it in at the back and turn two cam locks.`, tools: ["hammer", "screwdriver"], kind: "cams" }, () => {
-    k.add(["TR"], [0, 0, -260]);
+  k.step({ title: "Fit the back rail under the top", detail: `Tap ${cols === 2 ? 4 : 3} dowels into its top edge, lift it up onto them and the cam bolts at the back, then turn two cam locks.`, tools: ["hammer", "screwdriver"], kind: "cams" }, () => {
+    // from below: its dowels and the top's cam bolts both point up and down
+    k.add(["TR"], [0, -220, 0]);
     k.fit(DOWEL, spread(-W / 2 + 120, W / 2 - 120, cols === 2 ? 4 : 3).map((x): Vec3 => [x, ySideTop, zb + 12 + T / 2]), [0, 1, 0], { on: "TR", mate: "TOPF" });
     k.fit(CAM, [-1, 1].map((g): Vec3 => [g * (W / 4), ySideTop - 30, zb + 12 + T]), [0, 0, -1], { on: "TR" });
   });
@@ -1271,17 +1272,17 @@ function buildConsole(k: Kit, gd: Guide) {
     k.part(`BL${g}`, "Lower rail, long", [lr, th, rt], [0, ty, g * zr], wood);
     k.part(`BS${g}`, "Lower rail, short", [rt, th, sr], [g * xr, ty, 0], wood);
   }
-  k.part("SH", "Shelf", [lr - 4, 12, sr + 2 * rt - 2 * rt - 4], [0, 80 + 24, 0], wood);
-  const apron = ["AL-1", "AL1", "AS-1", "AS1"], tray = ["BL-1", "BL1", "BS-1", "BS1"];
-  k.step({ title: "Screw the two rail frames together", detail: "Lay the rails out on a rug. One screw through each corner joint, four in each frame.", tools: ["screwdriver"], scene: "frames", warnings: ["floor"], kind: "screws" }, () => {
+  // a ledge strip along the inside of each lower long rail carries the shelf
+  const lt = 16, lh = 20, ly = 80 + 24 - 6 - lh / 2, lz = zr - rt / 2 - lt / 2;
+  for (const g of [-1, 1]) k.part(`LD${g}`, "Ledge strip", [lr - 40, lh, lt], [0, ly, g * lz], wood);
+  k.part("SH", "Shelf", [lr - 4, 12, 2 * (zr - rt / 2) - 4], [0, 80 + 24, 0], wood);
+  const apron = ["AL-1", "AL1", "AS-1", "AS1"], tray = ["BL-1", "BL1", "BS-1", "BS1"], ledges = ["LD-1", "LD1"];
+  k.step({ title: "Screw the ledge strips onto the lower rails", detail: "Lay the frames out on a rug. One strip along the inside of each long rail, four screws each.", tools: ["screwdriver"], scene: "frames", warnings: ["floor"], kind: "screws" }, () => {
     k.stage(apron, [0, -ay + ah / 2, -D * 0.7], [0, 160, 0]);
     k.stage(tray, [0, -ty + th / 2, D * 0.7], [0, 160, 0]);
-    for (const g of [-1, 1]) {
-      for (const h of [-1, 1]) {
-        k.fit(RAIL_SCREW, [[g * xr, ay, h * (zr + rt / 2)]], [0, 0, -h], { on: `AL${h}`, mate: `AS${g}`, gap: 0.08 });
-        k.fit(RAIL_SCREW, [[g * xr, ty, h * (zr + rt / 2)]], [0, 0, -h], { on: `BL${h}`, mate: `BS${g}`, gap: 0.08 });
-      }
-    }
+    k.stage(ledges, [0, -ty + th / 2, D * 0.7], [0, 200, 0]);
+    for (const g of [-1, 1])
+      k.fit(RAIL_SCREW, spread(-lr / 2 + 80, lr / 2 - 80, 4).map((x): Vec3 => [x, ly, g * (lz - lt / 2)]), [0, 0, g], { on: `LD${g}`, mate: `BL${g}`, gap: 0.08 });
   });
   k.step({ title: "Screw the cam bolts into the lower frame", detail: "One at each corner, by hand until it stops.", tools: ["screwdriver"], scene: "frames", kind: "cams" }, () =>
     k.fit(C_BOLT, legs.map((l): Vec3 => [l.gx * (xr), ty, l.gz * (zl - 5)]), [-1, 0, 0], { on: "BS-1" }),
@@ -1306,7 +1307,7 @@ function buildConsole(k: Kit, gd: Guide) {
   k.step({ title: "Push the cam locks into the first two legs", detail: "Arrow towards where the bolt will come.", tools: ["screwdriver"], pose: "-y", kind: "cams" }, () =>
     k.fit(CAM, legs.filter((l) => l.gx < 0).map((l): Vec3 => [l.x, ty, l.z]), [0, 0, 1], { on: legs[0].id }),
   );
-  k.step({ title: "Lower the lower frame onto the legs", detail: "Its cam bolts go into the legs.", pose: "-y", kind: "join" }, () => k.add(tray, [0, -260, 0]));
+  k.step({ title: "Lower the lower frame onto the legs", detail: "Its cam bolts go into the legs.", pose: "-y", kind: "join" }, () => k.add([...tray, ...ledges], [0, -260, 0]));
   k.step({ title: "Fix the other two brackets", detail: "Over the rods, nuts tightened with the spanner.", tools: ["wrench"], pose: "-y", kind: "bolts" }, () => {
     k.fit(CORNER, brPts(1), [0, 1, 0], { on: "AL1", hole: false });
     k.fit(NUT, brPts(1), [0, 1, 0], { on: "AL1", hole: false });

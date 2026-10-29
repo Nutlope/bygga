@@ -92,8 +92,9 @@ function recipe(s: ProductSpec) {
   const legFix: CustomFix[] = kid
     ? [{ kind: "screw", count: 5, len: 16, dia: 6, at: legScrews, dir: [0, 1, 0], on: "HUB" }]
     : [
-        { kind: "washer", count: 10, len: 1.5, dia: 16, at: legScrews, dir: [0, 1, 0], on: "HUB" },
+        // the washers stack on the screws, so the screws are listed first
         { kind: "screw", count: 10, len: 16, dia: 6, at: legScrews, dir: [0, 1, 0], on: "HUB" },
+        { kind: "washer", count: 10, len: 1.5, dia: 16, at: legScrews, dir: [0, 1, 0], on: "HUB" },
       ];
   const steps: CustomStep[] = [
     {

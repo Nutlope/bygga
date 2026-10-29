@@ -12,7 +12,7 @@ import { buildCustom } from "../custom";
  * dividers (the 64 cm ones on the dividers only), cover strips and cable outlets at the back, and hook onto wall screws.
  * Then shelves on four pins, doors on two hinges each with two bumpers, drawers on runners, and STUBBARP legs instead
  * of the feet. The 240 cm combinations are a TV bench with a 60 cm frame screwed on at each end. BESTÅ BURS is a
- * different build and keeps its old guide.
+ * different build, read from its own manual (`bursRecipe`).
  */
 
 const T = 18; // board
@@ -165,7 +165,8 @@ function uprightSteps(r: Recipe, fs: Frame[], legs: boolean, title = "") {
         : i.V.map((id, k) => ({ id, x: divX(f, k + 1) - T / 2, d: 1 }));
     return list.flatMap((u) => [
       fix("bracket", [[u.x, y, z]], [u.d, 0, 0], { on: u.id, len: 40, dia: 44 }),
-      fix("screw", [[u.x, y - 12, z + 10], [u.x, y + 12, z + 10]], [u.d, 0, 0], { on: u.id, len: 14, dia: 4 }),
+      // far enough from the bracket's own point that custom.ts doesn't push them off the side
+      fix("screw", [[u.x, y - 24, z + 8], [u.x, y + 24, z + 8]], [u.d, 0, 0], { on: u.id, len: 14, dia: 4 }),
     ]);
   };
   if (!legs)
@@ -808,6 +809,7 @@ function applyMoves(b: PlanBuilder, base: number, r: Recipe) {
     const first = it.states[0];
     first.pos = m.states[0].pos;
     first.rot = m.states[0].rot ?? it.final.rot;
+    if (m.states[0].from) first.from = m.states[0].from;
     for (const s of m.states.slice(1)) {
       const atFinal = s.pos.every((v, i) => Math.abs(v - p[i]) < 0.5) && !s.rot;
       it.states.push({ step: base + s.step, scene: first.scene, pos: atFinal ? it.final.pos : s.pos, rot: s.rot ?? it.final.rot, from: s.from, delay: 0.2 });
@@ -817,17 +819,386 @@ function applyMoves(b: PlanBuilder, base: number, r: Recipe) {
 }
 
 function draw(b: PlanBuilder, s: ProductSpec, g: Guide) {
-  const r = recipeOf(g);
+  return drawRecipe(b, s, recipeOf(g));
+}
+
+function drawRecipe(b: PlanBuilder, s: ProductSpec, r: Recipe) {
   const base = b.steps.length;
   buildCustom(b, { ...s, custom: { parts: r.parts, steps: r.steps } });
   applyMoves(b, base, r);
   return true;
 }
 
+/* ---------- BESTÅ BURS ---------- */
+
+/**
+ * BESTÅ BURS, read from its own manual: the two dividers take the hinge plates and flap stops, stand on dowels in the
+ * bottom (screwed from below), the ends go on with dowels and cam bolts, and the top on twelve dowels and eight cam
+ * bolts. Face down it gets five feet and two hardboard backs, nailed (the middle stays open for cables). Then the wall
+ * bracket, runners, two middle shelves, three flaps on two hinges each, two big drawers built face down on the rug
+ * (each with a castor under its front) and the loose tray that hangs in the left drawer.
+ */
+function bursRecipe(s: ProductSpec): Recipe {
+  const r = new Recipe();
+  const W = Math.round(s.size.w * 10), H = Math.round(s.size.h * 10), D = Math.round(s.size.d * 10);
+  const TT = 30, yb = 60, yt = H - TT; // top thickness, underside of the bottom, underside of the top
+  const zb = -D / 2 + 3, zf = D / 2 - DT - 1; // back edge of the carcass (the backs are on it), its front edge
+  const xs = W / 2 - T; // inside of the end panels
+  const cwid = (2 * xs - 2 * T) / 3; // each of the three compartments
+  const xv = cwid / 2 + T / 2; // divider centres
+  const dz = zf - zb, cz = (zf + zb) / 2;
+  const B = "BT", TP = "TP", SL = "SL", SR = "SR", V1 = "V1", V2 = "V2";
+  const side = (sx: number) => (sx < 0 ? SL : SR);
+  const div = (sx: number) => (sx < 0 ? V1 : V2);
+  r.part(B, "Bottom panel", [2 * xs, T, dz], [0, yb + T / 2, cz]);
+  r.part(TP, "Top panel", [W, TT, D], [0, yt + TT / 2, 0]);
+  for (const sx of [-1, 1]) r.part(side(sx), "End panel", [T, yt - yb, dz], [sx * (xs + T / 2), (yb + yt) / 2, cz]);
+  for (const sx of [-1, 1]) r.part(div(sx), "Divider", [T, yt - yb - T, dz], [sx * xv, (yb + T + yt) / 2, cz]);
+  for (const sx of [-1, 1]) r.part(sx < 0 ? "K1" : "K2", "Back panel", [W / 2 - xv, yt - yb, 3], [sx * (W / 2 + xv) / 2, (yb + yt) / 2, -D / 2 + 1.5], "fiber");
+  const feet: Vec3[] = [...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx * (W / 2 - 35), 0, sz > 0 ? zf - 35 : zb + 35] as Vec3)), [0, 0, zb + 35]];
+  feet.forEach((f, k) => r.part(`G${k}`, "Foot", [70, yb, 70], [f[0], yb / 2, f[2]]));
+  // the fronts: a drawer at each end, three flaps in the middle, all under the top
+  const fw = W / 3 - GAP, fy0 = 80, fy1 = yt - 5, fz = D / 2 - DT / 2;
+  const fh = (fy1 - fy0 - 2 * GAP) / 3;
+  const flapY = (k: number) => fy0 + k * (fh + GAP) + fh / 2;
+  for (let k = 0; k < 3; k++) {
+    r.part(`FL${k}`, "Flap", [fw, fh, DT], [0, flapY(k), fz]);
+    r.part(`FR${k}`, "Flap rail", [fw - 60, 14, 14], [0, flapY(k) + fh / 2 - 10, zf - 6], "metal");
+  }
+  const shelfY = [flapY(0) + fh / 2 + GAP / 2, flapY(1) + fh / 2 + GAP / 2];
+  shelfY.forEach((y, k) => r.part(`SH${k}`, "Shelf", [2 * (xv - T / 2) - 2, T, 320], [0, y, zb + 160]));
+  // the drawers: a box on runners behind each end front
+  const dw = cwid - 26, dy0 = 100, dy1 = 380, dzb = zb + 30;
+  const dcx = (sx: number) => sx * (xv + T / 2 + cwid / 2);
+  for (const sx of [-1, 1]) {
+    const q = sx < 0 ? "L" : "R", x = dcx(sx);
+    r.part(`D${q}F`, "Drawer front", [fw, fy1 - fy0, DT], [sx * W / 3, (fy0 + fy1) / 2, fz]);
+    for (const t of [-1, 1]) r.part(`D${q}S${t < 0 ? 1 : 2}`, "Drawer side", [T, dy1 - dy0, zf + 1 - dzb], [x + t * (dw / 2 - T / 2), (dy0 + dy1) / 2, (zf + 1 + dzb) / 2]);
+    r.part(`D${q}K`, "Drawer back", [dw - 2 * T, dy1 - dy0, T], [x, (dy0 + dy1) / 2, dzb + T / 2]);
+    r.part(`D${q}B`, "Drawer bottom", [dw - 2 * T + 8, 5, zf - dzb - T - 4], [x, dy0 + 12, (zf + dzb + T) / 2 - 2], "fiber");
+    r.part(`D${q}R`, "Drawer rail", [dw, 20, 20], [x, dy1 + 10, dzb + 10], "metal");
+  }
+  // the tray hangs between the left drawer's sides, at the front
+  const tx = dcx(-1), tin = dw / 2 - T, ty0 = dy1 - 80, tz0 = 20, tz1 = zf - 10;
+  for (const t of [-1, 1]) r.part(`TE${t < 0 ? 1 : 2}`, "Tray end", [3, 80, tz1 - tz0], [tx + t * (tin - 1.5), ty0 + 40, (tz0 + tz1) / 2], "metal");
+  [tz0 + 12, tz1 - 12].forEach((z, k) => r.parts.push({ id: `TR${k}`, name: "Tray rod", size: [2 * tin - 6, 10, 10], pos: [tx, dy1 - 10, z], shape: "cyl", material: "metal" }));
+  r.part("TB", "Tray bottom", [2 * tin - 6, 3, tz1 - tz0], [tx, ty0 + 1.5, (tz0 + tz1) / 2], "metal");
+
+  const zz = [-1, 1].map((t) => cz + t * 100);
+  const z3 = [-1, 0, 1].map((t) => cz + t * 150);
+  const ups = [...[-1, 1].map((sx) => ({ id: side(sx), x: sx * (xs + T / 2) })), ...[-1, 1].map((sx) => ({ id: div(sx), x: sx * xv }))];
+  const mid = (sx: number) => sx * (xv - T / 2); // a divider's face towards the middle
+  const plateAt = (sx: number) => [0, 1, 2].map((k) => [mid(sx), flapY(k), zf - 25] as Vec3);
+  const HINGE_X = fw / 2 - 24;
+
+  r.step({
+    title: "Screw the hinge plates onto the dividers",
+    detail: "Three on each, on the face that will look into the middle, near the front edge. Their screws are already in them.",
+    fix: [-1, 1].map((sx) => fix("plate", plateAt(sx), [-sx, 0, 0], { on: div(sx), len: 40, dia: 30 })).map((f) => ({ ...f, name: "Hinge plate" })),
+    tools: ["screwdriver"],
+    warnings: ["floor"],
+  });
+  r.step({
+    title: "Screw in the flap stops",
+    detail: "Three in each divider, just below the hinge plates: the stud first, then the sleeve pushed over it.",
+    fix: [-1, 1].map((sx) => ({ ...fix("pin", plateAt(sx).map((p) => [p[0], p[1] - 40, p[2] + 10] as Vec3), [-sx, 0, 0], { on: div(sx), len: 16, dia: 8 }), name: "Flap stop" })),
+    tools: ["screwdriver"],
+  });
+  const sDiv = r.step({
+    title: "Stand the dividers on the bottom",
+    detail: "Lay the bottom on its back edge, tap three dowels in at each divider's place, then push the dividers onto them.",
+    add: [B, V1, V2], // the dividers are already out for their plates; listed so they count as added here
+    fix: [-1, 1].map((sx) => fix("dowel", z3.map((z) => [sx * xv, yb + T, z] as Vec3), [0, -1, 0], { on: B, mate: div(sx), len: 30, dia: 8 })),
+    pose: "+z",
+    warnings: ["floor"],
+  });
+  r.step({
+    title: "Screw the dividers on from below",
+    detail: "Two long screws through the bottom into each divider, with the Allen key.",
+    fix: [-1, 1].map((sx) => ({ ...fix("bolt", zz.map((z) => [sx * xv, yb, z] as Vec3), [0, 1, 0], { on: B, mate: div(sx), len: 50, dia: 7 }), name: "Allen screw" })),
+  });
+  r.step({
+    title: "Screw the cam bolts into the end panels",
+    detail: "Two in each, by hand, in the holes near the bottom edge.",
+    fix: [-1, 1].map((sx) => fix("camScrew", zz.map((z) => [sx * xs, yb + T / 2, z] as Vec3), [sx, 0, 0], { on: side(sx), mate: B, ...BOLT })),
+    wait: [SL, SR],
+    tools: ["screwdriver"],
+  });
+  r.step({
+    title: "Push the end panels onto the bottom",
+    detail: "Three dowels in each end panel first, then push them onto the ends of the bottom, the grooves at the back.",
+    add: [SL, SR],
+    fix: [-1, 1].map((sx) => fix("dowel", z3.map((z) => [sx * xs, yb + T / 2, z] as Vec3), [sx, 0, 0], { on: side(sx), mate: B, len: 30, dia: 8 })),
+  });
+  r.step({
+    title: "Turn the cam locks in the bottom",
+    detail: "Two at each end, arrow towards the bolt, then clockwise until tight.",
+    fix: [-1, 1].map((sx) => fix("cam", zz.map((z) => [sx * (xs - 32), yb + T, z] as Vec3), [0, -1, 0], { on: B, ...CAM })),
+    tools: ["screwdriver"],
+  });
+  const sTop = r.step({
+    title: "Screw the cam bolts into the top",
+    detail: "Eight in the underside, a pair over each end panel and each divider. Lay the top on the rug, glossy side down.",
+    fix: ups.map((u) => fix("camScrew", zz.map((z) => [u.x, yt, z] as Vec3), [0, 1, 0], { on: TP, mate: u.id, ...BOLT })),
+    tools: ["screwdriver"],
+    warnings: ["floor"],
+  });
+  const sLower = r.step({
+    title: "Stand it up and lower the top on",
+    detail: "Twelve dowels in the top edges of the end panels and dividers, then lower the top so every bolt finds its hole.",
+    add: [TP],
+    fix: ups.map((u) => fix("dowel", z3.map((z) => [u.x, yt, z] as Vec3), [0, -1, 0], { on: u.id, mate: TP, len: 30, dia: 8 })),
+    pose: "+y",
+    people: 2,
+  });
+  // the dividers lie on the rug for their plates, then go onto the bottom's dowels; the top waits beside until it is lowered on
+  for (const sx of [-1, 1]) {
+    const id = div(sx);
+    r.moves.push({ id, states: [{ step: 0, pos: [sx * 320, T / 2, D / 2 + 260], rot: [0, 0, Math.PI / 2] }, { step: sDiv, pos: r.pos(id), from: [0, 0, -260] }] });
+  }
+  r.moves.push({ id: TP, states: [{ step: sTop, pos: [0, yt + TT / 2 + 420, 0] }, { step: sLower, pos: r.pos(TP), from: [0, 300, 0] }] });
+  r.step({
+    title: "Turn the cam locks under the top",
+    detail: "Two in each end panel and each divider, clockwise until the top is pulled down tight.",
+    fix: [
+      ...[-1, 1].map((sx) => fix("cam", zz.map((z) => [sx * xs, yt - 32, z] as Vec3), [sx, 0, 0], { on: side(sx), ...CAM })),
+      ...[-1, 1].map((sx) => fix("cam", zz.map((z) => [mid(sx), yt - 32, z] as Vec3), [sx, 0, 0], { on: div(sx), ...CAM })),
+    ],
+    tools: ["screwdriver"],
+  });
+  r.step({
+    title: "Lay it on its front and screw on the feet",
+    detail: "On the rug, together. Two screws hold each foot: one at each end of the end panels and one in the middle at the back.",
+    add: feet.map((_, k) => `G${k}`),
+    from: Object.fromEntries(feet.map((_, k) => [`G${k}`, [0, -220, 0] as Vec3])),
+    fix: feet.map((f, k) => ({ ...fix("screw", [-1, 1].map((t) => [f[0] + t * 15, 12, f[2] + t * 15] as Vec3), [0, 1, 0], { on: `G${k}`, mate: B, len: 60, dia: 4.5 }), name: "Long screw" })),
+    pose: "-z",
+    people: 2,
+    tools: ["screwdriver"],
+    warnings: ["two", "floor"],
+  });
+  r.step({ title: "Press a felt pad under each foot", detail: "One on the underside of each of the five feet.", fix: [fix("glide", feet, [0, 1, 0], { len: 4, dia: 40 })] });
+  r.step({
+    title: "Mark the dividers on the back edges",
+    detail: "Draw a pencil line across the back edge of the top and bottom at the middle of each divider, so you'll know where to nail.",
+    tools: ["pencil"],
+  });
+  const nailsOf = (sx: number, which: "corner" | "rest") => {
+    const k = sx < 0 ? "K1" : "K2";
+    const xo = sx * (xs + T / 2), xd = sx * xv;
+    const pts: Vec3[] =
+      which === "corner"
+        ? [[xo, yt - 20, -D / 2], [xd, yt - 20, -D / 2]]
+        : [
+            ...[yb + 60, yb + 160, yb + 260, yt - 100].map((y) => [xo, y, -D / 2] as Vec3),
+            ...[yb + 60, yb + 160, yb + 260, yt - 100].map((y) => [xd, y, -D / 2] as Vec3),
+            ...[0.1, 0.3, 0.5, 0.7, 0.9].map((t) => [xd + (xo - xd) * t, yb + T / 2, -D / 2] as Vec3),
+          ];
+    return fix("nail", pts, [0, 0, 1], { on: k, len: 20, dia: 1.6 });
+  };
+  r.step({
+    title: "Lay the two backs on and tack their corners",
+    detail: "Smooth side in. Line each one up with the outer corners and drive one nail at each top corner.",
+    add: ["K1", "K2"],
+    from: { K1: [0, 0, -260], K2: [0, 0, -260] },
+    fix: [nailsOf(-1, "corner"), nailsOf(1, "corner")],
+    tools: ["hammer"],
+  });
+  r.step({ title: "Mark the dividers on the backs", detail: "Join up your pencil marks across each back, so the nails go into the middle of the divider." , tools: ["pencil"] });
+  r.step({
+    title: "Nail the backs on",
+    detail: "Thirteen nails in each, into the end panel, the divider and the bottom. The middle stays open for the cables.",
+    fix: [nailsOf(-1, "rest"), nailsOf(1, "rest")],
+    tools: ["hammer"],
+  });
+  r.step({
+    title: "Stand it up and screw on the wall bracket",
+    detail: "Under the top at the back, in the middle, with one screw and a washer.",
+    fix: [
+      { ...fix("bracket", [[0, yt, -D / 2 + 10]], [0, 1, 0], { on: TP, len: 60, dia: 40 }), name: "Wall bracket" },
+      fix("washer", [[0, yt, -D / 2 + 22]], [0, 1, 0], { on: TP, len: 1.5, dia: 16 }),
+      fix("screw", [[0, yt, -D / 2 + 22]], [0, 1, 0], { on: TP, len: 16, dia: 4 }),
+    ],
+    pose: "+y",
+    people: 2,
+    tools: ["screwdriver"],
+    warnings: ["two"],
+    wall: false,
+  });
+  r.step({
+    title: "Screw the bracket to the wall",
+    detail: "Push the bench against the wall, then one screw with a washer through the bracket. Wall screws and plugs aren't included: pick ones made for your wall.",
+    fix: [
+      fix("plug", [[0, yt - 25, -D / 2 - 30]], [0, 0, -1], { len: 35, dia: 8 }),
+      fix("washer", [[0, yt - 25, -D / 2 + 4]], [0, 0, -1], { len: 1.5, dia: 16 }),
+      fix("screw", [[0, yt - 25, -D / 2 + 4]], [0, 0, -1], { len: 50, dia: 5 }),
+    ],
+    tools: ["drill", "screwdriver", "pencil"],
+    wall: true,
+    warnings: ["wall", "tip"],
+  });
+  const runnerAt: { id: string; x: number; d: number }[] = [
+    { id: SL, x: -xs, d: -1 },
+    { id: V1, x: -(xv + T / 2), d: 1 },
+    { id: V2, x: xv + T / 2, d: -1 },
+    { id: SR, x: xs, d: 1 },
+  ];
+  const rz = (dzb + zf) / 2;
+  r.step({
+    title: "Screw in the drawer runners",
+    detail: "Left and right runners are different: the one with the hook goes at the front. Two screws each, low down in both end compartments.",
+    fix: runnerAt.flatMap((u) => [
+      fix("runner", [[u.x, dy0 + 10, rz]], [u.d, 0, 0], { on: u.id, len: zf - dzb - 10, dia: 30 }),
+      fix("screw", [-1, 1].map((t) => [u.x, dy0 + 10, rz + t * 120] as Vec3), [u.d, 0, 0], { on: u.id, len: 12, dia: 4 }),
+    ]),
+    tools: ["screwdriver"],
+  });
+  r.step({
+    title: "Put in the shelf pins",
+    detail: "Four on each side of the middle compartment, in the holes just above each flap's line.",
+    fix: shelfY.flatMap((y) => [-1, 1].map((sx) => fix("pin", [-1, 1].map((t) => [mid(sx), y - T / 2 - 3, zb + 160 + t * 110] as Vec3), [sx, 0, 0], { on: div(sx), len: 16, dia: 5 }))),
+  });
+  r.step({
+    title: "Slide in the two shelves",
+    detail: "Lay them on the pins, pushed right to the back.",
+    add: ["SH0", "SH1"],
+    from: { SH0: [0, 0, 420], SH1: [0, 0, 420] },
+  });
+  const flaps = [0, 1, 2].map((k) => `FL${k}`);
+  const rails = [0, 1, 2].map((k) => `FR${k}`);
+  const sFlap = r.step({
+    title: "Screw two hinges onto each flap",
+    detail: "Lay the three flaps face down on the rug. One left and one right hinge on each, the cups in the round holes, two screws each.",
+    add: flaps,
+    fix: [0, 1, 2].flatMap((k) => [
+      fix("hinge", [-1, 1].map((t) => [t * HINGE_X, flapY(k), zf + 1] as Vec3), [0, 0, 1], { on: `FL${k}` }),
+      fix("screw", [-1, 1].flatMap((t) => [-1, 1].map((u) => [t * HINGE_X, flapY(k) + u * 22, zf + 1] as Vec3)), [0, 0, 1], { on: `FL${k}`, len: 12, dia: 3.5 }),
+    ]),
+    tools: ["screwdriver"],
+    warnings: ["floor"],
+  });
+  r.step({
+    title: "Screw a rail along each flap",
+    detail: "Along the top edge on the back, three screws each.",
+    add: rails,
+    fix: [0, 1, 2].map((k) => fix("screw", [-200, 0, 200].map((x) => [x, flapY(k) + fh / 2 - 10, zf - 13] as Vec3), [0, 0, 1], { on: `FR${k}`, mate: `FL${k}`, len: 20, dia: 3.5 })),
+    tools: ["screwdriver"],
+  });
+  const sHang = r.step({
+    title: "Click the flaps onto the hinge plates",
+    detail: "From the bottom flap up: slide each hinge onto its plate until it clicks, then tighten the screw on the plate.",
+    tools: ["screwdriver"],
+  });
+  // flaps and their rails lie face down on the rug in front while the hinges and rails go on
+  const lay = (p: Vec3, c: Vec3, at: Vec3): Vec3 => [at[0] + p[0] - c[0], at[1] - (p[2] - c[2]), at[2] + (p[1] - c[1])];
+  const FACE: Vec3 = [Math.PI / 2, 0, 0];
+  [0, 1, 2].forEach((k) => {
+    const c = r.pos(`FL${k}`);
+    const at: Vec3 = [0, DT / 2, D / 2 + 140 + fh / 2 + k * (fh + 50)];
+    r.moves.push({ id: `FL${k}`, states: [{ step: sFlap, pos: at, rot: FACE }, { step: sHang, pos: c, from: [0, 0, 320] }] });
+    r.moves.push({ id: `FR${k}`, states: [{ step: sFlap + 1, pos: lay(r.pos(`FR${k}`), c, at), rot: FACE, from: [0, 160, 0] }, { step: sHang, pos: r.pos(`FR${k}`), from: [0, 0, 320] }] });
+  });
+
+  // the drawers are built face down on the rug, then hung on the runners
+  const dq = ["L", "R"] as const;
+  const dids = (q: string, what: string) => `D${q}${what}`;
+  const sF = r.step({
+    title: "Screw the cam bolts into both drawer fronts",
+    detail: "Lay each front face down on the rug. Four bolts in each, by hand.",
+    add: dq.map((q) => dids(q, "F")),
+    fix: [-1, 1].map((sx, i) => fix("camScrew", [-1, 1].flatMap((t) => [dy0 + 50, dy1 - 50].map((y) => [dcx(sx) + t * (dw / 2 - T / 2), y, zf + 1] as Vec3)), [0, 0, 1], { on: dids(dq[i], "F"), ...BOLT })),
+    tools: ["screwdriver"],
+    warnings: ["floor"],
+  });
+  r.step({
+    title: "Screw a castor onto each front",
+    detail: "In the middle of the bottom edge, on the back, two screws each. The wheel hangs below the front.",
+    fix: [-1, 1].flatMap((sx, i) => [
+      fix("castor", [[sx * W / 3, fy0, zf - 12]], [0, 1, 0], { on: dids(dq[i], "F"), len: fy0, dia: 45 }),
+      fix("screw", [-1, 1].map((t) => [sx * W / 3 + t * 30, fy0 + 25, zf + 1] as Vec3), [0, 0, 1], { on: dids(dq[i], "F"), len: 15, dia: 4 }),
+    ]),
+    tools: ["screwdriver"],
+  });
+  const sSide = r.step({
+    title: "Stand the drawer sides on the fronts",
+    detail: "Two small dowels in each side's front end, then push them onto the front over the cam bolts.",
+    add: dq.flatMap((q) => [dids(q, "S1"), dids(q, "S2")]),
+    fix: [-1, 1].flatMap((sx, i) => [-1, 1].map((t) => fix("dowel", [dy0 + 110, dy1 - 110].map((y) => [dcx(sx) + t * (dw / 2 - T / 2), y, zf + 1] as Vec3), [0, 0, 1], { on: dids(dq[i], "F"), mate: dids(dq[i], t < 0 ? "S1" : "S2"), len: 25, dia: 6 }))),
+  });
+  r.step({
+    title: "Turn the cam locks in the drawer sides",
+    detail: "Two in each side, arrow towards the bolt, then clockwise until tight.",
+    fix: [-1, 1].flatMap((sx, i) => [-1, 1].map((t) => fix("cam", [dy0 + 50, dy1 - 50].map((y) => [dcx(sx) + t * (dw / 2 - T), y, zf - 32] as Vec3), [t, 0, 0], { on: dids(dq[i], t < 0 ? "S1" : "S2"), ...CAM }))),
+    tools: ["screwdriver"],
+  });
+  const sBot = r.step({ title: "Slide the drawer bottoms into the grooves", detail: "All the way down to the front.", add: dq.map((q) => dids(q, "B")) });
+  const sBack = r.step({ title: "Lay the drawer backs on", detail: "Between the two sides, flush with their ends.", add: dq.map((q) => dids(q, "K")) });
+  r.step({
+    title: "Knock in the fittings for the backs",
+    detail: "Three through each side into the back, tapped in with a hammer.",
+    fix: [-1, 1].flatMap((sx, i) => [-1, 1].map((t) => ({ ...fix("nail", [dy0 + 50, (dy0 + dy1) / 2, dy1 - 50].map((y) => [dcx(sx) + t * (dw / 2), y, dzb + T / 2] as Vec3), [-t, 0, 0], { on: dids(dq[i], t < 0 ? "S1" : "S2"), mate: dids(dq[i], "K"), len: 30, dia: 8 }), name: "Push fitting" }))),
+    tools: ["hammer"],
+  });
+  r.step({ title: "Pull the runners out", detail: "All four, until they lock open, with their catches at the front." });
+  const sIn = r.step({
+    title: "Put the drawers on the runners",
+    detail: "Rest each drawer on its pulled-out runners, push it in and press until both catches click.",
+    people: 1,
+  });
+  r.step({ title: "Line up the drawer fronts", detail: "Turn the wheel on each catch to raise or lower the front until the gaps are even with the flaps." });
+  r.step({ title: "Wipe off the fingerprints", detail: "A soft damp cloth on the glossy top and fronts, then a dry one." });
+  r.step({
+    title: "Screw a rail onto each drawer",
+    detail: "Along the top at the back, three screws each, into both sides and the back.",
+    add: dq.map((q) => dids(q, "R")),
+    fix: [-1, 1].map((sx, i) => fix("screw", [-1, 0, 1].map((t) => [dcx(sx) + t * (dw / 2 - T / 2), dy1 + 20, dzb + 10] as Vec3), [0, -1, 0], { on: dids(dq[i], "R"), mate: dids(dq[i], "K"), len: 30, dia: 3.5 })),
+    tools: ["screwdriver"],
+  });
+  dq.forEach((q) => {
+    const c = r.pos(dids(q, "F"));
+    const at: Vec3 = [c[0], DT / 2, D / 2 + 140 + (fy1 - fy0) / 2];
+    const ids2 = ["F", "S1", "S2", "B", "K"];
+    const first: Record<string, number> = { F: sF, S1: sSide, S2: sSide, B: sBot, K: sBack };
+    const drop: Record<string, Vec3 | undefined> = { S1: [0, 260, 0], S2: [0, 260, 0], B: [0, 300, 0], K: [0, 220, 0] };
+    for (const w of ids2) {
+      const id = dids(q, w);
+      r.moves.push({ id, states: [{ step: first[w], pos: lay(r.pos(id), c, at), rot: FACE, from: drop[w] }, { step: sIn, pos: r.pos(id), from: [0, 0, 420] }] });
+    }
+  });
+
+  // the tray is built on the floor in front and lifted into the left drawer
+  const trayIds = ["TE1", "TE2", "TR0", "TR1", "TB"];
+  const sTray = r.step({
+    title: "Screw the tray together",
+    detail: "The two rods and the bottom between the two end plates, eight screws in all.",
+    add: trayIds,
+    fix: [-1, 1].flatMap((t) => [
+      fix("screw", [tz0 + 12, tz1 - 12].map((z) => [tx + t * tin, dy1 - 10, z] as Vec3), [-t, 0, 0], { on: t < 0 ? "TE1" : "TE2", len: 10, dia: 4 }),
+      fix("screw", [tz0 + 30, tz1 - 30].map((z) => [tx + t * tin, ty0 + 1.5, z] as Vec3), [-t, 0, 0], { on: t < 0 ? "TE1" : "TE2", len: 10, dia: 4 }),
+    ]),
+    tools: ["screwdriver"],
+  });
+  r.step({
+    title: "Press the rubber strips in",
+    detail: "Turn the tray over, cut the strip in two and press the pieces into the edges of both end plates.",
+    fix: [{ ...fix("clip", [-1, 1].flatMap((t) => [tz0 + 40, tz1 - 40].map((z) => [tx + t * (tin - 1.5), ty0, z] as Vec3)), [0, 1, 0], { len: 4, dia: 10 }), name: "Rubber strip" }],
+  });
+  r.step({
+    title: "Stick on the bumpers",
+    detail: "One on each top corner of the tray, where it rests on the drawer.",
+    fix: [{ ...fix("glide", [-1, 1].flatMap((t) => [tz0 + 10, tz1 - 10].map((z) => [tx + t * (tin - 1.5), dy1, z] as Vec3)), [0, -1, 0], { len: 3, dia: 10 }), name: "Bumper" }],
+  });
+  const sDrop = r.step({ title: "Lift the tray into the left drawer", detail: "Open the drawer and lower the tray in at the front, so it rests on both sides." });
+  const tOff: Vec3 = [0, -ty0, D / 2 + 420];
+  for (const id of trayIds) r.moves.push({ id, states: [{ step: sTray, pos: add3(r.pos(id), tOff) }, { step: sDrop, pos: r.pos(id), from: [0, 260, 0] }] });
+  return r;
+}
+
 const family: Family = {
   names: ["BESTÅ"],
   build(b, s) {
     if (s.row) return false;
+    if (/^besta-burs-/.test(s.slug ?? "")) return drawRecipe(b, s, bursRecipe(s));
     const g = guideOf(s);
     return g ? draw(b, s, g) : false;
   },

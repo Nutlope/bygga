@@ -91,7 +91,7 @@ function rack(s: ProductSpec): CustomParams {
         detail: "One at the back of each frame's top rail, two screws each.",
         fix: [
           ...SX.map((sx) => at("angle", [[sx * xi, H - 30, -D / 2 + 60]], [sx, 0, 0], sid(sx), undefined, { name: "Wall bracket", len: 50, dia: 40 })),
-          ...SX.map((sx) => at("screw", [[sx * xi, H - 15, -D / 2 + 60], [sx * xi, H - 45, -D / 2 + 60]], [sx, 0, 0], sid(sx), undefined, { len: 16, dia: 4 })),
+          ...SX.map((sx) => at("screw", [[sx * xi, H - 30, -D / 2 + 35], [sx * xi, H - 30, -D / 2 + 85]], [sx, 0, 0], sid(sx), undefined, { len: 16, dia: 4 })),
         ],
       },
       {
@@ -99,7 +99,6 @@ function rack(s: ProductSpec): CustomParams {
         detail: "Two in each end of the bottom shelf, the bench and the top shelf.",
         fix: panels.flatMap(([id, y]) => SX.map((sx) => at("dowel", [[sx * xi, y, -160], [sx * xi, y, 160]], [sx, 0, 0], id, sid(sx), DOW))),
         wait: ["BOT", "SEAT", "TOP"],
-        from: { BOT: [0, 0, 700], SEAT: [0, 0, 700], TOP: [0, 0, 700] },
         tools: ["hammer"],
       },
       {
@@ -119,7 +118,7 @@ function rack(s: ProductSpec): CustomParams {
           at("dowel", [[-150, yTop - 10, zStrip], [150, yTop - 10, zStrip]], [0, 1, 0], "TF", "TOP", DOW),
         ],
         wait: ["PF", "PB", "SA", "TF"],
-        from: { PF: [0, 0, 700], PB: [0, 0, 700], SA: [0, 0, 700], TF: [0, 0, 700] },
+        from: { SA: [0, 0, 0], TF: [0, 0, 0] }, // joined on two axes: they just wait beside the build
         tools: ["hammer"],
       },
       {
@@ -134,7 +133,7 @@ function rack(s: ProductSpec): CustomParams {
         fix: panelCams(-1),
       },
       { title: "Fit the front plinth", detail: "Push it on and lock the cams in it and the top apron.", add: ["PF"], fix: [stripCam(-1, "PF", 50, zStrip), stripCam(-1, "TF", yTop - 40, zStrip)] },
-      { title: "Tap the dowels into the hook rail", detail: "One in each end.", fix: SX.map((sx) => at("dowel", [[sx * xi, yHook + 25, -D / 2 + 30]], [sx, 0, 0], "HOOK", sid(sx), DOW)), wait: ["HOOK"], from: { HOOK: [0, 0, -700] }, tools: ["hammer"] },
+      { title: "Tap the dowels into the hook rail", detail: "One in each end.", fix: SX.map((sx) => at("dowel", [[sx * xi, yHook + 25, -D / 2 + 30]], [sx, 0, 0], "HOOK", sid(sx), DOW)), wait: ["HOOK"], tools: ["hammer"] },
       { title: "Fit the hook rail", detail: "At the back, between the bench and the top. Lock its cam.", add: ["HOOK"], fix: [stripCam(-1, "HOOK", yHook, -D / 2 + 30)] },
       { title: "Put the clothes rail in its cup", detail: "Push a cup on each end and set one end in the hole in the frame.", add: ["ROD"], fix: SX.map((sx) => at("cap", [[sx * (xi - 4), yRod, 0]], [sx, 0, 0], "ROD", sid(sx), { name: "Rail cup", len: 12, dia: 40 })) },
       {
@@ -157,7 +156,7 @@ function rack(s: ProductSpec): CustomParams {
         detail: "A screw through the back of the rail into each knob.",
         fix: [
           at("knob", [-180, -60, 60, 180].map((x): Vec3 => [x, yHook, -D / 2 + 40]), [0, 0, -1], "HOOK", undefined, { len: 40, dia: 35 }),
-          at("screw", [-180, -60, 60, 180].map((x): Vec3 => [x, yHook, -D / 2 + 20]), [0, 0, 1], "HOOK", undefined, { len: 40, dia: 4 }),
+          at("screw", [-180, -60, 60, 180].map((x): Vec3 => [x, yHook, -D / 2 + 10]), [0, 0, 1], "HOOK", undefined, { len: 40, dia: 4 }),
         ],
       },
       { title: "Push in the shelf pins", detail: "Four, by hand, at the same height in both frames.", fix: SX.map((sx) => at("pin", [[sx * xi, yShoe - 9, -150], [sx * xi, yShoe - 9, 150]], [sx, 0, 0], sid(sx), undefined, { len: 16, dia: 5 })) },

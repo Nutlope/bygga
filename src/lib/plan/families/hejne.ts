@@ -31,7 +31,7 @@ function recipe(s: ProductSpec): CustomParams {
   const upright = (id: string, sx: number, sz: number): CustomPart => ({ id, name: "Upright", size: [uw, H, ut], pos: [sx * xu, H / 2, sz * zu], material: "wood" });
   parts.push(upright("B0", -1, -1), upright("B1", 1, -1), upright("F0", -1, 1), upright("F1", 1, 1));
   // the crossed brace on the back, between the middle shelves
-  const y0 = tops[1] + 60, y1 = tops[2] - bh - st - 60, x0 = xu - uw / 2 - 10;
+  const y0 = tops[1] + 60, y1 = tops[2] - bh - st - 60, x0 = xu - 5; // its ends lie on the back uprights
   const zb = -zu + ut / 2 + 2;
   const len = Math.hypot(2 * x0, y1 - y0), ang = Math.atan2(2 * x0, y1 - y0);
   const yc = (y0 + y1) / 2;
@@ -73,7 +73,7 @@ function recipe(s: ProductSpec): CustomParams {
         detail: "Lift it upright together. Hook the brace across the back between the middle shelves, one screw at each of its four ends.",
         add: ["X"],
         from: { X: [0, 0, -300] },
-        fix: [fix("screw", [[-x0, y0, zb], [x0, y0, zb], [-x0, y1, zb], [x0, y1, zb]], [0, 0, 1], { len: 16, dia: 4 })],
+        fix: [fix("screw", [[-x0, y0, zb], [x0, y0, zb], [-x0, y1, zb], [x0, y1, zb]], [0, 0, -1], { len: 16, dia: 4 })],
         tools: ["screwdriver"],
         pose: "+y",
         people: 2,

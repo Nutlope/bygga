@@ -30,7 +30,8 @@ function table(s: ProductSpec): CustomParams {
     { id: "SR", name: "Side panel", size: [t, yBox, D], pos: [xs, yBox / 2, 0], material: "board" },
     ...SX.map((sx, i): CustomPart => ({ id: `AF${i}`, name: "Front lift arm", size: [10, yBox - 300, 30], pos: [sx * (xIn - 5), (300 + yBox) / 2, zFa], material: "metal" })),
     ...SX.map((sx, i): CustomPart => ({ id: `AR${i}`, name: "Rear lift arm", size: [10, yBox - 290, 60], pos: [sx * (xIn - 5), (290 + yBox) / 2, zRa], material: "metal" })),
-    { id: "BAR", name: "Cross bar", size: [Wi - 20, 25, 25], pos: [0, 330, zRa], material: "metal" },
+    // a flat bar, its two bolts per end side by side, above the pivot pins
+    { id: "BAR", name: "Cross bar", size: [Wi - 20, 25, 50], pos: [0, 400, zRa], material: "metal" },
     ...SX.map((sx, i): CustomPart => ({ id: `GS${i}`, name: "Gas spring", shape: "cyl", size: [30, 30, 260], pos: [sx * (xIn - 40), 310, 20], material: "metal" })),
     { id: "TOP", name: "Table top", size: [W, t, D], pos: [0, H - t / 2, 0], material: "board" },
   ];
@@ -114,8 +115,9 @@ function table(s: ProductSpec): CustomParams {
         detail: "Put a washer on each bolt and turn it in by hand through the arm into the bar. Don't tighten yet.",
         add: ["BAR"],
         fix: SX.flatMap((sx, i) => {
-          const pts: Vec3[] = [[sx * xIn, 330, zRa - 8], [sx * xIn, 330, zRa + 8]];
-          return [at("washer", pts, [-sx, 0, 0], `AR${i}`, undefined, { len: 2, dia: 16 }), at("bolt", pts, [-sx, 0, 0], `AR${i}`, "BAR", { len: 16, dia: 6 })];
+          const pts: Vec3[] = [[sx * xIn, 400, zRa - 12], [sx * xIn, 400, zRa + 12]];
+          // the engine keeps a washer on the bolt already at its point, so the bolt is listed first
+          return [at("bolt", pts, [-sx, 0, 0], `AR${i}`, "BAR", { len: 16, dia: 6 }), at("washer", pts, [-sx, 0, 0], `AR${i}`, undefined, { len: 2, dia: 16 })];
         }),
       },
       { title: "Fold the arms down and tighten the bolts", detail: "Push the bar down until the arms lie flat, then tighten all four bolts with the Allen key.", tools: ["allen"] },

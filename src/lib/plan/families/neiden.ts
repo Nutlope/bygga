@@ -94,7 +94,7 @@ function recipe(s: ProductSpec) {
   const legDowels: CustomFix[] = sides.flatMap((sx) =>
     [-1, 1].map((sz): CustomFix => ({ ...DOWEL_S, count: 2, at: [235, 285].map((y): Vec3 => [sx * xl, y, sz < 0 ? zh + LZ / 2 : zf - LZ / 2]), dir: [0, 0, -sz] as Vec3, on: sz < 0 ? `HL${sx}` : `FL${sx}` })),
   );
-  const blockScrews: CustomFix[] = sides.flatMap((sx) => [-1, 1].map((sz): CustomFix => ({ kind: "screw", count: 1, len: 30, dia: 7, at: [[sx * xl, 260, sz < 0 ? zh + LZ / 2 + 30 : zf - LZ / 2 - 30]], dir: [0, 0, -sz] as Vec3, on: `BK${sx}${sz}` })));
+  const blockScrews: CustomFix[] = sides.flatMap((sx) => [-1, 1].map((sz): CustomFix => ({ kind: "screw", count: 1, len: 30, dia: 7, at: [[sx * xl, 260, bz(sz) - sz * 15]], dir: [0, 0, sz] as Vec3, on: `BK${sx}${sz}` })));
   const legScrews: CustomFix[] = sides.flatMap((sx) =>
     [
       { on: `HL${sx}`, ys: [H - 65, H - 25], z: zh },

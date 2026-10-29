@@ -79,7 +79,11 @@ function table(s: ProductSpec): CustomParams {
   ];
   const slideScrews = [-1, 1].flatMap((gz) => [-1, 1].flatMap((g) => [0.2, 0.5, 0.8].map((t): Vec3 => [g * t * (lx - LG / 2 - 20), U - 4, gz * sz])));
   const plateAt = pairs((g, gz): Vec3 => [g * (fx - 40), U - 5 - FH, gz * (fz - 40)]);
-  const plateScrews = plateAt.flatMap(([x, y, z]): Vec3[] => [[x - Math.sign(x) * 25, y, z], [x, y, z - Math.sign(z) * 25], [x + Math.sign(x) * 10, y, z + Math.sign(z) * 10]]);
+  // the plate spans the inside corner: one screw up into the side, one into the end, one where they meet
+  const plateScrews = plateAt.flatMap(([x, y, z]): Vec3[] => {
+    const g = Math.sign(x), gz = Math.sign(z);
+    return [[g * (fx - 50), y, gz * fz], [g * (fx - 9), y, gz * (fz - 50)], [g * (fx - 9), y, gz * (fz - 9)]];
+  });
   const frameScrews = [-1, 1].flatMap((gz) => [-200, -120, 120, 200].map((x): Vec3 => [x, fy, gz * (fz + 9)]));
   const pinAt: Vec3[] = [-1, 1].flatMap((g) => [-1, 1].map((gz): Vec3 => [g * 50, U, gz * W * 0.22]));
   const pinScrews = pinAt.flatMap(([x, y, z]): Vec3[] => [[x + Math.sign(x) * 25, y, z], [x + Math.sign(x) * 45, y, z]]);
@@ -97,10 +101,10 @@ function table(s: ProductSpec): CustomParams {
       title: "Screw a corner bracket to each side apron",
       detail: "At the end of the apron that meets a leg. Use the round-headed screws, not the short flat ones.",
       add: ["S00", "S01", "S10", "S11"],
-      fix: [at("angle", bracketAt, [0, 1, 0], { name: "Corner bracket", len: 60, dia: 40 }), at("screw", sideBracketScrews, [0, 0, 1], { len: 16, dia: 5 })],
+      fix: [at("angle", bracketAt, [0, 1, 0], { name: "Corner bracket", len: 60, dia: 40 }), ...[-1, 1].map((gz) => at("screw", sideBracketScrews.filter((p) => Math.sign(p[2]) === gz), [0, 0, gz], { len: 16, dia: 5 }))],
       tools: ["screwdriver"],
     },
-    { title: "Screw the end aprons to the brackets", detail: "One at the round end of each half, two screws into each bracket.", add: ["E0", "E1"], fix: [at("screw", endBracketScrews, [1, 0, 0], { len: 16, dia: 5 })], tools: ["screwdriver"] },
+    { title: "Screw the end aprons to the brackets", detail: "One at the round end of each half, two screws into each bracket.", add: ["E0", "E1"], fix: [-1, 1].map((g) => at("screw", endBracketScrews.filter((p) => Math.sign(p[0]) === g), [g, 0, 0], { len: 16, dia: 5 })), tools: ["screwdriver"] },
     { title: "Fix the aprons to the top", detail: "One long screw through each apron into the top, three on each half. Stop when the head sits flush.", fix: [at("screw", apronScrews(1), [0, 1, 0], { len: 95, dia: 5 })], tools: ["screwdriver"] },
     { title: "Drive in the other long screws", detail: "Two more in every apron, twelve in all. Then tighten all eighteen, without sinking the heads.", fix: [at("screw", apronScrews(2), [0, 1, 0], { len: 95, dia: 5 })], tools: ["screwdriver"] },
     {
@@ -215,7 +219,8 @@ function chair(): CustomParams {
   ];
   const nut = (g: number, z: number, on: string) => at("nut", [nutAt(g, z)], [-g, 0, 0], { name: "Connector nut", len: 20, dia: 20, on });
   const pads: Vec3[] = [-1, 1].flatMap((g) => [610, 720].map((y): Vec3 => [g * x, y, zbAt(y) + LS / 2]));
-  const bracketAt: Vec3[] = [[0, R1, railZ1 - RT - 4], [-(inner - RT - 4), R1, 20], [inner - RT - 4, R1, 20]];
+  // each bracket stands against the inside of a rail: the front one on the front frame's rail, the others on the side rails
+  const bracketAt: Vec3[] = [[0, R1, zf - RT / 2 - 3], [-(x - RT / 2 - 3), R1, 20], [x - RT / 2 - 3, R1, 20]];
   const steps: CustomStep[] = [
     { title: "Stick the felt pads on the back legs", detail: "Two on the front of each back leg, between the pins, where the backrest will rest.", add: ["BF"], fix: [at("glide", pads, [0, 0, -1], { name: "Felt pad", len: 2, dia: 16 })], warnings: ["floor"] },
     {
@@ -239,7 +244,8 @@ function chair(): CustomParams {
     {
       title: "Drive the two long screws in at the back",
       detail: "Turn the chair upside down on a covered table. One screw through each end of the back rail into the leg.",
-      fix: [at("screw", [-1, 1].map((g): Vec3 => [g * (inner - 30), ry, zbAt(ry) + RT / 2]), [0, 0, -1], { len: 50, dia: 5 })],
+      // in at an angle from the inside of the back rail, through its end into the leg
+      fix: [-1, 1].map((g) => at("screw", [[g * (inner - 30), ry, zbAt(ry)]], [g, 0, 0], { len: 50, dia: 5 })),
       tools: ["screwdriver"],
       pose: "-y",
     },
@@ -247,13 +253,13 @@ function chair(): CustomParams {
       title: "Screw the three brackets onto the seat",
       detail: "Lay the seat face down beside the chair. One bracket at the front and one on each side, one screw each.",
       add: ["ST"],
-      fix: [at("angle", bracketAt, [0, 1, 0], { name: "Seat bracket", len: 40, dia: 20 }), at("screw", bracketAt.map(([a, , c]): Vec3 => [a, R1, c]), [0, 1, 0], { len: 12, dia: 4 })],
+      fix: [at("angle", bracketAt, [0, 1, 0], { name: "Seat bracket", len: 40, dia: 20 }), at("screw", bracketAt.map(([a, , c]): Vec3 => (a === 0 ? [24, R1, c] : [a, R1, c + 24])), [0, 1, 0], { len: 12, dia: 4 })],
       tools: ["screwdriver"],
       from: { ST: [0, -260, 0] },
     },
     { title: "Lower the chair onto the seat", detail: "Line it up so each bracket sits against the inside of a rail." },
-    { title: "Screw the side brackets to the rails", detail: "One screw through each side bracket into the rail.", fix: [-1, 1].map((g) => at("screw", [[g * (inner - RT), R1 - 18, 20]], [g, 0, 0], { len: 14, dia: 4 })), tools: ["screwdriver"] },
-    { title: "Screw the front bracket to the front rail", detail: "The last screw. Then turn the chair over and stand it up.", fix: [at("screw", [[0, R1 - 18, railZ1 - RT]], [0, 0, 1], { len: 14, dia: 4 })], tools: ["screwdriver"] },
+    { title: "Screw the side brackets to the rails", detail: "One screw through each side bracket into the rail.", fix: [-1, 1].map((g) => at("screw", [[g * (x - RT / 2 - 3), R1 - 26, 20]], [g, 0, 0], { len: 14, dia: 4 })), tools: ["screwdriver"] },
+    { title: "Screw the front bracket to the front rail", detail: "The last screw. Then turn the chair over and stand it up.", fix: [at("screw", [[0, R1 - 26, zf - RT / 2 - 3]], [0, 0, 1], { len: 14, dia: 4 })], tools: ["screwdriver"] },
     { title: "Stand the chair up", detail: "Check it stands steady on all four legs.", pose: "+y" },
   ];
   return { parts, steps };

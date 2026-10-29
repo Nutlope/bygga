@@ -62,7 +62,7 @@ function chair(s: ProductSpec): CustomParams {
   const parts: CustomPart[] = [
     { id: "BF", name: "Back frame", size: [W, H, D / 2], pos: bc, pieces: backPieces, material: "metal" },
     { id: "LF", name: "Leg frame", size: [2 * xF + TUBE, yRail, zFoot - zJoint], pos: fc, pieces: legPieces, material: "metal" },
-    { id: "BK", name: "Back", size: [W - 60, 45, 290], pieces: oval(W - 60, 45, 290), pos: [0, yBack, zPost + TUBE / 2 + 25], rot: [Math.PI / 2 - lean, 0, 0], material: "soft" },
+    { id: "BK", name: "Back", size: [W - 20, 45, 290], pieces: oval(W - 20, 45, 290), pos: [0, yBack, zPost + TUBE / 2 + 25], rot: [Math.PI / 2 - lean, 0, 0], material: "soft" },
     { id: "ST", name: "Seat", size: [W, 75, 420], pieces: oval(W, 75, 420), pos: [0, yRail + TUBE / 2 + 37, 40], material: "soft" },
   ];
 
@@ -84,7 +84,7 @@ function chair(s: ProductSpec): CustomParams {
         title: "Bolt the leg frame to it",
         detail: "The side rails go inside the back frame. One short bolt each side, only loosely for now.",
         add: ["LF"],
-        fix: [{ kind: "bolt", count: 2, len: 12, dia: 6, on: "BF", mate: "LF", at: [-1, 1].map((sx): Vec3 => [sx * (xB + TUBE / 2), yRail, zJoint]), dir: [1, 0, 0] }],
+        fix: [-1, 1].map((sx) => ({ kind: "bolt" as const, count: 1, len: 12, dia: 6, on: "BF", mate: "LF", at: [[sx * (xB + TUBE / 2), yRail, zJoint] as Vec3], dir: [-sx, 0, 0] as Vec3 })),
         tools: ["allen"],
         pose: "-y",
       },
@@ -92,7 +92,7 @@ function chair(s: ProductSpec): CustomParams {
         title: "Turn it over and bolt on the back",
         detail: "Curved side to the front. Four long bolts from behind through the posts.",
         add: ["BK"],
-        fix: [{ kind: "bolt", count: 4, len: 35, dia: 6, on: "BF", mate: "BK", at: [-1, 1].flatMap((sx) => [470, 640].map((y) => post(sx, y))), dir: [0, 0, 1] }],
+        fix: [{ kind: "bolt", count: 4, len: 35, dia: 6, on: "BF", mate: "BK", at: [-1, 1].flatMap((sx) => [500, 620].map((y) => post(sx, y))), dir: [0, 0, 1] }],
         tools: ["allen"],
         pose: "+y",
       },

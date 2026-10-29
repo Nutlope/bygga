@@ -195,7 +195,7 @@ function desk(): CustomParams {
     {
       title: "Screw the trays to the legs",
       detail: "One screw through the bracket at each corner where a tray meets a leg.",
-      fix: yTray.flatMap((y, i) => SIDES.map((sz) => at("screw", [[xu - L / 2, y + 20, sz * (zu - 20)]], [1, 0, 0], i ? "P2" : "P1", sz < 0 ? "LB" : "LF", { len: 12, dia: 5 }))),
+      fix: yTray.flatMap((y, i) => SIDES.map((sz) => at("screw", [[xu - L / 2 - 2, y + 20, sz * (zu - 8)]], [1, 0, 0], i ? "P2" : "P1", sz < 0 ? "LB" : "LF", { len: 12, dia: 5 }))),
       tools: ["screwdriver"],
     },
     {
@@ -275,7 +275,8 @@ function swivelChair(): CustomParams {
       tb([sx * xa, ya, 220], [sx * xa, ya, -170], T),
       tb([sx * xa, ya, -170], [sx * xa, yRail + 40, -200], T),
       tb([sx * xa, yRail + 40, -200], [sx * xr, yRail, -200], T),
-      tb([sx * xb, yRail, zb], [sx * xb, 760, zb], T),
+      // the back posts run up behind the whole back shell
+      tb([sx * xb, yRail, zb], [sx * xb, 870, zb], T),
     ]),
     tb([-xr, yRail, -200], [xr, yRail, -200], T),
     tb([-xb, yRail, zb], [xb, yRail, zb], T),

@@ -148,12 +148,12 @@ function recipe(s: ProductSpec) {
   const braceY = RY0 + 10;
   for (const b of braces) {
     const ax = b.sx * (xr - 3), az = b.sz < 0 ? z0 + reach : z1 - reach; // on the rail
-    const bx = b.sx * (xr - reach), bz = b.sz < 0 ? z0 : z1; // on the end
+    const bx = b.sx * (xr - reach), bz = b.sz < 0 ? zh : zf; // on the end, under its bottom bar
     const len = Math.hypot(ax - bx, az - bz);
-    parts.push({ id: b.id, name: "Corner brace", size: [len, 4, 30], pos: [(ax + bx) / 2, braceY, (az + bz) / 2], material: "metal", rot: [0, b.sx * b.sz > 0 ? Math.PI / 4 : -Math.PI / 4, 0] });
+    parts.push({ id: b.id, name: "Corner brace", size: [len, 4, 30], pos: [(ax + bx) / 2, braceY, (az + bz) / 2], material: "metal", rot: [0, Math.atan2(-(az - bz), ax - bx), 0] });
   }
   const braceEnds = (onRail: boolean) =>
-    braces.map((b): Vec3 => (onRail ? [b.sx * (xr - 20), braceY, b.sz < 0 ? z0 + reach - 12 : z1 - reach + 12] : [b.sx * (xr - reach + 12), braceY, b.sz < 0 ? z0 + 20 : z1 - 20]));
+    braces.map((b): Vec3 => (onRail ? [b.sx * (xr - 20), braceY, b.sz < 0 ? z0 + reach - 12 : z1 - reach + 12] : [b.sx * (xr - reach + 12), braceY - 2, b.sz < 0 ? zh + 5 : zf - 5]));
 
   // felt strips along the lips, and the beam's
   const yLip = RY0 + LIP;
@@ -230,7 +230,7 @@ function recipe(s: ProductSpec) {
     {
       title: "Square the frame and screw the braces to the ends",
       detail: "Push the frame until both diagonals match, then screw the other end of each brace on and tighten all eight.",
-      fix: [{ ...SCREW, count: 4, at: braceEnds(false), dir: [0, -1, 0] }],
+      fix: [{ ...SCREW, count: 4, at: braceEnds(false), dir: [0, 1, 0] }], // up through the brace into the end's bottom bar
       tools: ["allen"],
       check: "square",
     },

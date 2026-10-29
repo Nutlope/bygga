@@ -11,6 +11,8 @@ import type { CustomFix, CustomParams, CustomPart, PartPiece, ProductSpec, Vec3 
  */
 
 const TUBE = 25, RAIL = 22, TOP = 18;
+// the back rails are flat oval tubes, deeper than tall, with two bolt holes side by side at each end
+const OVAL = 20, OVAL_D = 34;
 
 /** A round tube from a to b, as a piece of a part centred at c. */
 function tube(a: Vec3, b: Vec3, c: Vec3, dia = RAIL): PartPiece {
@@ -47,8 +49,9 @@ function desk(s: ProductSpec): CustomParams {
     });
   }
   const railL = 2 * lx - TUBE;
-  const rail = (id: string, y: number): CustomPart => ({ id, name: "Back rail", shape: "cyl", size: [RAIL, railL, RAIL], pos: [0, y, -lz], rot: [0, 0, Math.PI / 2], material: "metal" });
-  parts.push(rail("BH", yHi), rail("BL", yLo));
+  const yB = yLeg - OVAL / 2; // the upper back rail sits right under the top
+  const rail = (id: string, y: number): CustomPart => ({ id, name: "Back rail", shape: "cyl", size: [OVAL, railL, OVAL_D], pos: [0, y, -lz], rot: [0, 0, Math.PI / 2], material: "metal" });
+  parts.push(rail("BH", yB), rail("BL", yLo));
   parts.push({ id: "T", name: "Desk top", size: [W, TOP, D], pos: [0, H - TOP / 2, 0], material: "board" });
 
   // drawer at the front right, hanging on two runners
@@ -74,13 +77,13 @@ function desk(s: ProductSpec): CustomParams {
   // two bolts through each back leg into the end of a back rail
   const ends = (sx: number): CustomFix[] =>
     (["BH", "BL"] as const).map((r) => {
-      const y = r === "BH" ? yHi : yLo;
-      return { kind: "bolt", name: "Short bolt", count: 2, len: 25, dia: 6, at: [[sx * (lx + TUBE / 2), y, -lz - 6], [sx * (lx + TUBE / 2), y, -lz + 6]], dir: [-sx, 0, 0], on: sx < 0 ? "L" : "R", mate: r };
+      const y = r === "BH" ? yB : yLo;
+      return { kind: "bolt", name: "Short bolt", count: 2, len: 25, dia: 6, at: [[sx * (lx + TUBE / 2), y, -lz - 12], [sx * (lx + TUBE / 2), y, -lz + 12]], dir: [-sx, 0, 0], on: sx < 0 ? "L" : "R", mate: r };
     });
   const longAt: Vec3[] = [
     [-lx, yHi - RAIL / 2, -lz / 2], [-lx, yHi - RAIL / 2, lz / 2],
     [lx, yHi - RAIL / 2, -lz / 2], [lx, yHi - RAIL / 2, lz / 2],
-    [-lx / 2, yHi - RAIL / 2, -lz], [0, yHi - RAIL / 2, -lz], [lx / 2, yHi - RAIL / 2, -lz],
+    [-lx / 2, yB - OVAL / 2, -lz], [0, yB - OVAL / 2, -lz], [lx / 2, yB - OVAL / 2, -lz],
   ];
   const runnerAt = (x: number): Vec3[] => [-1, 0, 1].map((k): Vec3 => [x, yLeg, dz + k * (dd / 2 - 40)]);
 

@@ -67,7 +67,7 @@ function bedFrame(head = 780, foot = 570): Bed {
     box("RR", "Side rail", [W / 2 - t, W / 2, ry0, ry1, -zi, zi]),
     box("SL", "Slat rail", [-W / 2 + t, -W / 2 + t + 25, sy0, sy1, -zi + 15, zi - 15], "metal"),
     box("SR", "Slat rail", [W / 2 - t - 25, W / 2 - t, sy0, sy1, -zi + 15, zi - 15], "metal"),
-    ...[-330, 330].map((z, i) => box(`ST${i}`, "Centre strap", [-W / 2 + t + 25, W / 2 - t - 25, sy1, sy1 + 4, z - 20, z + 20], "metal")),
+    ...[-330, 330].map((z, i) => box(`ST${i}`, "Centre strap", [-W / 2 + t + 25, W / 2 - t - 25, sy1 - 10, sy1 + 4, z - 20, z + 20], "metal")),
     compound("SB", "Slatted bed base", spread(-zi + 40, zi - 40, 17).map((z) => pc([-W / 2 + t + 6, W / 2 - t - 6, sy1 + 4, sy1 + 19, z - 30, z + 30])), "wood"),
   ];
   const ends: [string, number][] = [["H", -1], ["F", 1]];
@@ -244,9 +244,10 @@ function storageBox(i: number, zc: number, x0: number): { parts: CustomPart[]; g
         title: "Fit the stabiliser bar and the castor bracket",
         detail: "The bar goes across the back between the runners, two screws; the bracket under the middle of the front, two screws and one small one.",
         fix: [
-          fx("stud", [[x0 + 50, cz + 45, z0 + 45]], [0, 0, -1], { len: D - 90, dia: 10, name: "Stabiliser bar", on: id("DB") }),
+          // the bar runs across under the drawer; a screw at each end goes up into a drawer side
+          fx("stud", [[x0 + 50, cz + 34, z0 + 37]], [0, 0, 1], { len: D - 74, dia: 12, name: "Stabiliser bar", on: id("DB") }),
           fx("plate", [[x1 - 40, cz + 40, zc]], UP, { len: 60, dia: 40, name: "Castor bracket", on: id("DB") }),
-          fx("screw", [[x0 + 50, cz + 40, z0 + 60], [x0 + 50, cz + 40, z1 - 60], [x1 - 40, cz + 40, zc - 25], [x1 - 40, cz + 40, zc + 25]], UP, { len: 10, dia: 5, on: id("DB") }),
+          fx("screw", [[x0 + 74, cz + 36, z0 + 37], [x0 + 74, cz + 36, z1 - 37], [x1 - 40, cz + 40, zc - 25], [x1 - 40, cz + 40, zc + 25]], UP, { len: 10, dia: 5, on: id("DB") }),
           fx("screw", [[x1 - 10, cz + 40, zc]], UP, { len: 16, dia: 3.5, on: id("DB") }),
         ],
         kind: "screws",
@@ -260,9 +261,9 @@ function storageBox(i: number, zc: number, x0: number): { parts: CustomPart[]; g
 }
 
 /** One step for a whole group of steps: the parts and fittings of a box built the same way as the first. */
-function merged(title: string, detail: string, list: CustomStep[]): CustomStep {
+function merged(title: string, detail: string, list: CustomStep[], from?: CustomStep["from"]): CustomStep {
   const tools = [...new Set(list.flatMap((s) => s.tools ?? []))];
-  return { title, detail, add: list.flatMap((s) => s.add ?? []), fix: list.flatMap((s) => s.fix ?? []), kind: "join", tools };
+  return { title, detail, add: list.flatMap((s) => s.add ?? []), fix: list.flatMap((s) => s.fix ?? []), kind: "join", tools, ...(from ? { from } : {}) };
 }
 
 function withBoxes(): CustomParams {
@@ -284,7 +285,8 @@ function withBoxes(): CustomParams {
         merged(`Get the ${o} box's bottom ready the same way`, "Four castor sockets and twelve dowels.", b.groups[0]),
         merged(`Stand its sides on and slide in the back`, "Cam bolts, dowels and a runner on each side first, then the four cam locks.", b.groups[1]),
         merged(`Fit its top and castors`, "The top on its cam bolts, then turn the box over and click in the four castors.", b.groups[2]),
-        merged(`Build the ${o} box's drawer`, "The sides, back and bottom, then the front on its cam bolts.", b.groups[3]),
+        // the sides come in from the back, along the dowels that join them to the front
+        merged(`Build the ${o} box's drawer`, "The sides, back and bottom, then the front on its cam bolts.", b.groups[3], { [`X${i}DS1`]: [-300, 0, 0], [`X${i}DS2`]: [-300, 0, 0] }),
         merged(`Fit its runners, bar and castor, and slide it in`, "The same way as the first drawer.", b.groups[4]),
       );
     }
@@ -339,9 +341,9 @@ function storageBed(twin: boolean, padTop: number): CustomParams {
   const parts: CustomPart[] = [
     box("SBt", "Shelf unit bottom", [dx0, xf, 25, 43, -zi, zs]),
     box("SBk", "Shelf unit back", [dx0 - t, dx0, 25, uy - 25, -zi, zs]),
-    box("D0", "Divider", [dx0 - t, xf, 25, uy - 25, zs, zs + t]),
+    box("D0", "Divider", [dx0 - t, W / 2, 25, ry0, zs, zs + t]), // the front side rail sits on the dividers
     box("U1", "Bottom rail", [xf - 80, xf, 0, 25, -zi, zi]),
-    box("D1", "Divider", [dx0 - t, xf, 25, uy - 25, zm - t / 2, zm + t / 2]),
+    box("D1", "Divider", [dx0 - t, W / 2, 25, ry0, zm - t / 2, zm + t / 2]),
     box("U4", "Middle rail", [dx0 - t - 60, dx0 - t, uy - 80, uy - 50, zs + t, zi]),
     box("U2", "Bottom rail", [xb, xb + 80, 0, 25, -zi, zi]),
     box("U3", "Top rail", [xb, xb + 80, uy - 25, uy, -zi, zi]),
@@ -379,6 +381,9 @@ function storageBed(twin: boolean, padTop: number): CustomParams {
   const dpts = (zc: number) => [dx0 + 80, xf - 80].map((x): Vec3 => [x, 25, zc]); // where a divider meets a rail below it
   const endPts = (z: number, ys = [80, 220]) => ys.map((y): Vec3 => [mid(dx0, xf), y, z]);
   const runnersAt = cols.flatMap(([z0, z1]) => rows.flatMap(([y0]) => [z0, z1].map((z): Vec3 => [mid(dx0, xf), y0 + 30, z])));
+  // three screws through each runner into the wall of the bay it lines: a divider, or the footboard at the far end
+  const bayScrews = cols.flatMap(([z0, z1]) => ([[z0, -1], [z1, 1]] as const).map(([z, g]) =>
+    fx("screw", rows.flatMap(([y0]) => [-200, 30, 200].map((dxs): Vec3 => [mid(dx0, xf) + dxs, y0 + 30, z - g * 2])), [0, 0, g], { len: 12, dia: 4, on: z === zi ? "F" : Math.abs(z - zm) < t ? "D1" : "D0" })));
   const sideBolts = (end: string, e: number): CustomFix[] => [
     ...(["RB", "RF"] as const).map((id, i) => fx(BARREL.kind, [375, 405].map((y): Vec3 => [i ? xf : xb, y, e * (zi - 50)]), [i ? 1 : -1, 0, 0], { ...BARREL, on: id })),
     ...(["RB", "RF"] as const).map((id, i) => fx(BOLT.kind, [375, 405].map((y): Vec3 => [i ? xf + t / 2 : xb - t / 2, y, e * (L / 2)]), [0, 0, -e], { ...BOLT, on: end, mate: id })),
@@ -413,14 +418,14 @@ function storageBed(twin: boolean, padTop: number): CustomParams {
     },
     { title: "Screw the connecting pins into the top rail", detail: "Four pins along the back top rail, and four cam locks in the back side rail above them.", fix: [fx("stud", spread(-zi + 300, zi - 300, 4).map((z): Vec3 => [xb + 40, uy, z]), DOWN, { len: 60, dia: 8, name: "Connecting pin", on: "U3", mate: "RB" }), fx(CAM.kind, spread(-zi + 300, zi - 300, 4).map((z): Vec3 => [xb, uy + 30, z]), [1, 0, 0], { ...CAM, on: "RB" })], kind: "cams", tools: ["screwdriver"] },
     { title: "Lock the back side rail onto the pins", detail: "Lower it on, then turn the four cam locks. Four more cam locks go in the front side rail.", fix: [fx(CAM.kind, spread(-zi + 300, zi - 300, 4).map((z): Vec3 => [xf, uy + 30, z]), [-1, 0, 0], { ...CAM, on: "RF" })], kind: "cams", tools: ["screwdriver"] },
-    { title: "Tap dowels into the front side rail", detail: "Four along its bottom edge, where it sits on the dividers.", fix: [fx(DOWEL.kind, [[xf + 9, ry0, zs + 9], [xf + 9, ry0, zm], [xf + 9, ry0, -zi + 100], [xf + 9, ry0, zi - 100]], UP, { ...DOWEL, on: "RF", mate: "D0" })], kind: "dowels", tools: [] },
+    { title: "Tap dowels into the front side rail", detail: "Into its bottom edge, where it sits on the dividers.", fix: [fx(DOWEL.kind, [[xf + 9, ry0, zs + 9]], UP, { ...DOWEL, on: "RF", mate: "D0" }), fx(DOWEL.kind, [[xf + 9, ry0, zm]], UP, { ...DOWEL, on: "RF", mate: "D1" })], kind: "dowels", tools: [] },
     { title: "Fit the front side rail", detail: "Lay it on the dividers' dowels, turn one cam lock and tap in two more dowels.", fix: [fx(CAM.kind, [[xf - 40, uy - 40, zs - 30]], [1, 0, 0], { ...CAM, on: "D0" }), fx(DOWEL.kind, [[xf + 9, ry1, -zi + 60], [xf + 9, ry1, zi - 60]], DOWN, { ...DOWEL, on: "RF" })], kind: "dowels", tools: ["screwdriver"] },
     { title: "Bolt the side rails to the headboard", detail: "A barrel nut in each hole inside the rails, slot facing the bolt, then the long bolts through the headboard with the hex key.", fix: sideBolts("H", -1), kind: "bolts", tools: ["allen", "flathead"] },
     { title: "Turn the last cam locks along the rails", detail: "Two at the middle divider, then two dowels into the rails' foot ends.", fix: [fx(CAM.kind, [[xf - 40, 25, zm - 60], [xb + 40, uy - 25, zm + 60]], [0, 0, 0], { ...CAM, on: "D1" }), fx(DOWEL.kind, [[xf - 40, 12, zi], [xb + 40, 12, zi]], [0, 0, -1], { ...DOWEL, on: "U1", mate: "F" })], kind: "cams", tools: ["screwdriver"] },
     { title: "Stand the footboard against the foot end", detail: "Three cam bolts into its inner face and two caps under it first, on a rug. Two glides go under the rails' foot ends.", add: ["F"], fix: [fx(CAMBOLT.kind, [[xf - 40, 12, zi], [xb + 40, 12, zi], [xb + 40, uy - 12, zi]], [0, 0, 1], { ...CAMBOLT, on: "F", mate: "U1" }), fx(CAP.kind, both.map((s): Vec3 => [s * (W / 2 - 80), 0, L / 2 - t / 2]), UP, { ...CAP, on: "F" }), fx(GLIDE.kind, [[xf - 40, 0, 0], [xb + 40, 0, 0]], UP, { ...GLIDE })], kind: "join", tools: ["hammer"] },
     { title: "Turn the three cam locks at the footboard", fix: [fx(CAM.kind, [[xf - 40, 25, zi - 40], [xb + 40, 25, zi - 40], [xb + 40, uy - 25, zi - 40]], [0, 0, 0], { ...CAM, on: "U1" })], kind: "cams", tools: ["screwdriver"] },
     { title: "Bolt the side rails to the footboard", detail: "Barrel nuts in the rails, long bolts through the footboard.", fix: sideBolts("F", 1), kind: "bolts", tools: ["allen", "flathead"] },
-    { title: "Screw the drawer runners into the bays", detail: "Eight runners, one each side of every drawer, three screws each. Left and right ones are marked.", fix: [fx("runner", runnersAt, [0, 0, 1], { len: 520, dia: 30, name: "Drawer runner", on: "D1", twist: Math.PI / 2 }), fx("screw", runnersAt.flatMap((p) => [-1, 0, 1].map((k): Vec3 => [p[0] + k * 180, p[1], p[2]])), [0, 0, 1], { len: 12, dia: 4, on: "D1" })], kind: "runners", tools: ["screwdriver"] },
+    { title: "Screw the drawer runners into the bays", detail: "Eight runners, one each side of every drawer, three screws each. Left and right ones are marked.", fix: [fx("runner", runnersAt, [0, 0, 1], { len: 520, dia: 30, name: "Drawer runner", on: "D1", twist: Math.PI / 2 }), ...bayScrews], kind: "runners", tools: ["screwdriver"] },
     {
       title: "Build the four drawers and slide them in",
       detail: "Each one: dowels and ribbed pins join the sides and back, the bottom slides in, the front goes on four cam bolts with four cam locks, then its runners (six screws) and the stabiliser bar (two screws). Push it in on the runners.",
@@ -430,9 +435,10 @@ function storageBed(twin: boolean, padTop: number): CustomParams {
         fx("nail", drawerPts((zc, y0, y1, z0, z1) => [z0 + 22, z1 - 22].flatMap((z) => [y0 + 60, y1 - 50].map((y): Vec3 => [dx0 + 30, y, z]))), [0, 0, 1], { len: 30, dia: 4, name: "Ribbed pin" }),
         fx(CAMBOLT.kind, drawerPts((zc, y0, y1, z0, z1) => [z0 + 22, z1 - 22].flatMap((z) => [y0 + 40, y1 - 40].map((y): Vec3 => [xf, y, z]))), [1, 0, 0], { ...CAMBOLT }),
         fx(CAM.kind, drawerPts((zc, y0, y1, z0, z1) => [z0 + 22, z1 - 22].flatMap((z) => [y0 + 40, y1 - 40].map((y): Vec3 => [xf - 40, y, z]))), [0, 0, 1], { kind: "cam", len: 13, dia: 15 }),
-        fx("screw", drawerPts((zc, y0, y1, z0, z1) => [z0 + 22, z1 - 22].flatMap((z) => [-1, 0, 1].map((k): Vec3 => [mid(dx0, xf) + k * 180, y0 + 30, z]))), [0, 0, 1], { len: 12, dia: 4 }),
-        fx("stud", drawerPts((zc, y0, y1, z0) => [[dx0 + 40, y0 + 26, z0 + 30]]), [0, 0, -1], { len: cols[0][1] - cols[0][0] - 60, dia: 10, name: "Stabiliser bar" }),
-        fx("screw", drawerPts((zc, y0, y1, z0, z1) => [[dx0 + 40, y0 + 22, z0 + 50], [dx0 + 40, y0 + 22, z1 - 50]]), UP, { len: 10, dia: 5 }),
+        // the drawer's runners and its stabiliser bar screw up into the bottom edges of its sides
+        fx("screw", drawerPts((zc, y0, y1, z0, z1) => [z0 + 22, z1 - 22].flatMap((z) => [-1, 0, 1].map((k): Vec3 => [mid(dx0, xf) + k * 180, y0 + 16, z]))), UP, { len: 12, dia: 4 }),
+        fx("stud", drawerPts((zc, y0, y1, z0) => [[dx0 + 40, y0 + 14, z0 + 22]]), [0, 0, 1], { len: cols[0][1] - cols[0][0] - 50, dia: 12, name: "Stabiliser bar" }),
+        fx("screw", drawerPts((zc, y0, y1, z0, z1) => [[dx0 + 64, y0 + 16, z0 + 22], [dx0 + 64, y0 + 16, z1 - 22]]), UP, { len: 10, dia: 5 }),
       ],
       from: Object.fromEntries(drawers.map((d) => [d, [700, 0, 0] as Vec3])),
       kind: "drawer",

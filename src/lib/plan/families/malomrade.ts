@@ -84,10 +84,11 @@ function desk(s: ProductSpec): CustomParams {
   );
 
   // where the fittings go
-  const legTop = (sx: number, dy: number): Vec3[] => [-1, 1].flatMap((sz) => [[sx * (xL - 40), yBox0 + 20, sz * zR], [sx * (xL - 40), yBox0 + 20 + dy, sz * zR]] as Vec3[]);
-  const railBolts = [-1, 1].map((sx) => fx("bolt", legTop(sx, 15), [sx, 0, 0], `LEG_${sx < 0 ? "L" : "R"}`, { name: "Allen bolt", len: 40, dia: 8, mate: sx < 0 ? "RAIL_B" : "RAIL_F" }));
+  // two bolts through each rail end into the motor box, far enough apart that neither gets nudged
+  const legTop = (sx: number, dy: number): Vec3[] => [-1, 1].flatMap((sz) => [[sx * (xL - 65), yBox0 + 14, sz * zR], [sx * (xL - 65), yBox0 + 14 + dy, sz * zR]] as Vec3[]);
+  const railBolts = [-1, 1].map((sx) => fx("bolt", legTop(sx, 23), [sx, 0, 0], `LEG_${sx < 0 ? "L" : "R"}`, { name: "Allen bolt", len: 40, dia: 8, mate: sx < 0 ? "RAIL_B" : "RAIL_F" }));
   const plateScrews = fx("bolt", [-1, 0, 1].flatMap((i) => [-1, 1].map((sz): Vec3 => [i * 110, yBox0 + 4, sz * zR])), [0, 1, 0], "PLATE", { name: "Flat Allen screw", len: 10, dia: 6 });
-  const endScrews = (dy: number) => [-1, 1].map((sx) => fx("screw", [-1, 1].map((sz): Vec3 => [sx * (xL + 55 + 30), yBox0 + 10 + dy, sz * 35]), [0, 1, 0], `END_${sx < 0 ? "L" : "R"}`, SCREW));
+  const endScrews = (z: number) => [-1, 1].map((sx) => fx("screw", [-1, 1].map((sz): Vec3 => [sx * (xL + 55 + 30), yBox0 + 10, sz * z]), [0, 1, 0], `END_${sx < 0 ? "L" : "R"}`, SCREW));
   const footBolts = [-1, 1].map((sx) => fx("bolt", [-1, 1].flatMap((ax) => [-1, 1].map((az): Vec3 => [sx * xL + ax * 22, yF0, az * 45])), [0, 1, 0], `FOOT_${sx < 0 ? "L" : "R"}`, { ...SOCKET, mate: `LEG_${sx < 0 ? "L" : "R"}` }));
   const glides = fx("foot", [-1, 1].flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xL, yF0, sz * (D / 2 - 90)])), [0, 1, 0], "FOOT_L", { name: "Adjustable glide", len: 15, dia: 50 });
   glides.on = undefined;
@@ -105,7 +106,7 @@ function desk(s: ProductSpec): CustomParams {
   const clampsAt = (y: number) => fx("clip", [-1, 1].flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xP, y, zP + sz * 20])), [0, 0, 1], "POST_L", { name: "Clamp half", len: 40, dia: 40 });
   const clampsLow = { ...clampsAt(yBar), on: undefined };
   const clampsHigh = { ...clampsAt(yPg0 + 40), on: undefined };
-  const clampScrews = fx("screw", [-1, 1].flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xP, yBar + sz * 18, zP - 20])), [0, 0, 1], "POST_L", SCREW);
+  const clampScrews = fx("screw", [-1, 1].flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xP, yBar + sz * 30, zP - 20])), [0, 0, 1], "POST_L", SCREW);
   clampScrews.on = undefined;
   const barBolts = [-1, 1].map((sx) => fx("bolt", [-12, 12].map((dy): Vec3 => [sx * (xP - 18), yBar + dy, zP - 20]), [0, 0, 1], "BAR", { ...SOCKET, mate: `POST_${sx < 0 ? "L" : "R"}` }));
   const loops = fx("clip", [-250, 250, 700].map((x): Vec3 => [x, yBar - 20, zP]), [0, 1, 0], "BAR", { name: "Cable loop", len: 40, dia: 30 });
@@ -115,8 +116,7 @@ function desk(s: ProductSpec): CustomParams {
   covers.on = undefined;
   const postCaps = fx("cap", [-1, 1].map((sx): Vec3 => [sx * xP, yPost1, zP]), [0, -1, 0], "POST_L", { name: "Post cap", len: 15, dia: 38 });
   postCaps.on = undefined;
-  const postCapScrews = fx("screw", [-1, 1].map((sx): Vec3 => [sx * (xP + 18), yPost1 - 30, zP]), [-1, 0, 0], "POST_L", SCREW);
-  postCapScrews.on = undefined;
+  const postCapScrews = [-1, 1].map((sx) => fx("screw", [[sx * (xP + 18), yPost1 - 30, zP]], [-sx, 0, 0], `POST_${sx < 0 ? "L" : "R"}`, SCREW));
   const pegBrackets = fx("screw", [-1, 1].flatMap((sx) => [-1, 1].map((dy): Vec3 => [sx * (xP - 60), (yPg0 + yPg1) / 2 + dy * 60, zP - 6])), [0, 0, 1], "PEG", SCREW);
   const pegRivets = fx("clip", [-1, 1].map((sx): Vec3 => [sx * (xP - 30), yPg0 + 40, zP + 6]), [0, 0, -1], "PEG", RIVET);
   const pegScrews = fx("screw", [-1, 1].map((sx): Vec3 => [sx * (xP - 30), yPg1 - 40, zP + 6]), [0, 0, -1], "PEG", SCREW);
@@ -137,8 +137,8 @@ function desk(s: ProductSpec): CustomParams {
       warnings: ["floor"],
     },
     { title: "Screw the plate across the middle", detail: "Six flat Allen screws through the plate into both rails.", add: ["PLATE"], fix: [plateScrews], tools: ["allen"] },
-    { title: "Screw on the end brackets", detail: "One on the outside of each motor box, two screws each.", add: ["END_L", "END_R"], fix: endScrews(0), tools: ["screwdriver"] },
-    { title: "Add the second screws to the brackets", detail: "Two more in each bracket, into the motor box.", fix: endScrews(20), tools: ["screwdriver"] },
+    { title: "Screw on the end brackets", detail: "One on the outside of each motor box, two screws each.", add: ["END_L", "END_R"], fix: endScrews(40), tools: ["screwdriver"] },
+    { title: "Add the second screws to the brackets", detail: "Two more in each bracket, between the first two.", fix: endScrews(12), tools: ["screwdriver"] },
     {
       title: "Bolt on the feet",
       detail: "One of you holds the frame steady while the other bolts each foot across the end of a leg, four bolts each.",
@@ -181,7 +181,7 @@ function desk(s: ProductSpec): CustomParams {
     { title: "Fit the crossbar's end pieces and cable loops", detail: "Three loops slide on underneath, then an end piece on each end, arrows up.", fix: [loops, ends], wait: ["BAR"] },
     { title: "Bolt the crossbar to the posts", detail: "Lift it onto the clamps and fit two bolts at each end.", add: ["BAR"], fix: barBolts, tools: ["allen"] },
     { title: "Screw the end pieces tight and click on the covers", detail: "Two screws in each end piece, then the covers click over them.", fix: [endPieceScrews, covers], tools: ["screwdriver"] },
-    { title: "Fit the upper clamps and the post caps", detail: "Two more clamp halves on each post for the pegboard, and a cap screwed onto the top of each post.", fix: [clampsHigh, postCaps, postCapScrews], tools: ["screwdriver"] },
+    { title: "Fit the upper clamps and the post caps", detail: "Two more clamp halves on each post for the pegboard, and a cap screwed onto the top of each post.", fix: [clampsHigh, postCaps, ...postCapScrews], tools: ["screwdriver"] },
     { title: "Screw the brackets onto the pegboard", detail: "One at each end on the back, two screws each.", fix: [pegBrackets], wait: ["PEG"], tools: ["screwdriver"] },
     { title: "Fix the pegboard to the posts", detail: "Hook its brackets onto the upper clamps, then a push rivet low and a screw high at each end.", add: ["PEG"], fix: [pegRivets, pegScrews], tools: ["screwdriver"] },
     { title: "Hang the cable tray under the back", detail: "Hook it onto the hangers under the top and fix it with six push rivets.", add: ["TRAY"], fix: [trayRivets([-400, 400]), trayRivets([-560, -200, 200, 560])] },

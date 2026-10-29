@@ -345,7 +345,7 @@ function bench(s: ProductSpec): CustomParams {
     const ya = armY - 15;
     return [
       at("bolt", [[sx * (xi + xo) / 2, armY, (zf0 + zf1) / 2]], [0, -1, 0], a, undefined, { len: 60, dia: 6 }),
-      at("bolt", [-10, 10].map((dx) => [sx * (xi + xo) / 2 + dx, ya, zAt(ya) - 22] as Vec3), [0, 0, 1], f, undefined, { len: 60, dia: 6 }),
+      at("bolt", [-12, 12].map((dx) => [sx * (xi + xo) / 2 + dx, ya, zAt(ya) - 22] as Vec3), [0, 0, 1], f, undefined, { len: 60, dia: 6 }),
     ];
   };
   const yb1 = lean.p(0, v1 + 22, 0)[1], yb2 = lean.p(0, v2 - 25, 0)[1];
@@ -431,15 +431,16 @@ function roundTable(s: ProductSpec): CustomParams {
   };
   const parts: CustomPart[] = [...qs.map(leg), half(-1), half(1)];
   // all sixteen drawn in the first frame: its inner end meets the opposite frame, its sides the two crossing ones
-  const ys = [aTop + 18, yT - 18, 18, fTop - 18];
+  // spaced so no two fittings share a hole: the dowels near the band edges, the cross bolts between them
+  const ys = [aTop + 12, yT - 12, 12, fTop - 12];
   const dowels: CustomFix[] = [
-    at("dowel", ys.flatMap((y) => [-8, 8].map((z) => [0, y, z] as Vec3)), [-1, 0, 0], "Q1", undefined, DOWEL),
-    ...([-1, 1] as const).map((sz) => at("dowel", ys.map((y) => [8, y, sz * t] as Vec3), [0, 0, sz], "Q1", undefined, DOWEL)),
+    at("dowel", ys.flatMap((y) => [-12, 12].map((z) => [0, y, z] as Vec3)), [-1, 0, 0], "Q1", undefined, DOWEL),
+    ...([-1, 1] as const).map((sz) => at("dowel", ys.map((y) => [30, y, sz * t] as Vec3), [0, 0, sz], "Q1", undefined, DOWEL)),
   ];
   const cross = (y: number, ny: number, nut: typeof BARREL, ndir: Vec3) =>
     ([-1, 1] as const).flatMap((sz) => [
       at("nut", [-10, 10].map((x) => [x, ny, sz * 50] as Vec3), ndir, sz > 0 ? "Q2" : "Q4", undefined, nut),
-      ...([-1, 1] as const).map((sx) => at("bolt", [[sx * 10, y, -sz * t]], [0, 0, sz], sx > 0 ? "Q1" : "Q3", undefined, BOLT)),
+      ...([-1, 1] as const).map((sx) => at("bolt", [[sx * 12, y, -sz * t]], [0, 0, sz], sx > 0 ? "Q1" : "Q3", undefined, BOLT)),
     ]);
   const steps: CustomStep[] = [
     { title: "Tap the dowels into the leg frames", detail: "Four into the inner end of each of the four frames, sixteen in all.", add: ["Q1"], fix: dowels, tools: ["hammer"], warnings: ["floor"] },

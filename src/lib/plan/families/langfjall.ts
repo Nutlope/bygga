@@ -51,7 +51,8 @@ function recipe(s: ProductSpec): CustomParams {
     abs("BA", "Star base", basePieces, "metal"),
   ];
   const yB = seatBot - mechH - plateT;
-  const corner = (sx: number, sz: number): Vec3 => [sx * 70, yB, zs + sz * 85];
+  // the bolts go up through the plate into the mechanism's corners, inside its footprint
+  const corner = (sx: number, sz: number): Vec3 => [sx * 45, yB, zs + sz * 60];
   const castors = angles.map((a): Vec3 => [(R - 20) * Math.cos(a), tipY, -(R - 20) * Math.sin(a)]);
   const steps: CustomStep[] = [
     {

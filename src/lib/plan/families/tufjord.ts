@@ -32,11 +32,12 @@ function recipe(s: ProductSpec): CustomParams {
   const base = (sx: number): CustomPart => {
     const bw = half - 6, n = 26;
     const pieces: PartPiece[] = [
-      ...[-1, 1].map((k) => ({ shape: "box" as const, size: [30, 30, ML - 20] as Vec3, pos: [k * (bw / 2 - 60), 0, 0] as Vec3 })),
-      ...[-1, 0, 1].map((k) => ({ shape: "box" as const, size: [bw - 20, 20, 50] as Vec3, pos: [0, -5, k * (ML / 2 - 60)] as Vec3 })),
-      ...Array.from({ length: n }, (_, i) => ({ shape: "box" as const, size: [bw, 8, 55] as Vec3, pos: [0, 19, -ML / 2 + 40 + ((ML - 80) * i) / (n - 1)] as Vec3 })),
+      // the strips lie on the cross rails, the slats on the strips
+      ...[-1, 1].map((k) => ({ shape: "box" as const, size: [30, 30, ML - 20] as Vec3, pos: [k * (bw / 2 - 60), 4, 0] as Vec3 })),
+      ...[-1, 0, 1].map((k) => ({ shape: "box" as const, size: [bw - 20, 20, 50] as Vec3, pos: [0, -21, k * (ML / 2 - 60)] as Vec3 })),
+      ...Array.from({ length: n }, (_, i) => ({ shape: "box" as const, size: [bw, 8, 55] as Vec3, pos: [0, 23, -ML / 2 + 40 + ((ML - 80) * i) / (n - 1)] as Vec3 })),
     ];
-    return { id: sx < 0 ? "LB0" : "LB1", name: "Slatted base", size: [bw, 46, ML - 20], pos: [sx * (half / 2), yBase + 15, (zIn0 + zIn1) / 2], material: "wood", pieces };
+    return { id: sx < 0 ? "LB0" : "LB1", name: "Slatted base", size: [bw, 62, ML - 20], pos: [sx * (half / 2), yBase + 31, (zIn0 + zIn1) / 2], material: "wood", pieces };
   };
   const parts: CustomPart[] = [
     ...[-1, 1].map((sx): CustomPart => ({ id: sx < 0 ? "SRL" : "SRR", name: "Side rail", size: [rw, y1 - y0, zEnd - zHB], pos: [sx * xr, yM, (zHB + zEnd) / 2], material: "soft" })),
@@ -60,11 +61,11 @@ function recipe(s: ProductSpec): CustomParams {
     ...[0, 1].map((i): CustomPart => ({ id: `CB${i}`, name: "Centre beam half", size: [40, 30, ML / 2 - 6], pos: [0, ySS, i ? zIn0 + (3 * ML) / 4 : zIn0 + ML / 4], material: "metal" })),
     base(-1),
     base(1),
-    { id: "MAT", name: "Your mattress", size: [MW, 200, ML], pos: [0, yBase + 38 + 100, (zIn0 + zIn1) / 2], material: "soft", extra: true },
+    { id: "MAT", name: "Your mattress", size: [MW, 200, ML], pos: [0, yBase + 58 + 100, (zIn0 + zIn1) / 2], material: "soft", extra: true },
   ];
   const yB = yM; // bracket bolts sit halfway up the rails
   const side = (sx: number) => (sx < 0 ? "SRL" : "SRR");
-  const railBolts = (z: number, mate: string) => [-1, 1].map((sx) => fx("bolt", [-40, 40].map((y): Vec3 => [sx * half, yB + y, z + (z < 0 ? 1 : -1) * 2]), [-sx, 0, 0], side(sx), mate, { name: "Countersunk bolt", len: 20, dia: 6 }));
+  const railBolts = (z: number, mate: string) => [-1, 1].map((sx) => fx("bolt", [-25, 25].map((y): Vec3 => [sx * half, yB + y, z + (z < 0 ? 1 : -1) * 2]), [-sx, 0, 0], side(sx), mate, { name: "Countersunk bolt", len: 20, dia: 6 }));
   const zMid = (zIn0 + zIn1) / 2;
   const steps: CustomStep[] = [
     {
@@ -89,7 +90,7 @@ function recipe(s: ProductSpec): CustomParams {
     {
       title: "Tap dowels into the head rail",
       detail: "Turn the side rails onto their legs. Two dowels in each end of the head rail.",
-      fix: [-1, 1].map((sx) => fx("dowel", [-40, 40].map((y): Vec3 => [sx * half, yM + y, zHB + hrT / 2]), [sx, 0, 0], "HR", undefined, { len: 30, dia: 8 })),
+      fix: [-1, 1].map((sx) => fx("dowel", [-65, 65].map((y): Vec3 => [sx * half, yM + y, zHB + hrT / 2]), [sx, 0, 0], "HR", undefined, { len: 30, dia: 8 })),
       wait: ["HR"],
       pose: "+y",
     },
@@ -110,10 +111,11 @@ function recipe(s: ProductSpec): CustomParams {
       fix: [
         ...[-1, 1].flatMap((sx) => {
           const at = [500, 700, 900].map((y): Vec3 => [sx * (half + 20), y, zBack]);
-          return [fx("hook", at, [0, 0, 1], sx < 0 ? "WL" : "WR", undefined, { name: "Hook plate" }), fx("screw", at, [0, 0, 1], sx < 0 ? "WL" : "WR", undefined, { len: 16, dia: 4 })];
+          const sc = at.map((p): Vec3 => [p[0], p[1] + 25, p[2]]);
+          return [fx("hook", at, [0, 0, 1], sx < 0 ? "WL" : "WR", undefined, { name: "Hook plate" }), fx("screw", sc, [0, 0, 1], sx < 0 ? "WL" : "WR", undefined, { len: 16, dia: 4 })];
         }),
         fx("hook", [450, 850].map((y): Vec3 => [-20, y, zBack]), [0, 0, 1], "HL", undefined, { name: "Hook plate" }),
-        fx("screw", [450, 850].map((y): Vec3 => [-20, y, zBack]), [0, 0, 1], "HL", undefined, { len: 16, dia: 4 }),
+        fx("screw", [475, 875].map((y): Vec3 => [-20, y, zBack]), [0, 0, 1], "HL", undefined, { len: 16, dia: 4 }),
       ],
       wait: ["HL", "HRR", "WL", "WR"],
       tools: ["screwdriver"],
@@ -156,7 +158,7 @@ function recipe(s: ProductSpec): CustomParams {
       detail: "Four on each rail, one small screw each.",
       fix: [-1, 1].flatMap((sx) => {
         const at = [zIn0 + 30, zMid - 40, zMid + 40, zIn1 - 30].map((z): Vec3 => [sx * (half - 15), ySS + 15, z]);
-        return [fx("clip", at, [0, -1, 0], sx < 0 ? "SSL" : "SSR", undefined, { name: "Stop" }), fx("screw", at, [0, -1, 0], sx < 0 ? "SSL" : "SSR", undefined, { len: 10, dia: 5 })];
+        return [fx("clip", at, [0, -1, 0], sx < 0 ? "SSL" : "SSR", undefined, { name: "Stop" }), fx("screw", at.map((p): Vec3 => [p[0], p[1], p[2] + 25]), [0, -1, 0], sx < 0 ? "SSL" : "SSR", undefined, { len: 10, dia: 5 })];
       }),
       wait: ["SSL", "SSR"],
       from: { SSL: [-900, 0, 0], SSR: [900, 0, 0] },
@@ -190,7 +192,7 @@ function recipe(s: ProductSpec): CustomParams {
       detail: "For each half, screw the three cross rails between two slat strips, six screws on each strip.",
       fix: [-1, 1].map((sx) => {
         const bw = half - 6;
-        return fx("screw", [-1, 1].flatMap((k) => [-1, 0, 1].flatMap((c) => [-10, 10].map((d): Vec3 => [sx * (half / 2) + k * (bw / 2 - 60), yBase + 30, (zIn0 + zIn1) / 2 + c * (ML / 2 - 60) + d]))), [0, -1, 0], sx < 0 ? "LB0" : "LB1", undefined, { len: 50, dia: 5 });
+        return fx("screw", [-1, 1].flatMap((k) => [-1, 0, 1].flatMap((c) => [-12, 12].map((d): Vec3 => [sx * (half / 2) + k * (bw / 2 - 60), yBase + 50, (zIn0 + zIn1) / 2 + c * (ML / 2 - 60) + d]))), [0, -1, 0], sx < 0 ? "LB0" : "LB1", undefined, { len: 50, dia: 5 });
       }),
       wait: ["LB0", "LB1"],
       from: { LB0: [-1400, 0, 0], LB1: [1400, 0, 0] },
@@ -202,7 +204,7 @@ function recipe(s: ProductSpec): CustomParams {
       detail: "Each one rests on a slat rail and the centre beam, held at the ends by the stops. Two screws with washers fix each one.",
       add: ["LB0", "LB1"],
       fix: [-1, 1].flatMap((sx) => {
-        const at = [zIn0 + 60, zIn1 - 60].map((z): Vec3 => [sx * 30, yBase + 30, z]);
+        const at = [zIn0 + 60, zIn1 - 60].map((z): Vec3 => [sx * 30, yBase + 20, z]);
         const on = sx < 0 ? "LB0" : "LB1";
         return [fx("screw", at, [0, -1, 0], on, undefined, { len: 16, dia: 4 }), fx("washer", at, [0, -1, 0], on, undefined, { dia: 4 })];
       }),

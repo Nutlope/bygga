@@ -149,7 +149,7 @@ const family: Family = {
       const it = b.items.find((x): x is PartItem => x.kind === "part" && x.final.pos.every((v, k) => Math.abs(v - p.pos[k]) < 0.5));
       const st = it?.states.find((x) => x.step === first);
       if (!it || !st) return;
-      it.states.splice(it.states.indexOf(st), 1, { ...st, pos: [xo, 280 + i * 110, s.size.d * 5 + 160], rot: [0, Math.PI / 2, 0], from: [0, 200, 0] }, { ...st, step: stand, from: [200, 0, 0] });
+      it.states.splice(it.states.indexOf(st), 1, { ...st, pos: [xo, 280 + i * 110, s.size.d * 5 + 160], rot: [0, Math.PI / 2, 0], from: [0, 0, 250] }, { ...st, step: stand, from: [200, 0, 0] });
       it.states.sort((a, c) => a.step - c.step);
     });
     return true;

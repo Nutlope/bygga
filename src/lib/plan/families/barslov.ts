@@ -70,6 +70,10 @@ function sofaBed(s: ProductSpec): CustomParams {
 
   const ends = [-1, 1];
   const xe = fw / 2 - 20;
+  const yr = ft + fh - 40; // middle of the rails
+  // two screws in through each end into the end of the rail, either side of the corner bolt
+  const railScrews = (z: number, rail: string): CustomFix[] =>
+    ends.map((sx) => fx("screw", [[sx * (fw / 2), yr - 28, z], [sx * (fw / 2), yr + 28, z]], [-sx, 0, 0], { len: 50, dia: 6, on: sx < 0 ? "E1" : "E2", mate: rail }));
   const steps: CustomStep[] = [
     {
       title: "Stand the two bed frame ends up",
@@ -79,9 +83,9 @@ function sofaBed(s: ProductSpec): CustomParams {
     },
     {
       title: "Screw the first rail onto them",
-      detail: "Two screws at each end. Check the holes face the right way before you start.",
+      detail: "Two screws in through each end. Check the holes face the right way before you start.",
       add: ["R1"],
-      fix: [fx("screw", ends.flatMap((sx) => [[sx * xe, ft + fh, fz0 + 8], [sx * xe, ft + fh, fz0 + 22]] as Vec3[]), [0, -1, 0], { len: 50, dia: 6, on: "R1", to: ["E1", "E2"] })],
+      fix: railScrews(fz0 + 15, "R1"),
       tools: ["allen"],
     },
     {
@@ -94,10 +98,10 @@ function sofaBed(s: ProductSpec): CustomParams {
     { title: "Turn the frame round together", detail: "Lift it by the two ends so the slats don't bend.", people: 2, warnings: ["two"] },
     {
       title: "Screw on the second rail",
-      detail: "Two screws at each end and two into each slat.",
+      detail: "Two screws through each end and two into each slat.",
       add: ["R2"],
       fix: [
-        fx("screw", ends.flatMap((sx) => [[sx * xe, ft + fh, fz1 - 8], [sx * xe, ft + fh, fz1 - 22]] as Vec3[]), [0, -1, 0], { len: 50, dia: 6, on: "R2", to: ["E1", "E2"] }),
+        ...railScrews(fz1 - 15, "R2"),
         fx("screw", slatX.flatMap((x) => [[x - 12, ft + fh, fz1 - 15], [x + 12, ft + fh, fz1 - 15]] as Vec3[]), [0, -1, 0], { len: 30, dia: 6, on: "R2", to: ["S1", "S2", "S3", "S4"] }),
       ],
       tools: ["allen"],
@@ -107,7 +111,7 @@ function sofaBed(s: ProductSpec): CustomParams {
       detail: "One plate on top of each end, then two bolts across each corner. Tighten everything now.",
       fix: [
         fx("plate", ends.map((sx) => [sx * xe, ft + fh, fzc] as Vec3), [0, -1, 0], { len: 4, dia: 80, on: "E1", to: ["E1", "E2"] }),
-        fx("bolt", ends.flatMap((sx) => [[sx * (xe + 20), fy, fz0 + 15], [sx * (xe + 20), fy, fz1 - 15]] as Vec3[]), [-1, 0, 0], { len: 60, dia: 6, to: ["E1", "E2"] }),
+        ...ends.map((sx, i) => fx("bolt", [[sx * (xe + 20), yr, fz0 + 15], [sx * (xe + 20), yr, fz1 - 15]], [-sx, 0, 0], { len: 60, dia: 6, on: `E${i + 1}` })),
       ],
       tools: ["allen"],
     },
@@ -149,7 +153,8 @@ function sofaBed(s: ProductSpec): CustomParams {
     {
       title: "Lower the bed frame into the base",
       detail: "Together. Tip it in so the hooks on its ends drop into the slots, then screw and bolt it in place.",
-      fix: [fx("screw", ends.flatMap((sx) => [[sx * (Wi / 2), fy, fz0 + 100], [sx * (Wi / 2), fy, fz1 - 100]] as Vec3[]), [-1, 0, 0], { len: 20, dia: 6, on: "B", to: ["E1", "E2"] })],
+      // through the base's end and into the bed frame's end just inside it
+      fix: ends.map((sx, i) => fx("screw", [[sx * (Wi / 2), fy, fz0 + 100], [sx * (Wi / 2), fy, fz1 - 100]], [-sx, 0, 0], { len: 50, dia: 6, on: "B", mate: `E${i + 1}` })),
       tools: ["allen"],
       people: 2,
       warnings: ["two"],

@@ -1,5 +1,5 @@
 import type { Family } from "./family";
-import type { CustomParams, CustomPart, PartPiece, ProductSpec, Vec3 } from "../../types";
+import type { CustomFix, CustomParams, CustomPart, PartPiece, ProductSpec, Vec3 } from "../../types";
 
 /**
  * GLADHÖJDEN sit/stand desk, read from its manual. The base is built upside down: the lift beam (it carries the gas
@@ -86,7 +86,7 @@ function desk(s: ProductSpec): CustomParams {
       {
         title: "Bolt the stretcher on",
         detail: "One long bolt through each frame's bar into the end of the stretcher.",
-        fix: [{ kind: "bolt", count: 2, len: 90, dia: 6, on: "S", at: [-1, 1].map((sx): Vec3 => [sx * (xF + TUBE / 2), yBar, zMid]), dir: [1, 0, 0] }],
+        fix: [-1, 1].map((sx): CustomFix => ({ kind: "bolt", count: 1, len: 90, dia: 6, on: "S", at: [[sx * (xF + TUBE / 2), yBar, zMid]], dir: [-sx, 0, 0] })),
         tools: ["allen"],
       },
       {

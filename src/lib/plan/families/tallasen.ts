@@ -313,7 +313,8 @@ function build(b: PlanBuilder, s: ProductSpec) {
   k.step({ title: "Screw a keyhole bracket onto each rail end", detail: "Two countersunk bolts in each, keyholes pointing down.", pose: "+x", scene: "rails", tools: ["allen"], kind: "bolts" }, () => {
     k.stage(["K-1H", "K-1F"]);
     k.stage(["K1H", "K1F"], undefined, beside);
-    const ends = sides.flatMap((sx) => [zr0, zr1].flatMap((z) => plateY.map((y) => [sx * (xL - 50), y, z] as Vec3)));
+    // where the bracket covers the rail end, so the bolts go into the rail
+    const ends = sides.flatMap((sx) => [zr0, zr1].flatMap((z) => plateY.map((y) => [sx * (xL - 15), y, z] as Vec3)));
     k.fit(CSK, ends, (p) => [0, 0, p[2] < 0 ? 1 : -1], (p) => `K${p[0] < 0 ? -1 : 1}${p[2] < 0 ? "H" : "F"}`, { mate: rail });
   });
 

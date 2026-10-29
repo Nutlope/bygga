@@ -39,7 +39,8 @@ function recipe(s: ProductSpec): CustomParams {
   // one bolt through each flange into the top and the shelf: "z" is the flange facing front or back, "x" the side one
   const flange = (i: number, f: "x" | "z"): CustomFix => {
     const { id, sx, sz } = legs[i];
-    const at: Vec3[] = [yTop, yShelf].map((y) => (f === "z" ? [sx * (W / 2 - a / 2 - 2), y, sz * (D / 2)] : [sx * (W / 2), y, sz * (D / 2 - a / 2 - 2)]));
+    // the two bolts at one corner sit a little apart in height, so neither gets pushed off the panel's edge
+    const at: Vec3[] = [yTop, yShelf].map((y0) => y0 + (f === "z" ? 6 : -6)).map((y) => (f === "z" ? [sx * (W / 2 - a / 2 - 2), y, sz * (D / 2)] : [sx * (W / 2), y, sz * (D / 2 - a / 2 - 2)]));
     return { ...BOLT, count: 2, at, dir: f === "z" ? [0, 0, -sz] : [-sx, 0, 0], on: id };
   };
   const steps: CustomStep[] = [

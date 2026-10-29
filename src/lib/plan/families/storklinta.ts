@@ -158,7 +158,7 @@ function buildClick(b: PlanBuilder, s: ProductSpec, c: Cfg) {
     const y = yBox(cl.level) - 6;
     return {
       runner: { on: f.key, at: [x, y, zRun] as Vec3, dir: [-f.dir, 0, 0] as Vec3, hole: false as const },
-      screws: [-runLen / 2 + 30, 0, runLen / 2 - 30].map((dz): FitOpts => ({ on: f.key, at: [x + f.dir * 2, y, zRun + dz], dir: [-f.dir, 0, 0] })),
+      screws: [-runLen / 2 + 30, 0, runLen / 2 - 30].map((dz): FitOpts => ({ on: f.key, at: [x - f.dir * 2, y, zRun + dz], dir: [f.dir, 0, 0] })),
       key: f.key,
     };
   };
@@ -1397,10 +1397,11 @@ function storageBoxes(b: PlanBuilder, o: { W: number; L: number; T: number; n: n
   const { W, L, T, n, wide } = o;
   const lb = (L - 2 * T - 60) / 2, BD = 560;
   const xo = W / 2;
+  const YB = 38.5; // the bottom, just under the sides and the back
   const frT = b.part("Box front", [18, 160, lb]);
   const sdT = b.part("Box side", [BD - 34, 130, 16]);
   const bkT = b.part("Box back", [16, 130, lb]);
-  const btT = b.part("Box bottom", [BD - 30, 3, lb - 20], { material: "fiber" });
+  const btT = b.part("Box bottom", [BD - 10, 3, lb - 4], { material: "fiber" });
   interface Box {
     g: number;
     zc: number;
@@ -1418,7 +1419,8 @@ function storageBoxes(b: PlanBuilder, o: { W: number; L: number; T: number; n: n
       front: b.place(frT, [g * (xo - 9), 105, zc]),
       sides: [-1, 1].map((e) => b.place(sdT, [g * (xo - 18 - (BD - 34) / 2), 105, zc + e * (lb / 2 - 8)])),
       back: b.place(bkT, [g * (xo - BD + 8), 105, zc]),
-      bottom: b.place(btT, [g * (xo - 18 - (BD - 34) / 2), 47, zc]),
+      // under the sides and the back, its front edge in a groove in the front
+      bottom: b.place(btT, [g * (xo - (BD + 10) / 2), YB, zc]),
     };
   });
   const xF = (x: Box) => x.g * (xo - 18), xB = (x: Box) => x.g * (xo - BD + 16);
@@ -1437,12 +1439,12 @@ function storageBoxes(b: PlanBuilder, o: { W: number; L: number; T: number; n: n
       backPins: ends.flatMap((e, i) => [70, 140].map((y): FitOpts => ({ on: x.back, at: [xB(x), y, zs(e)], dir: [-x.g, 0, 0], mate: x.sides[i], mateHole: 4 }))),
       backCams: ends.flatMap((e) => [70, 140].map((y): FitOpts => ({ on: x.sides[e < 0 ? 0 : 1], at: [xB(x) + x.g * 30, y, zIn(e)], dir: [0, 0, e] }))),
       screws: [
-        ...spread(x.zc - lb / 2 + 60, x.zc + lb / 2 - 60, nf).map((z): FitOpts => ({ on: x.bottom, at: [xF(x) - x.g * 6, 45.5, z], dir: [0, 1, 0], mate: x.front })),
-        ...spread(x.zc - lb / 2 + 80, x.zc + lb / 2 - 80, nb).map((z): FitOpts => ({ on: x.bottom, at: [xB(x) + x.g * 6, 45.5, z], dir: [0, 1, 0], mate: x.back })),
-        ...ends.map((e, i): FitOpts => ({ on: x.bottom, at: [x.g * (xo - BD / 2), 45.5, zs(e)], dir: [0, 1, 0], mate: x.sides[i] })),
+        ...spread(x.zc - lb / 2 + 60, x.zc + lb / 2 - 60, nf).map((z): FitOpts => ({ on: x.bottom, at: [x.g * (xo - 13), YB - 1.5, z], dir: [0, 1, 0], mate: x.front })),
+        ...spread(x.zc - lb / 2 + 80, x.zc + lb / 2 - 80, nb).map((z): FitOpts => ({ on: x.bottom, at: [x.g * (xo - BD + 8), YB - 1.5, z], dir: [0, 1, 0], mate: x.back })),
+        ...ends.map((e, i): FitOpts => ({ on: x.bottom, at: [x.g * (xo - BD / 2), YB - 1.5, zs(e)], dir: [0, 1, 0], mate: x.sides[i] })),
       ],
-      castors: [xF(x) - x.g * 50, xB(x) + x.g * 50].flatMap((cx) => ends.map((e): FitOpts => ({ on: x.bottom, at: [cx, 44, x.zc + e * (lb / 2 - 60)], dir: [0, 1, 0], hole: false }))),
-      castorScrews: [xF(x) - x.g * 50, xB(x) + x.g * 50].flatMap((cx) => ends.flatMap((e) => [-16, 16].map((dz): FitOpts => ({ on: x.bottom, at: [cx, 44, x.zc + e * (lb / 2 - 60) + dz], dir: [0, 1, 0] })))),
+      castors: [xF(x) - x.g * 50, xB(x) + x.g * 50].flatMap((cx) => ends.map((e): FitOpts => ({ on: x.bottom, at: [cx, YB - 1.5, x.zc + e * (lb / 2 - 60)], dir: [0, 1, 0], hole: false }))),
+      castorScrews: [xF(x) - x.g * 50, xB(x) + x.g * 50].flatMap((cx) => ends.flatMap((e) => [-16, 16].map((dz): FitOpts => ({ on: x.bottom, at: [cx, YB - 1.5, x.zc + e * (lb / 2 - 60) + dz], dir: [0, 1, 0] })))),
     };
   };
   const x0 = all[0];

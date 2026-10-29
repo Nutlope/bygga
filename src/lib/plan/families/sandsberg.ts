@@ -117,14 +117,15 @@ function chair(s: ProductSpec): CustomParams {
   // cross tubes between the sides, at the front and the back of the seat
   const zc = [zF1 - 30, zK + 30];
   const cross = ["CROSS_F", "CROSS_B"];
-  cross.forEach((id, i) => parts.push({ id, name: "Cross tube", size: [2 * (xs - TUBE / 2), TUBE, TUBE], pos: [0, yR - TUBE, zc[i]], shape: "cyl", material: "metal" }));
+  cross.forEach((id, i) => parts.push({ id, name: "Cross tube", size: [2 * xs + TUBE, TUBE, TUBE], pos: [0, yR - TUBE, zc[i]], shape: "cyl", material: "metal" }));
   // the backrest sits on the tops of the uprights, the seat on the rails
   parts.push({ id: "BACK", name: "Backrest", size: [W - 10, 150, 22], pos: [0, H - 75, zT - 4], rot: [-0.12, 0, 0], material: "board" });
   const seatZ0 = zK + 15, seatZ1 = D / 2 - 40;
   parts.push({ id: "SEAT", name: "Seat", size: [W - 10, 30, seatZ1 - seatZ0], pos: [0, yR + TUBE / 2 + 15, (seatZ0 + seatZ1) / 2], material: "board" });
 
-  const bolts = (sx: number, i: number) => zc.map((z, k) => fx("bolt", [[sx * (xs - TUBE / 2 - 4), yR - TUBE, z]], [sx, 0, 0], cross[k], { name: "Hex bolt", len: 35, dia: 6, mate: sides[i] }));
-  const nuts = [-1, 1].map((sx, i) => fx("nut", zc.map((z): Vec3 => [sx * (xs + TUBE / 2), yR - TUBE, z]), [-sx, 0, 0], sides[i], { dia: 10 }));
+  // the tube ends lie under the seat rails: each bolt goes down through the rail's bracket and the tube, the nut under it
+  const bolts = (sx: number, i: number) => zc.map((z) => fx("bolt", [[sx * xs, yR + TUBE / 2, z]], [0, -1, 0], sides[i], { name: "Hex bolt", len: 35, dia: 6 }));
+  const nuts = [-1, 1].map((sx, i) => fx("nut", zc.map((z): Vec3 => [sx * xs, yR - 1.5 * TUBE, z]), [0, 1, 0], sides[i], { dia: 10 }));
   const steps: CustomStep[] = [
     {
       title: "Lay a side frame on the rug and stand a cross tube in it",
@@ -134,7 +135,7 @@ function chair(s: ProductSpec): CustomParams {
       warnings: ["floor"],
     },
     { title: "Stand the second cross tube in it", detail: "Into the bracket at the back of the seat rail.", add: ["CROSS_B"] },
-    { title: "Bolt the tubes to the side", detail: "One bolt through each tube end into the side frame, by hand for now.", fix: bolts(-1, 0), tools: ["wrench"] },
+    { title: "Bolt the tubes to the side", detail: "One bolt down through the side frame into each tube end, by hand for now.", fix: bolts(-1, 0), tools: ["wrench"] },
     { title: "Turn the other side over and lower it on", detail: "Its brackets go over the free ends of the cross tubes.", add: ["SIDE_R"], from: { SIDE_R: [300, 0, 0] } },
     { title: "Bolt the tubes to it", detail: "Two more bolts, the same way.", fix: bolts(1, 1) },
     { title: "Screw a nut onto each bolt", detail: "All four, turned on by hand.", fix: nuts },

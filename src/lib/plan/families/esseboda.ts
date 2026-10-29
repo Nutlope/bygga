@@ -91,7 +91,8 @@ function sofa(s: ProductSpec): CustomParams {
       detail: "Lay the armrests on a rug, inside face up. One screw holds each plate, tightened with the Allen key.",
       add: ["L", "R"],
       fix: G.map((sx) => fx("hook", hooks(sx), [-sx, 0, 0], { ...HOOK, on: sx < 0 ? "L" : "R", mate: "B" })).concat(
-        G.map((sx) => fx("screw", hooks(sx), [-sx, 0, 0], { ...HOOK_SCREW, on: sx < 0 ? "L" : "R" })),
+        // the screw goes through the plate into the armrest
+        G.map((sx) => fx("screw", hooks(sx), [sx, 0, 0], { ...HOOK_SCREW, on: sx < 0 ? "L" : "R" })),
       ),
       tools: ["allen"],
       warnings: ["floor"],
@@ -124,8 +125,8 @@ function sofa(s: ProductSpec): CustomParams {
       title: "Bolt the seat to the armrests",
       detail: "Two bolts with washers through each side rail of the seat into the armrest. Tighten them with the Allen key.",
       fix: G.flatMap((sx) => [
-        fx("washer", bolts(sx), [sx, 0, 0], { ...WASHER, on: "S" }),
         fx("bolt", bolts(sx), [sx, 0, 0], { ...BOLT, on: "S", mate: sx < 0 ? "L" : "R" }),
+        fx("washer", bolts(sx), [sx, 0, 0], { ...WASHER, on: "S" }),
       ]),
       tools: ["allen"],
     },

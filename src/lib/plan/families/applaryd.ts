@@ -122,7 +122,8 @@ function sofaBody(p: string, x0: number, seatL: number, side: "both" | "right"):
     {
       title: side === "both" ? "Hook the armrests on together" : "Hook the armrest onto the other end together",
       detail: "Hold it against the end and slide it down so the hook drops into the slot in the frame.",
-      ...(side === "right" ? { add: armIds, fix: [fx({ kind: "hook", name: "Hook plate", len: 60, dia: 30, at: hookAt(x0 + seatL), dir: [-1, 0, 0], on: `${p}armR` }), fx({ kind: "screw", len: 16, dia: 4, at: hookAt(x0 + seatL), dir: [-1, 0, 0], on: `${p}armR` })] } : {}),
+      ...(side === "right" ? { add: armIds, fix: [fx({ kind: "hook", name: "Hook plate", len: 60, dia: 30, at: hookAt(x0 + seatL), dir: [-1, 0, 0], on: `${p}armR` }), fx({ kind: "screw", len: 16, dia: 4, at: hookAt(x0 + seatL - 3), dir: [1, 0, 0], on: `${p}armR` })] } : {}),
+      ...(side === "both" ? { add: armIds } : {}),
       people: 2,
       warnings: ["two"],
     },
@@ -175,11 +176,11 @@ function chaiseBody(p: string, x0: number, w: number, arm: boolean): CustomStep[
           {
             title: "Screw the hook plates onto both armrests",
             detail: "From the sofa's box: one plate and one screw on each armrest. One goes on the chaise now, the other on the sofa later.",
-            add: [`${p}armL`],
-            fix: [fx({ kind: "hook", name: "Hook plate", len: 60, dia: 30, at: hookAt(x0), dir: [1, 0, 0], on: `${p}armL` }), fx({ kind: "screw", len: 16, dia: 4, at: hookAt(x0), dir: [1, 0, 0], on: `${p}armL` })],
+            wait: [`${p}armL`],
+            fix: [fx({ kind: "hook", name: "Hook plate", len: 60, dia: 30, at: hookAt(x0), dir: [1, 0, 0], on: `${p}armL` }), fx({ kind: "screw", len: 16, dia: 4, at: hookAt(x0 + 3), dir: [-1, 0, 0], on: `${p}armL` })],
             tools: ["screwdriver"],
           } as CustomStep,
-          { title: "Lower an armrest onto the end of the chaise", detail: "On the end facing up, at the backrest. Slide it so the hook drops into the slot." },
+          { title: "Lower an armrest onto the end of the chaise", detail: "On the end facing up, at the backrest. Slide it so the hook drops into the slot.", add: [`${p}armL`] },
           {
             title: "Bolt the armrest on by hand",
             detail: "Two long bolts from the sofa's box, each with a big washer, through the end of the seat frame.",
@@ -210,8 +211,8 @@ function sofa(s: ProductSpec): CustomParams | null {
     {
       title: "Screw a hook plate onto each armrest",
       detail: "Lay them on the rug, inside face up. One screw through each plate, hook pointing to the back.",
-      add: ["armL", "armR"],
-      fix: [fx({ kind: "hook", name: "Hook plate", len: 60, dia: 30, at: hookAt(x0 - 1), dir: [1, 0, 0], on: "armL" }), fx({ kind: "hook", name: "Hook plate", len: 60, dia: 30, at: hookAt(x0 + seatL + 1), dir: [-1, 0, 0], on: "armR" }), fx({ kind: "screw", len: 16, dia: 4, at: hookAt(x0 - 1), dir: [1, 0, 0], on: "armL" }), fx({ kind: "screw", len: 16, dia: 4, at: hookAt(x0 + seatL + 1), dir: [-1, 0, 0], on: "armR" })],
+      wait: ["armL", "armR"],
+      fix: [fx({ kind: "hook", name: "Hook plate", len: 60, dia: 30, at: hookAt(x0 - 1), dir: [1, 0, 0], on: "armL" }), fx({ kind: "hook", name: "Hook plate", len: 60, dia: 30, at: hookAt(x0 + seatL + 1), dir: [-1, 0, 0], on: "armR" }), fx({ kind: "screw", len: 16, dia: 4, at: hookAt(x0 + 3), dir: [-1, 0, 0], on: "armL" }), fx({ kind: "screw", len: 16, dia: 4, at: hookAt(x0 + seatL - 3), dir: [1, 0, 0], on: "armR" })],
       tools: ["screwdriver"],
       pose: "+z",
     },

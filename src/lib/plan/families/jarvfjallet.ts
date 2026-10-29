@@ -50,7 +50,7 @@ function chair(s: ProductSpec): CustomParams {
     { id: "G", name: "Gas lift", shape: "cyl", material: "metal", size: [50, MY - 110, 50], pos: [0, (MY + 110) / 2, 0] },
     // spine of the backrest: a bar under the seat, up behind the cushion, with a bracket for the cushion top and bottom
     boxes("B", "Backrest frame", [
-      [[-20, SY0 - 30, -300], [20, SY0, -150]],
+      [[-50, SY0 - 30, -300], [50, SY0, -150]], // a flat plate that takes the three bolts
       [[-20, SY0 - 30, -310], [20, 1370, -300]],
       [[-60, 600, -300], [60, 630, -270]],
       [[-40, 1230, -300], [40, 1250, -270]],

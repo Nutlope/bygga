@@ -460,7 +460,7 @@ function mediaFlap(g: G, o: Inner) {
   });
   const plate = (sx: number): CustomFix[] => [
     fx("clip", sx < 0 ? "L" : "R", [[sx * (W / 2 - t - 3), hy, D / 2 - 40]], [sx, 0, 0], { name: sx < 0 ? "Hinge plate, left" : "Hinge plate, right", len: 6, dia: 40 }),
-    fx("screw", sx < 0 ? "L" : "R", [-12, 12].map((dz) => [sx * (W / 2 - t - 6), hy, D / 2 - 40 + dz] as Vec3), [sx, 0, 0], { len: 14, dia: 4 }),
+    fx("screw", sx < 0 ? "L" : "R", [-24, 24].map((dy) => [sx * (W / 2 - t - 6), hy + dy, D / 2 - 40] as Vec3), [sx, 0, 0], { len: 14, dia: 4 }),
   ];
   o.steps.push({
     title: "Screw the hinge plates inside the sides",

@@ -60,8 +60,10 @@ function cabinet(s: ProductSpec): CustomParams {
   const camFlat = (sx: number, y: number, up: number) => fx("cam", [-1, 1].map((sz): Vec3 => [sx * (xi - 34), y + (up * T) / 2, sz * 100]), [0, -up, 0], undefined);
   const pivots = (i: number) => [-1, 1].map((sx): Vec3 => [sx * xi, fy(i) - fh / 2 + 30, zf - 60]);
   const binScrews = (is: number[]) => fx("screw", is.flatMap((i) => [-1, 1].flatMap((sx) => [-60, 0, 60].map((dy): Vec3 => [sx * (xi - 9), fy(i) + dy, zf - T]))), [0, 0, 1], undefined, { len: 12, dia: 4 });
+  // in from the outside of each bracket, so the two sides point opposite ways
+  const sideScrews = (pts: (sx: number) => Vec3[]) => [-1, 1].map((sx) => fx("screw", pts(sx), [-sx, 0, 0], undefined, { len: 16, dia: 3.5 }));
   const boardScrews = (is: number[], board: "A" | "B") =>
-    fx("screw", is.flatMap((i) => [-1, 1].map((sx): Vec3 => [sx * (xi - 3), board === "A" ? fy(i) - fh / 2 + 32 : fy(i) + 15, board === "A" ? zf - T - 100 : zf - T - 205])), [1, 0, 0], undefined, { len: 16, dia: 3.5 });
+    sideScrews((sx) => is.map((i): Vec3 => [sx * (xi - 3), board === "A" ? fy(i) - fh / 2 + 32 : fy(i) + 15, board === "A" ? zf - T - 100 : zf - T - 205]));
   const hang = (is: number[]) => [
     fx("cap", is.flatMap(pivots).map((p): Vec3 => [p[0] - Math.sign(p[0]) * 12, p[1], p[2]]), [1, 0, 0], undefined, { name: "Bushing", len: 10, dia: 18 }),
     fx("screw", is.flatMap(pivots).map((p): Vec3 => [p[0] - Math.sign(p[0]) * 20, p[1], p[2]]), [1, 0, 0], undefined, { len: 12, dia: 4 }),
@@ -100,16 +102,16 @@ function cabinet(s: ProductSpec): CustomParams {
     { title: "Screw the feet to the bottom", detail: "One screw through each foot.", fix: [fx("screw", [0, 1].map((i): Vec3 => [parts.find((p) => p.id === `FT${i}`)!.pos[0] + 20, 0, zf - 40]), [0, 1, 0], undefined, { len: 12, dia: 4 })], tools: ["screwdriver"] },
     { title: "Screw the brackets onto a bin front", detail: "Lay the front face down on the rug. Three screws through each bracket.", add: ["F0", "K00", "K01"], fix: [binScrews([0])], tools: ["screwdriver"] },
     { title: "Slide in the bin bottom", detail: "Pick the right board, it runs into the slots low in the brackets.", add: ["A0"] },
-    { title: "Screw the bottom in place", detail: "One screw through each bracket.", fix: [boardScrews([0], "A")], tools: ["screwdriver"] },
+    { title: "Screw the bottom in place", detail: "One screw through each bracket.", fix: boardScrews([0], "A"), tools: ["screwdriver"] },
     { title: "Click in the bin back", detail: "Tilt it in at the top of the brackets and press it down until it clicks.", add: ["B0"] },
-    { title: "Screw the back in place", detail: "One screw through each bracket.", fix: [boardScrews([0], "B")], tools: ["screwdriver"] },
+    { title: "Screw the back in place", detail: "One screw through each bracket.", fix: boardScrews([0], "B"), tools: ["screwdriver"] },
     { title: "Hang the bin on the top pivots", detail: "Its brackets drop over the pivots in the sides.", tools: [] },
     { title: "Fit the bushings over the pivots", detail: "A bushing and a screw on each pivot, by hand, not with a drill.", fix: hang([0]), tools: ["screwdriver"] },
     {
       title: "Build and hang the other two bins",
       detail: "The same way: brackets, bottom and back, then onto the pivots with their bushings.",
       add: [1, 2].flatMap((i) => [`F${i}`, `K${i}0`, `K${i}1`, `A${i}`, `B${i}`]),
-      fix: [binScrews([1, 2]), boardScrews([1, 2], "A"), boardScrews([1, 2], "B"), ...hang([1, 2])],
+      fix: [binScrews([1, 2]), ...boardScrews([1, 2], "A"), ...boardScrews([1, 2], "B"), ...hang([1, 2])],
       from: Object.fromEntries([1, 2].flatMap((i) => [`F${i}`, `K${i}0`, `K${i}1`, `A${i}`, `B${i}`].map((id): [string, Vec3] => [id, [0, 0, 400]]))),
       tools: ["screwdriver"],
     },
@@ -123,8 +125,8 @@ function cabinet(s: ProductSpec): CustomParams {
       tools: ["level", "drill", "screwdriver"],
       warnings: ["tip"],
     },
-    { title: "Fit the middle shelves into the bins", detail: "Open each bin, lay the shelf on its ledges and screw it through both brackets.", add: ["C0", "C1", "C2"], fix: [fx("screw", [0, 1, 2].flatMap((i) => [-1, 1].map((sx): Vec3 => [sx * (xi - 3), fy(i) + 20, zf - T - 80])), [1, 0, 0], undefined, { len: 16, dia: 3.5 })], tools: ["screwdriver"] },
-    { title: "Screw on the knobs", detail: "One near the top of each bin front, the screw from inside.", fix: [fx("knob", [0, 1, 2].map((i): Vec3 => [0, fy(i) + fh / 2 - 45, zf]), [0, 0, -1]), fx("screw", [0, 1, 2].map((i): Vec3 => [0, fy(i) + fh / 2 - 45, zf - T]), [0, 0, 1], undefined, { len: 25, dia: 4 })], tools: ["screwdriver"] },
+    { title: "Fit the middle shelves into the bins", detail: "Open each bin, lay the shelf on its ledges and screw it through both brackets.", add: ["C0", "C1", "C2"], fix: sideScrews((sx) => [0, 1, 2].map((i): Vec3 => [sx * (xi - 3), fy(i) + 20, zf - T - 80])), tools: ["screwdriver"] },
+    { title: "Screw on the knobs", detail: "One near the top of each bin front, the screw from inside.", fix: [fx("knob", [0, 1, 2].map((i): Vec3 => [0, fy(i) + fh / 2 - 45, zf + 5]), [0, 0, -1]), fx("screw", [0, 1, 2].map((i): Vec3 => [0, fy(i) + fh / 2 - 45, zf - T]), [0, 0, 1], undefined, { len: 25, dia: 4 })], tools: ["screwdriver"] },
   ];
   return { parts, steps };
 }

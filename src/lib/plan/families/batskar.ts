@@ -136,9 +136,12 @@ const sides = [-1, 1];
 const T = 40; // the frames' square tube
 
 /** A side frame: front and back legs, a rail along the top and one near the floor. */
-function sideFrame(x: number, H: number, D: number, yRail: number): PartPiece[] {
+function sideFrame(x: number, H: number, D: number, yRail: number, yShelf?: number): PartPiece[] {
   const zl = D / 2 - T / 2;
+  // a kitchen unit's frames carry a small bracket inside each leg for the shelf to rest and bolt on
+  const tabs = yShelf === undefined ? [] : sides.map((sz): PartPiece => ({ shape: "box", size: [60, 4, 30], pos: [x - Math.sign(x) * (T / 2 + 30), yShelf - 3.5, sz * (D / 2 - T - 15)] }));
   return [
+    ...tabs,
     ...sides.map((sz): PartPiece => ({ shape: "box", size: [T, H - 20, T], pos: [x, (H + 20) / 2, sz * zl] })),
     { shape: "box", size: [T, T, D - 2 * T], pos: [x, H - T / 2, 0] },
     { shape: "box", size: [T, T, D - 2 * T], pos: [x, yRail, 0] },
@@ -163,7 +166,7 @@ function kitchenUnit(b: PlanBuilder, s: ProductSpec, closed: boolean) {
   const xL = W / 2 - T / 2, zL = D / 2 - T / 2;
   const k = new Kit(b);
 
-  for (const sx of sides) k.welded(`F${sx}`, sx < 0 ? "Left side frame" : "Right side frame", sideFrame(sx * xL, yT, D, yRail), "metal");
+  for (const sx of sides) k.welded(`F${sx}`, sx < 0 ? "Left side frame" : "Right side frame", sideFrame(sx * xL, yT, D, yRail, yShelf), "metal");
   for (const sz of sides) k.box(`R${sz}`, "Foot rail", [W - 2 * T, T, T], [0, yRail, sz * zL], "metal");
   k.box("SH", closed ? "Cabinet floor" : "Shelf", [W - 2 * T, 3, D - 2 * T], [0, yShelf, 0], "metal");
   k.welded("WT", "Worktop", [
@@ -194,7 +197,7 @@ function kitchenUnit(b: PlanBuilder, s: ProductSpec, closed: boolean) {
     },
   );
   k.step({ title: closed ? "Bolt the cabinet floor to the legs" : "Bolt the shelf to the legs", detail: "Two bolts down through each corner.", tools: ["allen"], kind: "bolts" }, () =>
-    k.fit(BOLT, sides.flatMap((sx) => sides.flatMap((sz) => [0, 22].map((d) => [sx * (xL - T / 2 - 12 - d), yShelf + 1.5, sz * (zL - 6)] as Vec3))), DOWN, "SH", { mate: frame }),
+    k.fit(BOLT, sides.flatMap((sx) => sides.flatMap((sz) => [0, 22].map((d) => [sx * (xL - T / 2 - 12 - d), yShelf + 1.5, sz * (D / 2 - T - 15)] as Vec3))), DOWN, "SH", { mate: frame }),
   );
   k.step({ title: "Turn it upside down and bolt the foot rails", detail: "Two bolts through each end of both rails into the brackets by the feet.", pose: "-y", tools: ["allen"], kind: "bolts" }, () =>
     k.fit(BOLT, sides.flatMap((sx) => sides.flatMap((sz) => [0, 24].map((d) => [sx * (xL - T / 2 - 14 - d), yRail - T / 2, sz * zL] as Vec3))), UP, rail, { mate: frame }),
@@ -217,11 +220,15 @@ function kitchenUnit(b: PlanBuilder, s: ProductSpec, closed: boolean) {
     ], "metal");
     for (const sx of sides)
       k.welded(`SP${sx}`, "Side panel", [
-        { shape: "box", size: [3, yP1 - yF, D - 2 * T - 8], pos: [sx * (W / 2 - T - 1.5), (yP1 + yF) / 2, 0] },
+        { shape: "box", size: [3, yP1 - yF, D - T], pos: [sx * (W / 2 - T - 1.5), (yP1 + yF) / 2, 0] }, // its edges lie on the legs
         { shape: "box", size: [28, 3, D - 2 * T - 40], pos: [sx * (W / 2 - T - 17), yF, 0] },
       ], "metal");
     const xPost = -W / 2 + W / 3;
-    k.box("PO", "Door post", [T, yT - yShelf, T], [xPost, (yT + yShelf) / 2, zL], "metal");
+    // up to the worktop's underside, with a tab at its foot that lies on the cabinet floor
+    k.welded("PO", "Door post", [
+      { shape: "box", size: [T, H - 3 - yShelf - 1.5, T], pos: [xPost, (H - 3 + yShelf + 1.5) / 2, zL] },
+      { shape: "box", size: [T, 3, 30], pos: [xPost, yShelf + 3, zL - T / 2 - 15] },
+    ], "metal");
     // three doors in front of the frame, each with its two hinges on the back; the handles go on later
     const dw = W / 3 - 6, dz = D / 2 + 10;
     const hingeX = [-W / 2 + T / 2, xPost, W / 2 - T / 2];
@@ -253,12 +260,12 @@ function kitchenUnit(b: PlanBuilder, s: ProductSpec, closed: boolean) {
       k.fit(BOLT, sides.map((sz) => [-W / 2 + T + 18, yF - 1.5, sz * (D / 4)] as Vec3), UP, "SP-1", { mate: "SH" });
     });
     k.step({ title: "Bolt the side panels to the legs", detail: "Two bolts from inside into each leg, top and bottom.", tools: ["allen"], kind: "bolts" }, () =>
-      k.fit(BOLT, sides.flatMap((sx) => sides.flatMap((sz) => [yP0 + 60, yP1 - 60].map((y) => [sx * (W / 2 - T - 3), y, sz * (zL - T / 2 - 14)] as Vec3))), (p) => [Math.sign(p[0]), 0, 0], sidesOf, { mate: frame }),
+      k.fit(BOLT, sides.flatMap((sx) => sides.flatMap((sz) => [yP0 + 60, yP1 - 60].map((y) => [sx * (W / 2 - T - 3), y, sz * (zL - 8)] as Vec3))), (p) => [Math.sign(p[0]), 0, 0], sidesOf, { mate: frame }),
     );
     k.step({ title: "Fit the post between the doors", detail: "Push it in a third of the way along the front, between the cabinet floor and the top rail. Two bolts at the top, two at the bottom.", tools: ["allen"], kind: "bolts" }, () => {
       k.add(["PO"], [0, 0, 300]);
-      k.fit(BOLT, sides.map((d) => [xPost + d * 10, yT, zL] as Vec3), UP, "PO", { mate: "WT" });
-      k.fit(BOLT, sides.map((d) => [xPost + d * 10, yShelf, zL] as Vec3), DOWN, "PO", { mate: "SH" });
+      k.fit(BOLT, sides.map((d) => [xPost + d * 10, H - 9, zL] as Vec3), UP, "PO", { mate: "WT" });
+      k.fit(BOLT, sides.map((d) => [xPost + d * 10, yShelf + 4.5, zL - T / 2 - 15] as Vec3), DOWN, "PO", { mate: "SH" });
     });
     k.step({ title: "Screw the doors on", detail: "Two hinges on each door; four screws hold each hinge to its post.", tools: ["screwdriver"], kind: "hinges" }, () => {
       k.add(["D0", "D1", "D2"], [0, 0, 300]);
@@ -266,7 +273,7 @@ function kitchenUnit(b: PlanBuilder, s: ProductSpec, closed: boolean) {
         const sg = Math.sign(doorX[i] - hingeX[i]);
         return hingeY.flatMap((y) => [-12, 12].flatMap((dy) => [-7, 7].map((dz2) => [hingeX[i] + sg * (T / 2), y + dy, zL + dz2] as Vec3)));
       });
-      k.fit(SCREW, pts, (p) => [Math.abs(p[0] - xPost) < 30 ? -1 : -Math.sign(p[0]), 0, 0], (p) => (Math.abs(p[0] - xPost) < 30 ? "PO" : frame(p)));
+      k.fit(SCREW, pts, (p) => [Math.abs(p[0] - xPost) < 30 ? -1 : Math.sign(p[0]), 0, 0], (p) => (Math.abs(p[0] - xPost) < 30 ? "PO" : frame(p)));
     });
     const handleX = [doorX[0] + dw / 2 - 40, doorX[1] + dw / 2 - 40, doorX[2] - dw / 2 + 40];
     k.step({ title: "Bolt on the handles", detail: "One on each door, at the edge away from its hinges, with a bolt from inside.", tools: ["allen"], kind: "screws" }, () => {

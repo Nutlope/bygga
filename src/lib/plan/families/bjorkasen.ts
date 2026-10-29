@@ -43,7 +43,7 @@ function stand(): CustomParams {
         title: "Bolt the uprights into the base tube",
         detail: "Lay the base on its front on a rug. Push each upright into a stub with its holes lined up, then one bolt through the stub with the Allen key.",
         add: ["B", "U1", "U2"],
-        fix: [-1, 1].map((sx, i) => at("bolt", [[sx * (xu + TUBE / 2 + 2), stub - 40, zu]], [-sx, 0, 0], "B", `U${i + 1}`, { len: 45, dia: 6 })),
+        fix: [-1, 1].map((sx, i) => at("bolt", [[sx * (xu + TUBE / 2 + 2), stub - 10, zu]], [-sx, 0, 0], "B", `U${i + 1}`, { len: 45, dia: 6 })),
         tools: ["allen"],
         pose: "-z",
         warnings: ["floor"],

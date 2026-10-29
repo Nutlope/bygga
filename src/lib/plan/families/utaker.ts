@@ -39,8 +39,10 @@ function recipe(s: ProductSpec) {
   const parts: CustomPart[] = legs.map(([id, sx, sz]) => ({ id, label: id, name: "Corner leg", size: [LEG, H, LEG], pos: [sx * lx, H / 2, sz * lz], shape: "cyl", material: "wood" }));
   const ex = lx - LEG / 2; // end rails reach to the legs
   const sz0 = lz - LEG / 2;
-  parts.push({ id: "EH", name: "End rail", size: [2 * ex, rh, RT], pos: [0, ry, -lz], material: "wood" });
-  parts.push({ id: "EF", name: "End rail", size: [2 * ex, rh, RT], pos: [0, ry, lz], material: "wood" });
+  // the end rails sit lower by a slat's depth: the slatted base's end slats lie on them and are screwed down
+  const SLAT = 16;
+  parts.push({ id: "EH", name: "End rail", size: [2 * ex, rh - SLAT, RT], pos: [0, ry - SLAT / 2, -lz], material: "wood" });
+  parts.push({ id: "EF", name: "End rail", size: [2 * ex, rh - SLAT, RT], pos: [0, ry - SLAT / 2, lz], material: "wood" });
   parts.push({ id: "S0", name: "Side rail", size: [RT, rh, 2 * sz0], pos: [-lx, ry, 0], material: "wood" });
   parts.push({ id: "S1", name: "Side rail", size: [RT, rh, 2 * sz0], pos: [lx, ry, 0], material: "wood" });
   // the crossed wires, corner to corner under the slats
@@ -54,7 +56,7 @@ function recipe(s: ProductSpec) {
   // the joining strap, hanging on the outside of the right-hand side rail
   parts.push({ id: "J", name: "Joining strap", size: [3, 90, 300], pos: [lx + RT / 2 + 1.5, ry, 0], material: "fiber" });
   // the slatted base, a roll of slats on two tapes, between the rails
-  const bw = 2 * (lx - RT / 2), bl = 2 * (lz - RT / 2);
+  const bw = 2 * ex, bl = 2 * lz; // between the legs, end slats over the end rails
   const n = Math.round(bl / 110);
   const pitch = (bl - 60) / (n - 1);
   const roll: PartPiece[] = [
@@ -181,13 +183,13 @@ function recipe(s: ProductSpec) {
       title: "Lay the slatted base in and screw down one end",
       detail: "Unroll it from end to end. Four screws through the end slat.",
       add: ["SB"],
-      fix: [{ kind: "screw", count: 4, len: 30, dia: 4, dir: [0, -1, 0], at: [-0.36, -0.12, 0.12, 0.36].map((t) => [t * bw, ry1, -lz + 40] as Vec3) }],
+      fix: [{ kind: "screw", count: 4, len: 30, dia: 4, dir: [0, -1, 0], at: [-0.36, -0.12, 0.12, 0.36].map((t) => [t * bw, ry1, -lz + 6] as Vec3) }],
       tools: ["screwdriver"],
     },
     {
       title: "Screw down the other end",
       detail: "Pull the slats straight first, then four more screws.",
-      fix: [{ kind: "screw", count: 4, len: 30, dia: 4, dir: [0, -1, 0], at: [-0.36, -0.12, 0.12, 0.36].map((t) => [t * bw, ry1, lz - 40] as Vec3) }],
+      fix: [{ kind: "screw", count: 4, len: 30, dia: 4, dir: [0, -1, 0], at: [-0.36, -0.12, 0.12, 0.36].map((t) => [t * bw, ry1, lz - 6] as Vec3) }],
       tools: ["screwdriver"],
     },
     { title: "Lay your mattress on", detail: "No more than 13 cm thick, so a second bed can stack on top.", add: ["M"] },

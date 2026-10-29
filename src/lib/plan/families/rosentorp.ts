@@ -381,11 +381,12 @@ function pedestal(b: PlanBuilder, oval: boolean) {
   const base = [...colIds, ...rings, ...lids, ...(oval ? ["beam"] : [])];
   const leafSide = ["frame", "s0", "s1", "h0", "h1"];
   const halves = ["t0", "t1"];
-  // the legs lie side by side on the rug before they go on; their fittings follow them
-  const laid = (i: number): Xf => (p) => [[0, p[1], -240 + 160 * i], [0, 0, 0]];
+  // the legs wait on the rug around the column, each in line with its place, so they go on along their dowels
+  const laid = (i: number): Xf => (p, r) => [add3(p, [Math.cos(legs[i].a) * 320, 0, Math.sin(legs[i].a) * 320]), r];
 
   // the legs and their rods
   k.step({ title: "Lay out the legs and fit the barrel nuts and rods", detail: "On a rug. Push a barrel nut into the hole in the top of each leg and screw a long threaded rod into its end, the right way round.", kind: "bolts", warnings: ["floor"] }, () => {
+    k.show(colIds, [0, 300, 0]);
     lids.forEach((id, i) => k.put([id], laid(i)));
     k.fit(BARREL, legs.map((l) => at(l, 110, 268)), [0, -1, 0], (i) => lids[i], { hole: false });
     k.fit(ROD, legs.map((l) => at(l, 70, 235)), (i) => out(legs[i]), (i) => lids[i], { travel: 60 });
@@ -394,7 +395,6 @@ function pedestal(b: PlanBuilder, oval: boolean) {
     k.fit(DOWEL, legs.flatMap((l) => [at(l, 70, 235, -22), at(l, 70, 235, 22)]), (i) => out(legs[i >> 1]), (i) => lids[i >> 1]),
   );
   k.step({ title: oval ? "Bolt two legs onto each column" : "Bolt the legs onto the column", detail: "Drop the steel ring over the top of the column first. Push each leg's rod through, then a washer and a coupling nut inside, tightened with the spanner.", kind: "bolts", tools: ["wrench"] }, () => {
-    k.show(colIds, [0, -200, 0]);
     k.show(rings, [0, 260, 0]);
     k.show(lids, undefined, 0.15);
     k.fit(WASHER, legs.map((l) => at(l, 40, 235)), (i) => out(legs[i]), (i) => lids[i], { hole: false });
@@ -461,7 +461,7 @@ function pedestal(b: PlanBuilder, oval: boolean) {
       k.fit(MSCREW, sp, (i) => [-Math.cos(((i >> 1) * PI) / 2), 0, -Math.sin(((i >> 1) * PI) / 2)], "c0");
     });
     k.step({ title: "Screw the brackets to the frame", detail: "Two screws through each bracket into the frame's base.", scene: "top", kind: "screws", tools: ["screwdriver"] }, () =>
-      k.fit(WSCREW, brPts.flatMap((p) => [[p[0] * 1.5 - p[2] * 0.3, TY - FH, p[2] * 1.5 + p[0] * 0.3], [p[0] * 1.5 + p[2] * 0.3, TY - FH, p[2] * 1.5 - p[0] * 0.3]] as Vec3[]), [0, 1, 0], "frame"),
+      k.fit(WSCREW, brPts.flatMap((p) => [[p[0] * 1.5 - p[2] * 0.3, TY - 46, p[2] * 1.5 + p[0] * 0.3], [p[0] * 1.5 + p[2] * 0.3, TY - 46, p[2] * 1.5 - p[0] * 0.3]] as Vec3[]), [0, 1, 0], "frame"), // into the underside of its base
     );
     k.step({ title: "Turn the table over together", detail: "Lift it by the top, never by the legs.", kind: "standup", people: 2 }, () => {
       k.show([...base, ...leafSide, ...halves], undefined, 0);
@@ -475,7 +475,7 @@ function pedestal(b: PlanBuilder, oval: boolean) {
       k.fit(LOCKW, sp, [0, 1, 0], "frame", { hole: false });
       k.fit(MSCREW, sp, [0, 1, 0], "frame");
     });
-    k.step({ title: "Lower the frame onto the columns", detail: "The short rods go up through the brackets.", kind: "join" }, () => k.show(leafSide, [0, 300, 0], 0));
+    k.step({ title: "Lower the frame onto the columns", detail: "The short rods go up through the brackets.", kind: "join" }, () => k.show(["frame", "h0", "h1"], [0, 300, 0], 0)); // the slides go on with the top
     k.step({ title: "Tighten four cap nuts onto the rods", detail: "With the crank key, through the holes in the frame.", kind: "bolts", tools: ["allen"] }, () =>
       k.fit({ kind: "nut", len: 12, dia: 10, name: "Cap nut" }, tops.map((p) => [p[0], TY - FH + 6, p[2]] as Vec3), [0, -1, 0], (i) => colIds[i >> 1], { hole: false }),
     );
@@ -489,7 +489,7 @@ function pedestal(b: PlanBuilder, oval: boolean) {
     k.step({ title: "Screw the slides to the top", detail: "Sixteen screws, eight along each slide. Don't overtighten.", scene: "top", kind: "screws", tools: ["screwdriver"] }, () =>
       k.fit(WSCREW, slidePts(8, SL - 120), [0, 1, 0], (i) => `s${i >= 8 ? 1 : 0}`, { mate: (i) => `t${(i % 8) < 4 ? 0 : 1}` }),
     );
-    k.step({ title: "Lift the top onto the frame together", detail: "Turn it the right way up and lower it so the slides sit on the frame.", kind: "join", people: 2 }, () => k.show([...halves], [0, 300, 0], 0));
+    k.step({ title: "Lift the top onto the frame together", detail: "Turn it the right way up and lower it so the slides sit on the frame.", kind: "join", people: 2 }, () => k.show([...halves, "s0", "s1"], [0, 300, 0], 0));
     k.step({ title: "Screw the slides to the frame from below", detail: "Eight screws, four along each side.", kind: "screws", tools: ["screwdriver"] }, () =>
       k.fit(WSCREW, slidePts(4, FL - 120).map((p) => [p[0], TY - 30, p[2]] as Vec3), [0, 1, 0], (i) => `s${i >> 2}`, { mate: () => "frame" }),
     );

@@ -40,7 +40,7 @@ function deskShelf(s: ProductSpec): CustomParams {
   parts.push({ id: "T0", name: "Tray", size: [tw, th, td], pos: [0, yLow, 0], pieces: tray, material: "metal" });
   parts.push({ id: "T1", name: "Tray", size: [tw, th, td], pos: [0, yTop, 0], pieces: tray, material: "metal" });
   const sides = [-1, 1];
-  const trayScrews = (y: number): Vec3[] => sides.flatMap((sx) => [pz - 5, pz + 5].map((z) => [sx * (tw / 2 - t), y, z] as Vec3));
+  const trayScrews = (y: number): Vec3[] => sides.flatMap((sx) => [y - 12, y + 12].map((yy) => [sx * (tw / 2 - t), yy, pz] as Vec3));
   return {
     parts,
     steps: [

@@ -37,7 +37,8 @@ function desk(s: ProductSpec): CustomParams {
         title: "Turn the four screws into the top",
         detail: "Lay the top face down on a rug. Hold the plastic gauge under each screw head and screw down onto it, then slide the gauge out.",
         add: ["TOP"],
-        fix: [at("screw", corners.map(([sx, sz]): Vec3 => [sx * (lx - 10), yU, sz * (lz - 8)]), [0, 1, 0], "TOP", undefined, { len: 30, dia: 4 })],
+        // the heads stand off the top by the gauge's thickness, for the legs' keyholes to hook onto
+        fix: [at("screw", corners.map(([sx, sz]): Vec3 => [sx * (lx - 10), yU - 14, sz * (lz - 8)]), [0, 1, 0], "TOP", undefined, { len: 30, dia: 4 })],
         pose: "-y",
         warnings: ["floor"],
       },

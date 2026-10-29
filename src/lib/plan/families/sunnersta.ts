@@ -69,7 +69,8 @@ function recipe(s: ProductSpec): CustomParams {
       count: 2,
       len: 30,
       dia: 6,
-      at: [-1, 1].map((sz): Vec3 => [sx * (W / 2), y - st / 2, sz * (zs - 30)]),
+      // through each leg tube into the shelf's turned-down edge, front and back
+      at: [-1, 1].map((sz): Vec3 => [sx * (W / 2), y - st / 2, (sz * (D - TUBE - 2)) / 2]),
       dir: [-sx, 0, 0],
       on: y > yJ ? `U${i + 1}` : `B${i + 1}`,
       mate: id,

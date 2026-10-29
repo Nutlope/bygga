@@ -71,8 +71,9 @@ function chair(s: ProductSpec): CustomParams {
       "SPINE",
       "Back spine",
       [
-        { shape: "box", size: [70, 14, 190], pos: [0, yMech0 + 7, -195] },
-        tube([0, yMech0 + 7, -290], [0, yBack0 - 20, zSpine], 30),
+        // the flat bracket reaches into the slot at the back of the mechanism
+        { shape: "box", size: [70, 14, 200], pos: [0, yMech0 + 7, -130] },
+        tube([0, yMech0 + 7, -225], [0, yBack0 - 20, zSpine], 30),
         { shape: "box", size: [60, yBack1 - yBack0 + 40, 24], pos: [0, (yBack0 + yBack1) / 2, zSpine] },
         { shape: "box", size: [70, 60, 40], pos: [0, yBack0 + 20, zSpine + 8] },
       ],
@@ -133,7 +134,7 @@ function chair(s: ProductSpec): CustomParams {
   const asideOf = (ids: string[], off: Vec3) => Object.fromEntries(ids.map((id) => [id, off]));
   const armBolts = [-1, 1].map((sx, i) => fx("bolt", [[sx * 140, zs - 80], [sx * 220, zs - 80], [sx * 180, zs + 10]].map(([x, z]): Vec3 => [x, ySeat0 - 12, z]), [0, 1, 0], `ARM${i}`, { ...LONG_BOLT, mate: "SEAT" }));
   const mechBolts = [-1, 1].flatMap((sx) => [zs - 100, zs + 80].map((z): Vec3 => [sx * 80, yMech0 + 50, z]));
-  const backBolts: Vec3[] = [[-20, yMech0, -150], [20, yMech0, -150], [0, yMech0, -230]];
+  const backBolts: Vec3[] = [[-20, yMech0, -45], [20, yMech0, -45], [0, yMech0, -85]];
   const top = 1060;
 
   const steps: CustomStep[] = [

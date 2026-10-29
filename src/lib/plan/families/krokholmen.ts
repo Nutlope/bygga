@@ -25,6 +25,8 @@ function recipe(s: ProductSpec): CustomParams {
       const L = Math.hypot(rf, yX + dy - yF), a = -Math.atan2(rf, yX + dy - yF);
       pieces.push({ shape: "cyl", size: [tube, L, tube], pos: [(rf / 2) * c, (yF + yX + dy) / 2 - yc, (rf / 2) * sn], rot: [0, sx > 0 ? -phi : Math.PI - phi, a] });
     }
+    // the flattened middle where the two tubes cross and are screwed together
+    pieces.push({ shape: "cyl", size: [tube + 8, tube, tube + 8], pos: [0, yX + dy - yc, 0] });
     const ex = 2 * rf * Math.abs(Math.cos(phi)) + tube, ez = 2 * rf * Math.abs(Math.sin(phi)) + tube;
     return { id, name: "Base tube", size: [ex, yT, ez], pos: [0, yc, 0], material: "metal", pieces };
   };

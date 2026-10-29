@@ -36,31 +36,36 @@ function coffee(s: ProductSpec): CustomParams {
     { id: "RA", name: "Long rail", size: [2 * xi, rh, rt], pos: [0, yT - rh / 2, -zr], material: "wood" },
     { id: "RB", name: "Long rail", size: [2 * xi, rh, rt], pos: [0, yT - rh / 2, zr], material: "wood" },
   ];
-  const yJ = yT - rh / 2;
+  // the rail ends meet the cross bars where both overlap: the bolt low, the dowel high
+  const yJ = Math.max(yB, yT - rh) / 2 + yT / 2, yBolt = yJ - 12, yDow = yJ + 12;
+  const railAt = (z: number) => (z < 0 ? "RA" : "RB");
   const fx = (kind: CustomFix["kind"], pts: Vec3[], dir: Vec3, on: string, o: Partial<CustomFix> = {}): CustomFix => ({ kind, count: pts.length, at: pts, dir, ...(on ? { on } : {}), ...o });
-  const bolts = (sx: number) => fx("bolt", [-zr, zr].map((z): Vec3 => [sx * xi, yJ - 12, z]), [sx, 0, 0], sx < 0 ? "L" : "R", { name: "Connector bolt", len: 40, dia: 6 });
-  const ends = (sx: number): Vec3[] => [-zr, zr].map((z): Vec3 => [sx * xi, yJ + 12, z]);
-  const xd = (sx: number) => [-zr, zr].map((z): Vec3 => [sx * (xi - 40), yT - rh, z]);
-  const lock = (sx: number): CustomFix[] => [fx("nut", xd(sx), [0, 1, 0], "", { name: "Cross dowel", len: 14, dia: 10 })];
-  const tighten = (sx: number) => fx("screw", xd(sx), [0, 1, 0], "", { name: "Locking screw", len: 12, dia: 6 });
+  const bolts = (sx: number) => fx("bolt", [-zr, zr].map((z): Vec3 => [sx * xi, yBolt, z]), [sx, 0, 0], sx < 0 ? "L" : "R", { name: "Connector bolt", len: 40, dia: 6 });
+  const dowels = (sx: number) => [-zr, zr].map((z) => fx("dowel", [[sx * xi, yDow, z]], [-sx, 0, 0], railAt(z), { mate: sx < 0 ? "L" : "R" }));
+  // the cross dowel sits in its hole level with the bolt; the locking screw goes in after it from the rail's edge
+  const lock = (sx: number): CustomFix[] => [-zr, zr].map((z) => fx("nut", [[sx * (xi - 40), yBolt, z]], [0, 1, 0], railAt(z), { name: "Cross dowel", len: 14, dia: 10 }));
+  const tighten = (sx: number) => [-zr, zr].map((z) => fx("screw", [[sx * (xi - 40), yT - rh, z]], [0, 1, 0], railAt(z), { name: "Locking screw", len: 12, dia: 6 }));
   const steps: CustomStep[] = [
     { title: "Lay the top upside down on a rug", detail: "It's your work surface while you build the base on it.", add: ["T"], pose: "-y", warnings: ["floor"] },
     {
       title: "Screw the connector bolts into the leg frames",
       detail: "Two into the inside of each cross bar, by hand, until only the plain end sticks out.",
-      add: ["L", "R"],
+      add: ["L"],
       fix: [bolts(-1), bolts(1)],
+      wait: ["R"],
+      // the second frame waits in front, out of the rails' way
+      from: { R: [0, 0, 600] },
     },
-    { title: "Push a dowel into each end of the long rails", detail: "One dowel in each end, four in all.", fix: [fx("dowel", ends(-1), [1, 0, 0], ""), fx("dowel", ends(1), [-1, 0, 0], "")] },
+    { title: "Push a dowel into each end of the long rails", detail: "One dowel in each end, four in all.", fix: [...dowels(-1), ...dowels(1)], wait: ["RA", "RB"], from: { RA: [700, 0, 0], RB: [700, 0, 0] } },
     {
       title: "Push the rails onto one leg frame",
       detail: "Each rail end goes over a bolt and its dowel. Drop a cross dowel into the hole in each rail, slot facing the bolt.",
       add: ["RA", "RB"],
       fix: lock(-1),
     },
-    { title: "Tighten the locking screws", detail: "Turn them in with the Allen key until the rail pulls tight against the frame.", fix: [tighten(-1)], tools: ["allen"] },
-    { title: "Fit the other leg frame", detail: "Onto the free ends of the rails, then drop in the two cross dowels.", fix: lock(1) },
-    { title: "Tighten the locking screws", detail: "Pull the frame tight, the same as the first one.", fix: [tighten(1)], tools: ["allen"] },
+    { title: "Tighten the locking screws", detail: "Turn them in with the Allen key until the rail pulls tight against the frame.", fix: tighten(-1), tools: ["allen"] },
+    { title: "Fit the other leg frame", detail: "Onto the free ends of the rails, then drop in the two cross dowels.", add: ["R"], fix: lock(1) },
+    { title: "Tighten the locking screws", detail: "Pull the frame tight, the same as the first one.", fix: tighten(1), tools: ["allen"] },
     {
       title: "Tap the glides into the legs",
       detail: "One into the end of each leg.",

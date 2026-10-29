@@ -191,8 +191,9 @@ function trolley(s: ProductSpec): CustomParams {
       title: "Screw on the castors",
       detail: "One under each post, four screws each, in the order shown on the plate.",
       fix: [
-        { kind: "castor", count: 4, len: CH, dia: 50, at: corners.map(([x, z]) => pt(x, CH, z)), dir: [0, 1, 0] },
-        { kind: "screw", count: 16, len: 16, dia: 4, at: corners.flatMap(([x, z]) => [-1, 1].flatMap((a) => [-1, 1].map((b) => pt(x + a * 11, CH - 2, z + b * 11)))), dir: [0, 1, 0] },
+        // its pin sits up in the post end, which keeps it clear of the four plate screws
+        { kind: "castor", count: 4, len: CH + 14, dia: 50, at: corners.map(([x, z]) => pt(x, CH + 14, z)), dir: [0, 1, 0] },
+        { kind: "screw", count: 16, len: 16, dia: 4, at: corners.flatMap(([x, z]) => [-1, 1].flatMap((a) => [-1, 1].map((b) => pt(x + a * 11.5, CH - 2, z + b * 11.5)))), dir: [0, 1, 0] },
       ],
       tools: ["screwdriver"],
     },

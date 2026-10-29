@@ -75,7 +75,9 @@ function recipe(s: ProductSpec): CustomParams {
   };
   const cross = (id: string, sz: number): CustomPart => ({ id, name: "Cross tube", shape: "cyl", size: [2 * (xt - 40), TUBE, TUBE], pos: [0, yR, sz * 90], material: "metal" });
   const [xr, zr] = legAt(yF);
-  const rx = xr - TUBE, rz = zr - TUBE;
+  // the ring's cut corners pass just inside the legs, touching them, so each corner screws into its leg
+  const k = (40 - TUBE * Math.SQRT2) / 2;
+  const rx = xr + k, rz = zr + k;
   const ring: CustomPart = {
     id: "R",
     name: "Footrest ring",
@@ -129,7 +131,7 @@ function recipe(s: ProductSpec): CustomParams {
         title: "Screw on the footrest ring",
         detail: "Lower it over the legs, flat side down, and fit a screw into each leg.",
         add: ["R"],
-        fix: [-1, 1].flatMap((sx, i) => [-1, 1].map((sz): CustomFix => ({ kind: "screw", count: 1, len: 20, dia: 6, at: [[sx * (rx + TUBE / 2), yF, sz * (rz - 20)]], dir: [sx, 0, 0], on: "R", mate: `L${i + 1}` }))),
+        fix: [-1, 1].flatMap((sx, i) => [-1, 1].map((sz): CustomFix => ({ kind: "screw", count: 1, len: 20, dia: 6, at: [[sx * (rx - 20 + TUBE / 2 / Math.SQRT2), yF, sz * (rz - 20 + TUBE / 2 / Math.SQRT2)]], dir: [sx * Math.SQRT1_2, 0, sz * Math.SQRT1_2], on: "R", mate: `L${i + 1}` }))),
         tools: ["allen"],
       },
       { title: "Tighten the four bolts", detail: "Give each one a last firm turn with the larger Allen key.", tools: ["allen"] },

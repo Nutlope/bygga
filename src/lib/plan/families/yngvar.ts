@@ -7,7 +7,8 @@ import { buildCustom } from "../custom";
  * YNGVAR, read from the bar stool's manual. The steel frame comes welded in one piece with its backrest on. The seat
  * lies upside down on a table with the frame on it, back hanging over the edge; a plastic spacer goes on at each of
  * four points of the ring under the seat and a bolt through each, by hand, then the four are tightened crosswise with
- * the Allen key. The dining chair's manual only shows how to stack it (it comes assembled), so it keeps its old guide.
+ * the Allen key. The dining chair comes assembled: its manual only shows how to stack it (five high at most, never
+ * twisted round), so its guide unpacks it and stacks it.
  */
 
 const TUBE = 20;
@@ -66,7 +67,39 @@ function barStool(s: ProductSpec): CustomParams {
   };
 }
 
-const recipe = (s: ProductSpec) => (/yngvar-bar-stool/.test(s.slug ?? "") ? barStool(s) : null);
+/** A crescent of a ring round the back of the seat, as [x, z] corners: outer edge one way, inner edge back. */
+function arc(rx: number, rz: number, t: number, a0: number, a1: number, n = 14): [number, number][] {
+  const pt = (a: number, d: number): [number, number] => [Math.round((rx - d) * Math.cos(a)), Math.round((rz - d) * Math.sin(a))];
+  const as = Array.from({ length: n + 1 }, (_, i) => a0 + ((a1 - a0) * i) / n);
+  return [...as.map((a) => pt(a, 0)), ...as.reverse().map((a) => pt(a, t))];
+}
+
+function chair(s: ProductSpec): CustomParams {
+  // IKEA: 71 high at the back, seat 45 high, 53 wide, 51 deep
+  const H = Math.round(s.size.h * 10) || 710, seatY = 450, seatT = 30, yRing = seatY - seatT - TUBE / 2;
+  const xt = 145, zt = 140, xf = 225, zf = 205;
+  const c: Vec3 = [0, H / 2, 0];
+  const corners = [-1, 1].flatMap((sx) => [-1, 1].map((sz): [number, number] => [sx, sz]));
+  const rx = 255, rz = 250, band = 80;
+  const zUp = (x: number) => -rz * Math.sqrt(1 - (x / rx) ** 2);
+  const pieces: PartPiece[] = [
+    ...corners.map(([sx, sz]) => tube([sx * xf, 0, sz * zf], [sx * xt, yRing, sz * zt], c)),
+    ...[-1, 1].map((sz) => tube([-xt, yRing, sz * zt], [xt, yRing, sz * zt], c)),
+    ...[-1, 1].map((sx) => tube([sx * xt, yRing, -zt], [sx * xt, yRing, zt], c)),
+    ...[-1, 1].map((sx) => tube([sx * 110, yRing, -zt], [sx * 150, H - band, zUp(150) + 8], c)),
+    { shape: "slab", size: [2 * rx, band, rz], pos: [0, H - band / 2 - c[1], 0], outline: arc(rx, rz, 14, Math.PI + 0.45, 2 * Math.PI - 0.45), round: 4 },
+    { shape: "cyl", size: [420, seatT, 420], pos: [0, seatY - seatT / 2 - c[1], 0] },
+  ];
+  return {
+    parts: [{ id: "CH", name: "Chair", size: [2 * xf + TUBE, H, 2 * zf + TUBE], pos: c, pieces, material: "metal" }],
+    steps: [
+      { title: "Unpack the chair", detail: "It comes ready assembled, so there is nothing to put together. Cut the wrapping open carefully so the knife can't scratch it.", add: ["CH"] },
+      { title: "Stack the chairs if you need to", detail: "Up to five, each one lowered straight onto the one below. Never twist a stack round to move it." },
+    ],
+  };
+}
+
+const recipe = (s: ProductSpec) => (/yngvar-bar-stool/.test(s.slug ?? "") ? barStool(s) : /yngvar-chair/.test(s.slug ?? "") ? chair(s) : null);
 
 /** The recipe, with each step's tools as the manual shows them (the bolts go in by hand first). */
 function build(b: PlanBuilder, s: ProductSpec): boolean {

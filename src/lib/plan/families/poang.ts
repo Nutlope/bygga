@@ -83,12 +83,13 @@ function chair(o: Chair) {
   railZ.forEach((z, i) => parts.push({ id: `R${i}`, name: "Cross rail", size: [2 * FX - 30, 40, 30], pos: [0, railY[i] - 30, z], material: "wood" }));
 
   // side frames
-  const arm: P2[] = s([[-240, 615], [120, 620], [270, 605], [320, 560]]);
+  // the arm runs back to the back rail, where it is bolted on from the outside
+  const arm: P2[] = s([[-290, 615], [-240, 615], [120, 620], [270, 605], [320, 560]]);
   const sideFrame = (sx: number): PartPiece[] => {
     const x = sx * FX;
     if (rocker) {
       const leg: P2[] = s([[320, 560], [300, 420], [270, 250], [250, 30]]);
-      const rock: P2[] = s([[450, 55], [300, 12], [100, 0], [-150, 5], [-350, 35], [-470, 100], [-470, 190], [-390, 270], [-230, 330]]);
+      const rock: P2[] = s([[450, 55], [300, 12], [100, 0], [-150, 5], [-350, 35], [-470, 100], [-470, 190], [-390, 270], [-230, 330], [-150, 345]]);
       return [...path(arm, x, 30, 60), ...path(leg, x, 30, 56), ...path(rock, x, 30, 50)];
     }
     const leg: P2[] = s([[320, 560], [335, 420], [335, 90], [310, 25], [250, 15]]);
@@ -122,11 +123,12 @@ function chair(o: Chair) {
   const [za, ya] = arm[0];
   const armJoin = (sx: number): CustomFix[] => {
     const id = sx < 0 ? "FL" : "FR";
-    const at: Vec3 = [sx * FX, ya + 30, za + 40];
+    // through the arm's back end into the side of the back rail, the dowel just below it
+    const at: Vec3 = [sx * (FX + 15), ya, za + 12];
     return [
-      { kind: "dowel", count: 1, len: 40, dia: 8, at: [[sx * FX, ya - 30, za + 110]], dir: [0, -1, 0], on: id },
-      ...(rocker ? [] : [{ kind: "washer" as const, name: "Rubber washer", count: 1, len: 4, dia: 20, at: [at], dir: [0, -1, 0] as Vec3, on: id }]),
-      { kind: "bolt", count: 1, ...MID, at: [at], dir: [0, -1, 0], on: id, mate: `BR${sx < 0 ? 0 : 1}` },
+      { kind: "dowel", count: 1, len: 40, dia: 8, at: [[sx * (FX - 15), ya - 40, za + 22]], dir: [sx, 0, 0], on: id },
+      ...(rocker ? [] : [{ kind: "washer" as const, name: "Rubber washer", count: 1, len: 4, dia: 20, at: [[sx * (FX - 15), ya, za + 12] as Vec3], dir: [-sx, 0, 0] as Vec3, on: id }]),
+      { kind: "bolt", count: 1, ...MID, at: [at], dir: [-sx, 0, 0], on: id, mate: `BR${sx < 0 ? 0 : 1}` },
     ];
   };
   // low bolts through the frame into barrel nuts in the cross rails (one on the rocking chair, which takes a second bolt at the back)
@@ -135,7 +137,8 @@ function chair(o: Chair) {
     const pts: Vec3[] = (rocker ? [railZ[0]] : railZ).map((z, i) => [sx * (FX + 15), railY[i] - 30, z] as Vec3);
     const nuts: CustomFix[] = pts.map((p, i) => ({ kind: "nut", name: "Barrel nut", count: 1, len: 14, dia: 10, at: [[sx * (FX - 150), p[1], p[2]]], dir: [0, 0, -1], on: `R${i}` }));
     const out: CustomFix[] = [...nuts, { kind: "bolt", count: pts.length, ...LONG, at: pts, dir: [-sx, 0, 0], on: id }];
-    if (rocker) out.push({ kind: "bolt", count: 1, ...MID, at: [[sx * (FX + 15), 300, z0 - 250]], dir: [-sx, 0, 0], on: id, mate: "S" });
+    // the rocker's back end meets the seat bar where the seat joins the back
+    if (rocker) out.push({ kind: "bolt", count: 1, ...MID, at: [[sx * (FX + 15), 345, z0 - 150]], dir: [-sx, 0, 0], on: id, mate: "S" });
     return out;
   };
 

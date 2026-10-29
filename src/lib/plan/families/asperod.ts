@@ -53,7 +53,10 @@ function table(s: ProductSpec, round: boolean): CustomParams {
         return [r * Math.sin(a), 0, r * Math.cos(a)];
       })
     : [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => [sx * (W / 2 - LEG / 2 - 4), 0, sz * (D / 2 - LEG / 2 - 4)]);
-  const parts: CustomPart[] = [round ? ringFrame("A", "Top frame", W, yTop) : rectFrame("A", "Top frame", W, D, yTop, 2)];
+  const top = round ? ringFrame("A", "Top frame", W, yTop) : rectFrame("A", "Top frame", W, D, yTop, 2);
+  // the corner plates the legs screw up into, flush with the frame's underside
+  top.pieces!.push(...legs.map((p): PartPiece => ({ shape: "box", size: [LEG + 6, 4, LEG + 6], pos: [p[0], -BH / 2 + 2, p[2]] })));
+  const parts: CustomPart[] = [top];
   legs.forEach((p, i) =>
     parts.push({ id: `L${i + 1}`, name: "Leg", shape: "cyl", size: [LEG, legTop - foot, LEG], pos: [p[0], foot + (legTop - foot) / 2, p[2]], material: "metal" }),
   );
@@ -68,7 +71,13 @@ function table(s: ProductSpec, round: boolean): CustomParams {
   });
   const lowW = round ? W - 2 * (LEG + 10) : W - 2 * (LEG + 10);
   const lowD = round ? lowW : D - 2 * (LEG + 10);
-  parts.push(round ? ringFrame("B", "Shelf frame", lowW, yLow) : rectFrame("B", "Shelf frame", lowW, lowD, yLow, 1));
+  const low = round ? ringFrame("B", "Shelf frame", lowW, yLow) : rectFrame("B", "Shelf frame", lowW, lowD, yLow, 1);
+  // a tab at the bottom of the frame over each bracket, for its two screws
+  low.pieces!.push(...legs.map((p): PartPiece => {
+    const q = inward(p, LEG / 2 + 14);
+    return { shape: "box", size: [26, 4, 26], pos: [q[0], -BH / 2 + 2, q[2]] };
+  }));
+  parts.push(low);
   const glass = (id: string, name: string, w: number, d: number, y: number): CustomPart =>
     round
       ? { id, name, shape: "cyl", size: [w, GLASS, w], pos: [0, y, 0], material: "glass" }
@@ -82,7 +91,8 @@ function table(s: ProductSpec, round: boolean): CustomParams {
       "bolt",
       ids.flatMap((i) => {
         const p = legs[i];
-        return [[p[0] - 8, legTop + BH, p[2]], [p[0] + 8, legTop + BH, p[2] - 6], [p[0], legTop + BH, p[2] + 8]] as Vec3[];
+        // spread as far as the tube allows, so the engine keeps them apart without moving them
+        return [[p[0] - 12, legTop + 4, p[2] - 12], [p[0] + 12, legTop + 4, p[2] - 12], [p[0], legTop + 4, p[2] + 12]] as Vec3[];
       }),
       [0, -1, 0],
       { len: 12, dia: 6, on: "A", to: ids.map((i) => `L${i + 1}`) },
@@ -93,7 +103,7 @@ function table(s: ProductSpec, round: boolean): CustomParams {
     "screw",
     legs.flatMap((p) => {
       const q = inward(p, LEG / 2 + 14);
-      return [[q[0] - 6, yLow + BH / 2, q[2]], [q[0] + 6, yLow + BH / 2, q[2]]] as Vec3[];
+      return [[q[0] - 12, yLow - BH / 2 + 4, q[2]], [q[0] + 12, yLow - BH / 2 + 4, q[2]]] as Vec3[];
     }),
     [0, -1, 0],
     { len: 10, dia: 5, on: "B", to: ["K1", "K2", "K3", "K4"] },

@@ -48,8 +48,9 @@ function daybed(s: ProductSpec): CustomParams {
       ],
     },
     box("RB", "Slat rail", [-xi, SY - 30, zb], [xi, SY, zb + 30], "metal"),
-    box("C0", "Centre support", [-360, 0, zb + 30], [-320, SY - 30, zb + 70], "wood"),
-    box("C1", "Centre support", [320, 0, zb + 30], [360, SY - 30, zb + 70], "wood"),
+    // against the back panel, under the slat rail
+    box("C0", "Centre support", [-360, 0, zb], [-320, SY - 30, zb + 40], "wood"),
+    box("C1", "Centre support", [320, 0, zb], [360, SY - 30, zb + 40], "wood"),
   ];
   const slatX = spread(-xi + 90, xi - 90, 12);
   slatX.forEach((x, i) => parts.push(box(`S${i}`, "Slat", [x - 35, SY, zb + 10], [x + 35, SY + ST, Z - 10], "wood")));
@@ -80,7 +81,7 @@ function daybed(s: ProductSpec): CustomParams {
       box(`DF${i}`, "Drawer front", [cx - 470, PY0 + 6, PZ1 - T], [cx + 470, PY1 - 66, PZ1]),
       box(`DS${i}a`, "Drawer side", [cx - dw, dy0, dz0], [cx - dw + 16, dy1, dz1]),
       box(`DS${i}b`, "Drawer side", [cx + dw - 16, dy0, dz0], [cx + dw, dy1, dz1]),
-      box(`DR${i}`, "Support rod", [cx - 6, dy0, dz0 + 16], [cx + 6, dy0 + 6, dz1], "metal"),
+      box(`DR${i}`, "Support rod", [cx - 6, dy0, dz0], [cx + 6, dy0 + 6, dz1], "metal"),
       box(`DB${i}`, "Drawer bottom", [cx - dw + 8, dy0 + 6, dz0 + 8], [cx + dw - 8, dy0 + 10, dz1], "fiber"),
       box(`DK${i}`, "Drawer back", [cx - dw + 16, dy0 + 10, dz0], [cx + dw - 16, dy1, dz0 + 16]),
     );
@@ -120,7 +121,9 @@ function daybed(s: ProductSpec): CustomParams {
       add: ["FR"],
       fix: [
         ...[-1, 1].map((g) => fix("angle", [[g * xi, SY - 40, Z - 20]], [-g, 0, 0], { name: "Rail bracket", len: 40, dia: 30, on: g < 0 ? "EL" : "ER" })),
-        fix("screw", [-1, 1].flatMap((g) => [[g * xi, SY - 50, Z - 30], [g * (xi - 20), SY - 30, Z - 15]] as Vec3[]), [0, -1, 0], { len: 14, dia: 4 }),
+        // one through each bracket into the end panel, one down through the rail into the bracket
+        ...[-1, 1].map((g) => fix("screw", [[g * (xi - 2), SY - 65, Z - 20]], [g, 0, 0], { len: 14, dia: 4, on: g < 0 ? "EL" : "ER" })),
+        fix("screw", [-1, 1].map((g): Vec3 => [g * (xi - 20), SY, Z - 15]), [0, -1, 0], { len: 14, dia: 4, on: "FR" }),
       ],
       tools: ["screwdriver"],
     },
@@ -176,12 +179,12 @@ function daybed(s: ProductSpec): CustomParams {
     },
     {
       title: "Fit the two centre supports",
-      detail: "Pick the two short slats. Screw an L plate to the foot of each, then screw each one to the back panel and the slat rail.",
+      detail: "Pick the two short slats. Stand each one against the back panel under the slat rail, then screw its L plate to the back panel and to the slat.",
       add: ["C0", "C1"],
       fix: [
-        fix("plate", [-340, 340].map((x): Vec3 => [x, 0, zb + 50]), [0, 1, 0], { name: "L plate", len: 3, dia: 60 }),
-        fix("screw", [-340, 340].flatMap((x): Vec3[] => [[x - 12, 20, zb], [x + 12, 20, zb]]), [0, 0, 1], { len: 16, dia: 4 }),
-        fix("screw", [-340, 340].flatMap((x): Vec3[] => [[x, SY - 50, zb], [x, 120, zb]]), [0, 0, 1], { len: 14, dia: 4 }),
+        fix("plate", [-340, 340].map((x): Vec3 => [x, 0, zb + 20]), [0, 1, 0], { name: "L plate", len: 3, dia: 60 }),
+        fix("screw", [-340, 340].flatMap((x): Vec3[] => [[x - 12, 20, zb + 2], [x + 12, 20, zb + 2]]), [0, 0, -1], { len: 16, dia: 4, on: "B" }),
+        ...[-340, 340].map((x, i) => fix("screw", [30, 70].map((y): Vec3 => [x - 22, y, zb + 20]), [1, 0, 0], { len: 14, dia: 4, on: `C${i}` })),
       ],
       tools: ["screwdriver"],
     },
@@ -229,11 +232,13 @@ function daybed(s: ProductSpec): CustomParams {
       add: beamX.map((_, i) => `PD${i}`),
       fix: [
         fix("castor", beamX.flatMap((x): Vec3[] => [[x + T / 2, PY0, PZ0 + 100], [x + T / 2, PY0, PZ1 - 100]]), [0, 1, 0], { len: 60, dia: 50 }),
-        fix("screw", beamX.flatMap((x): Vec3[] => [[x + T / 2, PY0, PZ0 + 80], [x + T / 2, PY0, PZ0 + 120], [x + T / 2, PY0, PZ1 - 80], [x + T / 2, PY0, PZ1 - 120]]), [0, 1, 0], { len: 16, dia: 4 }),
+        fix("screw", beamX.flatMap((x): Vec3[] => [[x + T / 2, PY0, PZ0 + 75], [x + T / 2, PY0, PZ0 + 125], [x + T / 2, PY0, PZ1 - 75], [x + T / 2, PY0, PZ1 - 125]]), [0, 1, 0], { len: 16, dia: 4 }),
         fix("dowel", beamX.flatMap((x) => [PY0 + 50, PY0 + 110, PY1 - 110, PY1 - 60].map((y): Vec3 => [x + T / 2, y, PZ0 + T])), [0, 0, -1]),
         fix("cam", beamX.map((x): Vec3 => [x + T / 2, PY1 - 50, PZ0 + 50]), [1, 0, 0], { dia: 15 }),
       ],
       tools: ["screwdriver"],
+      // the beams go in along their dowels, from the front
+      from: Object.fromEntries(beamX.map((_, i) => [`PD${i}`, [0, 0, 400] as Vec3])),
     },
     {
       title: "Fit the other long panel",
@@ -252,14 +257,14 @@ function daybed(s: ProductSpec): CustomParams {
       detail: "Stand the pull-out bed on its castors. One runner on each side of both drawer spaces, three screws each.",
       fix: [
         ...beamX.map((x, i) => fix("runner", [[i % 2 ? x : x + T, (dy0 + dy1) / 2, (dz0 + dz1) / 2]], [i % 2 ? 1 : -1, 0, 0], { len: 650, dia: 30, on: `PD${i}` })),
-        fix("screw", beamX.flatMap((x, i) => [-250, 0, 250].map((dz): Vec3 => [i % 2 ? x : x + T, (dy0 + dy1) / 2, (dz0 + dz1) / 2 + dz])), [1, 0, 0], { len: 12, dia: 4 }),
+        ...beamX.map((x, i) => fix("screw", [-250, 40, 250].map((dz): Vec3 => [i % 2 ? x - 2 : x + T + 2, (dy0 + dy1) / 2, (dz0 + dz1) / 2 + dz]), [i % 2 ? 1 : -1, 0, 0], { len: 12, dia: 4, on: `PD${i}` })),
       ],
       tools: ["screwdriver"],
     },
     {
       title: "Screw the beams to the slat rails",
       detail: "Four screws at each long panel, through the rails into the top of the beams.",
-      fix: [fix("screw", beamX.flatMap((x): Vec3[] => [[x + T / 2, PY1 - 30, PZ0 + T + 15], [x + T / 2, PY1 - 30, PZ1 - T - 15]]), [0, -1, 0], { len: 14, dia: 4 })],
+      fix: [fix("screw", beamX.flatMap((x): Vec3[] => [[x + T / 2, PY1 - 30, PZ0 + T + 15], [x + T / 2 + 8, PY1 - 30, PZ1 - 39]]), [0, -1, 0], { len: 14, dia: 4 })], // the front ones clear of the cam bolts
       tools: ["screwdriver"],
     },
     {
@@ -309,7 +314,7 @@ function daybed(s: ProductSpec): CustomParams {
       add: ["DK0", "DK1"],
       fix: [
         fix("bolt", bays.flatMap((cx) => [-1, 1].flatMap((g) => [dy0 + 40, dy1 - 40].map((y): Vec3 => [cx + g * (dw - 8), y, dz0]))), [0, 0, 1], { name: "Knock-in bolt", len: 34, dia: 8 }),
-        fix("screw", bays.map((cx): Vec3 => [cx, dy0 + 3, dz0]), [0, 0, 1], { len: 12, dia: 4 }),
+        fix("screw", bays.map((cx): Vec3 => [cx, dy0, dz0 + 8]), [0, 1, 0], { len: 12, dia: 4 }), // up through the rod into the back
         fix("glide", bays.map((cx): Vec3 => [cx, dy1, dz0 + 8]), [0, -1, 0], { name: "Stop pad", len: 3, dia: 20 }),
       ],
       tools: ["hammer", "screwdriver"],
@@ -319,7 +324,7 @@ function daybed(s: ProductSpec): CustomParams {
       detail: "One on each side, three screws each, wheel at the back. Then push in two corner brackets at the front.",
       fix: [
         ...[-1, 1].map((g) => fix("runner", bays.map((cx): Vec3 => [cx + g * dw, (dy0 + dy1) / 2, (dz0 + dz1) / 2]), [g, 0, 0], { len: 650, dia: 30 })),
-        fix("screw", bays.flatMap((cx) => [-1, 1].flatMap((g) => [-250, 0, 250].map((dz): Vec3 => [cx + g * dw, (dy0 + dy1) / 2, (dz0 + dz1) / 2 + dz]))), [-1, 0, 0], { len: 12, dia: 4 }),
+        ...[-1, 1].map((g) => fix("screw", bays.flatMap((cx) => [-220, 80, 220].map((dz): Vec3 => [cx + g * dw, (dy0 + dy1) / 2, (dz0 + dz1) / 2 + dz])), [-g, 0, 0], { len: 12, dia: 4 })),
         fix("angle", bays.flatMap((cx) => [-1, 1].map((g): Vec3 => [cx + g * (dw - 30), dy0 + 20, dz1 - 20])), [0, -1, 0], { name: "Corner bracket", len: 30, dia: 25 }),
       ],
       tools: ["screwdriver"],

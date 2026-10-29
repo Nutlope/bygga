@@ -55,7 +55,9 @@ function recipe(s: ProductSpec): CustomParams {
   for (const [id, sx] of [["gL", -1], ["gR", 1]] as const) parts.push({ id, name: "Glass side", size: [5, gh, D - 2 * TUBE - 10], pos: [sx * (W / 2 - TUBE / 2), gy, 0], material: "glass" });
   const backs = narrow ? ["bk0"] : ["bk0", "bk1"];
   const bw = (W - 2 * TUBE) / backs.length;
-  backs.forEach((id, i) => parts.push({ id, name: "Back panel", size: [bw, gh, 2], pos: [-W / 2 + TUBE + bw / 2 + i * bw, gy, -D / 2 + TUBE + 1], material: "metal" }));
+  // the back reaches over the bottom and top rails, which it is screwed to
+  const by0 = yC - TUBE / 2, by1 = yT;
+  backs.forEach((id, i) => parts.push({ id, name: "Back panel", size: [bw, by1 - by0, 2], pos: [-W / 2 + TUBE + bw / 2 + i * bw, (by0 + by1) / 2, -D / 2 + TUBE + 1], material: "metal" }));
   const nDoor = narrow ? 1 : 2;
   const dw = (W - 2 * TUBE) / nDoor - 3;
   const doors = Array.from({ length: nDoor }, (_, i) => `d${i}`);
@@ -72,11 +74,11 @@ function recipe(s: ProductSpec): CustomParams {
     ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx * (W / 2 - TUBE / 2), yC + TUBE / 2 + 3, sz * (D / 2 - 60)] as Vec3)),
     ...doors.map((_, i): Vec3 => [i ? W / 2 - TUBE - 15 : -W / 2 + TUBE + 15, yC + TUBE / 2 + 3, D / 2 - 10]),
   ];
-  const bushTop: Vec3[] = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx * (W / 2 - TUBE - 10), yT - TUBE, sz * zs] as Vec3));
+  const bushTop: Vec3[] = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx * (W / 2 - TUBE - 40), yT - TUBE, sz * zs] as Vec3));
   const backScrews: Vec3[] = backs.flatMap((_, i) => {
     const x0 = -W / 2 + TUBE + i * bw;
     const n = narrow ? 4 : 6;
-    return [yC + TUBE, yT - TUBE].flatMap((y) => Array.from({ length: n / 2 }, (_, k) => [x0 + (bw * (k + 1)) / (n / 2 + 1), y, -D / 2 + TUBE] as Vec3));
+    return [yC, yT - TUBE / 2].flatMap((y) => Array.from({ length: n / 2 }, (_, k) => [x0 + (bw * (k + 1)) / (n / 2 + 1), y, -D / 2 + TUBE + 2] as Vec3));
   });
   const supports: Vec3[] = shelfY.flatMap((y) => [-1, 1].flatMap((sx) => (narrow ? [-1, 1] : [1]).map((sz) => [sx * (W / 2 - TUBE - 4), y - 6, sz * (D / 2 - 60)] as Vec3)));
   const steps: CustomStep[] = [
@@ -98,7 +100,7 @@ function recipe(s: ProductSpec): CustomParams {
       {
       title: "Fit the lock plate",
       detail: "Under the front edge of the cabinet bottom, one screw. A small padlock can go through it later.",
-      fix: [fix("clip", [[0, yC + TUBE / 2, D / 2 - 20]], [0, 1, 0], { name: "Lock plate", len: 30, dia: 24, on: "bot" }), fix("screw", [[0, yC + TUBE / 2 + 4, D / 2 - 30]], [0, -1, 0], { ...screw, on: "bot" })],
+      fix: [fix("clip", [[0, yC + TUBE / 2, D / 2 - 20]], [0, 1, 0], { name: "Lock plate", len: 30, dia: 24, on: "bot" }), fix("screw", [[0, yC + TUBE / 2 + 3, D / 2 - 45]], [0, -1, 0], { ...screw, on: "bot" })],
       tools: ["allen"],
     }
     ] : []) as CustomStep[]),
@@ -109,7 +111,7 @@ function recipe(s: ProductSpec): CustomParams {
     { title: "Screw the top rails to that side", detail: "Two countersunk screws, one into each rail end.", fix: [fix("screw", railEnds(-1, yT - TUBE / 2), [1, 0, 0], { name: "Countersunk screw", len: 10, dia: 6, on: "fL" })], tools: ["allen"] },
     { title: "Stand in the other glass side together", detail: "The same way, into the bushings at the other side.", add: ["gR"], people: 2, warnings: ["two", "hand"], from: { gR: [0, 360, 0] } },
     { title: "Screw the top rails to the other side", detail: "Two more countersunk screws.", fix: [fix("screw", railEnds(1, yT - TUBE / 2), [-1, 0, 0], { name: "Countersunk screw", len: 10, dia: 6, on: "fR" })], tools: ["allen"] },
-    { title: narrow ? "Screw on the back panel" : "Screw on the back panels", detail: "Into the frame at the back, top and bottom.", add: backs, fix: [fix("screw", backScrews, [0, 0, 1], { ...screw })], tools: ["allen"], from: Object.fromEntries(backs.map((id) => [id, [0, 0, -300] as Vec3])) },
+    { title: narrow ? "Screw on the back panel" : "Screw on the back panels", detail: "Into the frame at the back, top and bottom.", add: backs, fix: [fix("screw", backScrews, [0, 0, -1], { ...screw })], tools: ["allen"], from: Object.fromEntries(backs.map((id) => [id, [0, 0, -300] as Vec3])) },
     {
       title: narrow ? "Hang the door" : "Hang the doors",
       detail: "Set the door's bottom pivot into its bushing, swing the top in and push the pin up through the rail into it.",
@@ -118,7 +120,7 @@ function recipe(s: ProductSpec): CustomParams {
       from: Object.fromEntries(doors.map((id) => [id, [0, 0, 300] as Vec3])),
     },
     { title: "Slide the top plate on", detail: "From the back, until it clicks over the frame.", add: ["top"], from: { top: [0, 0, -400] } },
-    { title: "Screw the top plate down", detail: "Two screws at the back.", fix: [fix("screw", [-1, 1].map((sx) => [sx * (W / 2 - TUBE), H, -zs] as Vec3), [0, -1, 0], { ...screw, on: "top" })], tools: ["allen"] },
+    { title: "Screw the top plate down", detail: "Two screws at the back.", fix: [fix("screw", [-1, 1].map((sx) => [sx * (W / 2 - TUBE - 40), H, -zs] as Vec3), [0, -1, 0], { ...screw, on: "top" })], tools: ["allen"] },
     { title: "Level it", detail: "Turn the feet until the door closes evenly." },
     {
       title: "Fix it to the wall",

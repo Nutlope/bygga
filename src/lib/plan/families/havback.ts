@@ -37,7 +37,7 @@ const STOP: HwDef = { kind: "clip", len: 20, dia: 14 }; // the plastic door stop
 const WIRE: HwDef = { kind: "clip", len: 40, dia: 8 }; // the bent wire clips in a drawer
 const DOWEL: HwDef = { kind: "dowel", len: 30, dia: 8 }; // plastic, with a cam over its head
 const CAM: HwDef = { kind: "cam", len: 10, dia: 15 };
-const SUPPORT: HwDef = { kind: "angle", len: 380, dia: 30 }; // the metal support under a wide drawer's bottom
+const SUPPORT: HwDef = { kind: "strap", len: 150, dia: 30, name: "Drawer support" }; // a steel stay up the inside of a wide drawer's back
 const JOIN_PLATE: HwDef = { kind: "connector", len: 50, dia: 30 }; // a flat joining plate
 const SHELF_SUPPORT: HwDef = { kind: "pin", len: 16, dia: 5 }; // with a screw-in peg, it locks the shelf
 const SHELF_PIN: HwDef = { kind: "pin", len: 12, dia: 5 }; // the plain clip-in kind
@@ -251,7 +251,11 @@ class Havback {
     const out: [HwDef, FitOpts][] = [];
     for (const f of this.suspensions(u)) {
       out.push([SUSPENSION, { ...f.at, hole: false }]);
-      if (u.kind === "high" || u.kind === "wall") out.push([FIT_SCREW, this.inner(u, f.sx, u.yr - 26, -u.D / 2 + 30)]);
+      if (u.kind === "high" || u.kind === "wall") {
+        // through the fitting's body into the side
+        const o = this.inner(u, f.sx, u.yr - 26, -u.D / 2 + 30);
+        out.push([FIT_SCREW, { ...o, at: [o.at[0] - f.sx * 12, o.at[1], o.at[2]] }]);
+      }
       else for (const [dy, dz] of [[26, 8], [-26, 8], [0, 34]]) out.push([SCREW, this.inner(u, f.sx, u.yr + dy, -u.D / 2 + 16 + dz)]);
     }
     return out;
@@ -526,7 +530,7 @@ class Havback {
     const x = a.x0 + a.W / 2;
     this.step(
       { title: "Screw the two units together", detail: "Two screws through the side into its neighbour, 40 mm in from the front edge: one high, one low.", kind: "join", tools: ["drill", "screwdriver"], scene: "main" },
-      () => this.b.fits(JOIN, [a.H * 0.8, a.H * 0.25].map((y) => ({ on: a.sideR, at: [r(x), r(y), r(a.D / 2 - 40)] as Vec3, dir: [1, 0, 0] as Vec3, mate: c.sideL })), 0.15),
+      () => this.b.fits(JOIN, [a.H * 0.8, a.H * 0.25].map((y) => ({ on: a.sideR, at: [r(x - a.T), r(y), r(a.D / 2 - 40)] as Vec3, dir: [1, 0, 0] as Vec3, mate: c.sideL })), 0.15),
     );
   }
 
@@ -590,7 +594,14 @@ class Havback {
     const supportFits = (d: Drawer): [HwDef, FitOpts][] => {
       if (!wide) return [];
       const z = this.pos(d.bottom)[2];
-      return [[SUPPORT, { on: d.bottom, at: [d.u.x0, d.yb + 8, r(z)], dir: [0, 1, 0], hole: false }], ...[-1, 0, 1].map((k): [HwDef, FitOpts] => [SCREW, { on: d.bottom, at: [d.u.x0, d.yb + 8, r(z + k * 120)], dir: [0, 1, 0] }])];
+      // up the inside of the back: hooked over its top edge with one screw down into it, its foot screwed to the bottom
+      const zb = this.pos(d.back)[2] + 8;
+      const top = d.yb + d.sh, floor = d.yb + 16;
+      return [
+        [{ ...SUPPORT, len: Math.round(d.sh - 16) }, { on: d.back, at: [d.u.x0, r((top + floor) / 2), r(zb)], dir: [0, 0, 1], hole: false }],
+        [SCREW, { on: d.back, at: [d.u.x0, r(top), r(zb - 8)], dir: [0, -1, 0] }],
+        ...[-1, 1].map((sx): [HwDef, FitOpts] => [SCREW, { on: d.bottom, at: [d.u.x0 + sx * 18, r(floor + 4), r(zb + 12)], dir: [0, -1, 0] }]),
+      ];
     };
 
     this.step(
@@ -619,7 +630,7 @@ class Havback {
     this.step({ title: "Press the box front on", detail: "Its slots go over the ends of the sides. Press it down evenly.", kind: "drawer", scene: "drawer", repeat: rep }, () => b.stage(d0.boxFront, rel(d0.boxFront), [0, 0, 0], [0, 0, 260]));
     this.step({ title: "Lock the corners", detail: "A plastic dowel through each side into the front and back, then turn the cap over each one until it locks.", kind: "drawer", tools: ["screwdriver"], scene: "drawer", repeat: rep }, () => this.fitAll(lockFits(d0), 0.08));
     if (wide)
-      this.step({ title: "Screw the support under the bottom", detail: "Across the middle of the bottom, three screws.", kind: "drawer", tools: ["screwdriver"], scene: "drawer", repeat: rep }, () => this.fitAll(supportFits(d0), 0.1));
+      this.step({ title: "Screw the support inside the back", detail: "Hook it over the middle of the back's top edge: one screw down into the edge and two through its foot into the bottom.", kind: "drawer", tools: ["screwdriver"], scene: "drawer", repeat: rep }, () => this.fitAll(supportFits(d0), 0.1));
     const div = list.filter((d) => d.divider);
     if (div.length) {
       const dv = div[0];

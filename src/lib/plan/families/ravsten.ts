@@ -86,7 +86,8 @@ function joints(f: Frame, g: number, L: number) {
     at: [-1, 1].flatMap((z) => [pt(ax, f.apronY - 12, z * za), pt(rx, f.railFootY, z * zr)]),
     dir: [-g, 0, 0],
   };
-  const bolts: CustomFix = { kind: "bolt", name: "Long bolt", count: 2, len: 80, dia: 8, on, at: [-1, 1].map((z) => pt(ax, f.apronY + 10, z * za)), dir: [-g, 0, 0] };
+  // in from the outside of the frame's top rail, sticking out inside until the long rail goes on
+  const bolts: CustomFix = { kind: "bolt", name: "Long bolt", count: 2, len: 80, dia: 8, on, at: [-1, 1].map((z) => pt(g * (f.legX(f.apronY) + 10), f.apronY + 10, z * za)), dir: [-g, 0, 0] };
   const clamps: CustomFix[] = [-1, 1].map((z, i): CustomFix => ({
     kind: "nut",
     name: "Bolt clamp",

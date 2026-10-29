@@ -352,16 +352,16 @@ function build(b: PlanBuilder, s: ProductSpec, L: Layout) {
       title: "Push the cam locks into both sides",
       detail: "Lay the sides on a rug, inside faces up. Two cams go into each, near the bottom end, arrows pointing at the edge." + kindWords,
       kind: "cams",
+      pose: "+x",
       warnings: ["floor"],
     },
     () => {
       b.stagger(0.2);
-      shown.forEach((m, i) =>
-        G.forEach((g) => {
-          const k = sideOf(m, g);
-          b.stage(k, [g * (m.spec.h / 2 + 40), T / 2, (ZF + ZB) / 2 + zOff(i)], [0, 0, -g * (Math.PI / 2)], [0, 160, 0]);
-        }),
-      );
+      // the left side lies where the frame is built, the right one beside it, both inside face up (the frame lies on its left side)
+      shown.forEach((m, i) => {
+        b.stage(m.sides[0], rel(m, i, m.sides[0]), [0, 0, 0], [160, 0, 0]);
+        b.stage(m.sides[1], [T / 2, m.spec.h / 2, (ZF + ZB) / 2 + zOff(i) + 640], [0, 0, Math.PI], [160, 0, 0]);
+      });
       b.then(0.15);
       ff.forEach((f) => b.fits(CAM, f.lowCams, 0.08));
     },
@@ -372,6 +372,8 @@ function build(b: PlanBuilder, s: ProductSpec, L: Layout) {
       detail: "Runners marked L go on the left side and R on the right, the wheel end to the front. Two screws hold each one.",
       tools: ["screwdriver"],
       kind: "runners",
+
+      pose: "+x",
     },
     () => {
       ff.forEach((f) => b.fits(RUNNER, f.runners, 0.15));
@@ -385,6 +387,8 @@ function build(b: PlanBuilder, s: ProductSpec, L: Layout) {
       detail: "Two in each side, in the holes along the back edge. Turn them in by hand until they stop.",
       tools: ["screwdriver"],
       kind: "cams",
+
+      pose: "+x",
     },
     () => ff.forEach((f) => b.fits(BOLT, f.backBolts, 0.08)),
   );
@@ -398,12 +402,6 @@ function build(b: PlanBuilder, s: ProductSpec, L: Layout) {
     },
     () => {
       b.stagger(0.2);
-      shown.forEach((m, i) => {
-        b.stage(m.sides[0], rel(m, i, m.sides[0]), [0, 0, 0]);
-        // the other side waits on the floor beside it, inside face up
-        b.stage(m.sides[1], [T / 2, m.spec.h / 2, (ZF + ZB) / 2 + zOff(i) + 640], [0, 0, Math.PI]);
-      });
-      b.then(0.15);
       shown.forEach((m, i) => m.backs.forEach((k) => b.stage(k, rel(m, i, k), [0, 0, 0], [300, 0, 0])));
       b.then(0.15);
       ff.forEach((f) => b.fits(DOWEL, f.dowels, 0.06));
@@ -942,7 +940,8 @@ function buildBed(b: PlanBuilder, W: number) {
     const xc = bb.g * (W / 2 - 20 - B_RUNNER.len / 2);
     return {
       runner: { on: k, at: [xc, BY1 + 22, z], dir: [0, 0, sgn], twist: Math.PI / 2, hole: false } as FitOpts,
-      screws: [-180, 180].map((dx): FitOpts => ({ on: k, at: [xc + dx, BY1 + 22, z + -sgn * 11], dir: [0, 0, sgn] })),
+      // both screws go where the short dividers are, near the front edge
+      screws: [W / 2 - 60, W / 2 - 260].map((x): FitOpts => ({ on: k, at: [bb.g * x, BY1 + 22, z - sgn * 4], dir: [0, 0, sgn] })),
     };
   };
   const topDowels = each((g, e) => topDowelX(g).map((x): FitOpts => ({ on: ends[endOf(e)], at: [x, topY, zEndMid(e)], dir: [0, -1, 0], mate: tops[sideOf(g)] })));
@@ -983,14 +982,13 @@ function buildBed(b: PlanBuilder, W: number) {
     b.then(0.15);
     b.fits(B_FOOT, feet, 0.05);
   });
-  bstep({ title: "Tap the dowels into the crosspieces", detail: "Turn the long boards over onto their feet. Two dowels go into each end of both crosspieces: use the thick short dowels.", tools: ["hammer"], kind: "dowels" }, () => {
+  bstep({ title: "Turn the long boards over and lay the crosspieces between them", detail: "The boards stand on their feet now. Leave a gap so the crosspieces can take their dowels.", kind: "general" }, () => {
     b.stagger(0.2);
     G.forEach((g) => b.stage(bases[sideOf(g)], [g * (W / 2 - BASE_W / 2 + 200), BFOOT + BT / 2, 0], [0, 0, 0]));
     b.then(0.1);
     G.forEach((e) => b.add(cross[endOf(e)], [0, 160, 0]));
-    b.then(0.15);
-    b.fits(B_DOWEL, jointDowels, 0.06);
   });
+  bstep({ title: "Tap the dowels into the crosspieces", detail: "Two dowels go into each end of both crosspieces: use the thick short dowels.", tools: ["hammer"], kind: "dowels" }, () => b.fits(B_DOWEL, jointDowels, 0.06));
   bstep({ title: "Push the connecting bolts into the crosspieces", detail: "Two in each end, beside the dowels. Push them in until the collar sits on the edge.", kind: "cams" }, () => b.fits(B_CONNECT, jointBolts, 0.06));
   bstep({ title: "Push the long boards onto the crosspieces", detail: "Slide each long board onto the dowels and bolts until the joints close.", kind: "join" }, () => {
     b.stagger(0.2);
@@ -1002,7 +1000,7 @@ function buildBed(b: PlanBuilder, W: number) {
     b.stagger(0.15);
     each((g, e) => [divs[sideOf(g)][endOf(e)]]).forEach((k, i) => {
       const g = i < 2 ? -1 : 1, e = i % 2 ? 1 : -1;
-      b.stage(k, [g * (W / 2 + 260), DIV_T / 2, e * zDiv * 1.4], [Math.PI / 2, 0, 0], [0, 160, 0]);
+      b.stage(k, [g * (W / 2 + 260), DIV_T / 2, e * zDiv * 1.4], [Math.PI / 2, 0, 0]);
     });
     b.then(0.15);
     b.fits(B_DOWEL, divDowels, 0.05);

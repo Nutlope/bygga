@@ -104,10 +104,10 @@ function recipe(s: ProductSpec, bed: Bed): CustomParams {
   const plinthPins = [-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => [-15, 15].map((dx): Vec3 => [sx * xb + dx, PH, sz * (L / 2 - 30)])));
   const barDowels = us ? 2 : 4;
   const barScrews = us ? 2 : 4;
-  const perBar = (k: number) => [-1, 1].flatMap((sz) => (k === 2 ? [0] : [-15, 15]).map((dx): Vec3 => [dx, 40, sz * (L / 4)]));
+  const perBar = (k: number) => [-1, 1].flatMap((sz) => (k === 2 ? [-20] : [-25, 25]).map((dx): Vec3 => [dx, 40, sz * (L / 4)]));
   const runnerPts = drawers.map(({ hz, sx }): Vec3 => [sx * (W / 2 - T - dd / 2), yb + hb / 2, hz * (L / 2 - T)]);
   const runnerScrews = (side: number) =>
-    drawers.filter((d) => d.sx === side).flatMap(({ sx, hz }) => [-0.35, 0, 0.35].flatMap((t) => [-20, 20].map((dy): Vec3 => [sx * (W / 2 - T - dd / 2) + t * dd, yb + hb / 2 + dy, hz * (L / 2 - T)])));
+    drawers.filter((d) => d.sx === side).map(({ sx, hz }) => fx("screw", [-0.35, 0, 0.35].flatMap((t) => [-20, 20].map((dy): Vec3 => [sx * (W / 2 - T - dd / 2) + t * dd, yb + hb / 2 + dy, hz * (L / 2 - T)])), [0, 0, hz], { len: 14, dia: 4 }));
   const runners = (side: number) =>
     drawers.filter((d) => d.sx === side).map((d) => fx("runner", [runnerPts[d.k]], [0, 0, d.hz], { len: Math.round((dd - 40) / 10) * 10, dia: 20, twist: Math.PI / 2 }));
   const felt: Vec3[] = [
@@ -116,27 +116,17 @@ function recipe(s: ProductSpec, bed: Bed): CustomParams {
   ];
   const ds = (k: number) => [`DS${k}0`, `DS${k}1`];
   const d0 = drawers[0];
-  const z0 = d0.hz * (T / 2 + 6 + fw / 2);
-  const frontBolts = (d: (typeof drawers)[number]): Vec3[] => {
-    const zc = d.hz * (T / 2 + 6 + fw / 2);
-    return [-1, 1].flatMap((e) => [yb + 30, yb + hb - 30].map((y): Vec3 => [d.sx * (W / 2 - T), y, zc + e * (bw / 2 - 7.5)]));
-  };
-  const sideCams = (d: (typeof drawers)[number]): Vec3[] => {
-    const zc = d.hz * (T / 2 + 6 + fw / 2);
-    return [-1, 1].flatMap((e) => [yb + 30, yb + hb - 30].map((y): Vec3 => [d.sx * (W / 2 - T - 30), y, zc + e * (bw / 2)]));
-  };
-  const backBolts = (d: (typeof drawers)[number]): Vec3[] => {
-    const zc = d.hz * (T / 2 + 6 + fw / 2);
-    return [-1, 1].flatMap((e) => [yb + 30, yb + hb - 30].map((y): Vec3 => [d.sx * (xin + 7.5), y, zc + e * bw / 2]));
-  };
-  const stopScrews = (d: (typeof drawers)[number]): Vec3[] => {
-    const zc = d.hz * (T / 2 + 6 + fw / 2);
-    return [-60, 60].map((dz): Vec3 => [d.sx * (xin + 15), yb + 6, zc + dz]);
-  };
-  const drawerRunner = (d: (typeof drawers)[number]): Vec3[] => {
-    const zc = d.hz * (T / 2 + 6 + fw / 2);
-    const ze = zc + d.hz * (bw / 2);
-    return [-0.35, 0, 0.35].flatMap((t) => [-20, 20].map((dy): Vec3 => [d.sx * (xin + dd / 2) + t * dd, yb + hb / 2 + dy, ze]));
+  type D = (typeof drawers)[number];
+  const zOf = (d: D) => d.hz * (T / 2 + 6 + fw / 2);
+  const frontBolts = (d: D) =>
+    fx("camScrew", [-1, 1].flatMap((e) => [yb + 30, yb + hb - 30].map((y): Vec3 => [d.sx * (W / 2 - T), y, zOf(d) + e * (bw / 2 - 7.5)])), [-d.sx, 0, 0], { on: `DF${d.k}` });
+  const sideCams = (d: D) => [-1, 1].map((e, j) => fx("cam", [yb + 30, yb + hb - 30].map((y): Vec3 => [d.sx * (W / 2 - T - 30), y, zOf(d) + e * (bw / 2)]), [0, 0, -e], { on: `DS${d.k}${j}` }));
+  const backBolts = (d: D) =>
+    [-1, 1].map((e, j) => fx("bolt", [yb + 30, yb + hb - 30].map((y): Vec3 => [d.sx * (xin + 7.5), y, zOf(d) + e * bw / 2]), [0, 0, -e], { len: 50, dia: 7, name: "Connector bolt", on: `DS${d.k}${j}`, mate: `DB${d.k}` }));
+  const stopScrews = (d: D) => fx("screw", [-60, 60].map((dz): Vec3 => [d.sx * (xin + 15), yb + 6, zOf(d) + dz]), [0, 1, 0], { len: 16, dia: 3.5, on: `DT${d.k}` });
+  const drawerRunner = (d: D) => {
+    const ze = zOf(d) + d.hz * (bw / 2);
+    return fx("screw", [-0.35, 0, 0.35].flatMap((t) => [-20, 20].map((dy): Vec3 => [d.sx * (xin + dd / 2) + t * dd, yb + hb / 2 + dy, ze])), [0, 0, -d.hz], { len: 14, dia: 4, on: `DS${d.k}${d.hz > 0 ? 1 : 0}` });
   };
   const rest = drawers.slice(1);
 
@@ -175,8 +165,8 @@ function recipe(s: ProductSpec, bed: Bed): CustomParams {
     },
     {
       title: "Screw the end panels to the top frame",
-      detail: "Four screws, one near each corner.",
-      fix: [fx("screw", [-1, 1].flatMap((sz) => [-1, 1].map((sx): Vec3 => [sx * (W / 2 - 40), yr, sz * (L / 2 - T / 2)])), [0, 1, 0], { len: 30, dia: 4 })],
+      detail: "Four screws, one in each corner of the top frame, where the boards overlap.",
+      fix: [fx("screw", [-1, 1].flatMap((sz) => [-1, 1].map((sx): Vec3 => [sx * (W / 2 - 20), yr, sz * (L / 2 - 20)])), [0, 1, 0], { len: 20, dia: 4 })],
       tools: ["screwdriver"],
     },
     {
@@ -196,7 +186,7 @@ function recipe(s: ProductSpec, bed: Bed): CustomParams {
     {
       title: "Tap the dowels into the plinth bars",
       detail: "Two in each bar, for the plinth boards.",
-      fix: [-1, 1].map((sx, i) => fx("dowel", [-0.4, 0.4].map((t): Vec3 => [sx * (xb + 20), PH - 20, t * L]), [-sx, 0, 0], { on: `PB${i}`, len: 30, dia: 8 })),
+      fix: [-1, 1].map((sx, i) => fx("dowel", [-0.2, 0.2].map((t): Vec3 => [sx * (xb + 20), PH - 20, t * L]), [-sx, 0, 0], { on: `PB${i}`, len: 30, dia: 8 })),
       tools: ["hammer"],
     },
     {
@@ -222,7 +212,7 @@ function recipe(s: ProductSpec, bed: Bed): CustomParams {
       title: "Put the blocks on the cross bars",
       detail: `${barDowels} dowels, then ${barScrews} long screws up through each bar into its block.`,
       add: ["CB0", "CB1", "BB0", "BB1"],
-      fix: [fx("dowel", perBar(barDowels).map((p): Vec3 => [p[0], 40, p[2] + 15]), [0, 1, 0], { len: 30, dia: 8 }), fx("screw", perBar(barScrews), [0, 1, 0], { len: 90, dia: 5 })],
+      fix: [fx("dowel", perBar(barDowels).map((p): Vec3 => [p[0], 40, p[2] + 15]), [0, 1, 0], { len: 30, dia: 8 }), fx("screw", perBar(barScrews).map((p): Vec3 => [p[0], 0, p[2]]), [0, 1, 0], { len: 90, dia: 5 })],
       tools: ["screwdriver"],
     },
     {
@@ -237,7 +227,7 @@ function recipe(s: ProductSpec, bed: Bed): CustomParams {
     {
       title: "Bolt the blocks to the divider",
       detail: "One long connector bolt down through each cross bar and block.",
-      fix: [fx("bolt", [-1, 1].map((sz): Vec3 => [0, 0, sz * (L / 4)]), [0, 1, 0], { len: 50, dia: 7, name: "Connector bolt" })],
+      fix: [fx("bolt", [-1, 1].map((sz): Vec3 => [barScrews === 2 ? 20 : 0, 0, sz * (L / 4)]), [0, 1, 0], { len: 50, dia: 7, name: "Connector bolt" })],
       tools: ["allen"],
     },
     { title: "Stick the felt pads on", detail: "Ten, under the plinth rails and the cross bars, so it won't scratch the floor.", fix: [fx("glide", felt, [0, 1, 0], { name: "Felt pad" })] },
@@ -245,13 +235,13 @@ function recipe(s: ProductSpec, bed: Bed): CustomParams {
     {
       title: "Screw the runners in on this side",
       detail: "One for each drawer, six screws each, on the end panel and the cross divider.",
-      fix: [...runners(1), fx("screw", runnerScrews(1), [0, 0, 1], { len: 14, dia: 4 })],
+      fix: [...runners(1), ...runnerScrews(1)],
       tools: ["screwdriver"],
     },
     {
       title: "Screw the runners in on the other side",
       detail: "The same: two runners, six screws each.",
-      fix: [...runners(-1), fx("screw", runnerScrews(-1), [0, 0, 1], { len: 14, dia: 4 })],
+      fix: [...runners(-1), ...runnerScrews(-1)],
       tools: ["screwdriver"],
     },
     { title: "Lay the slatted base in", detail: "Unroll it into the top frame, the straps facing down, until it rests on the frame all round.", add: ["SL"] },
@@ -263,37 +253,31 @@ function recipe(s: ProductSpec, bed: Bed): CustomParams {
     {
       title: "Screw the cam bolts into a drawer front",
       detail: "Lay the front face down on the rug. Four bolts in its back.",
-      fix: [fx("camScrew", frontBolts(d0), [-d0.sx, 0, 0], { on: `DF${d0.k}` })],
+      fix: [frontBolts(d0)],
       pose: "+y",
       tools: ["screwdriver"],
     },
     { title: "Push the drawer sides onto them", detail: "One at each end, the grooves facing in and down.", add: [`DF${d0.k}`, ...ds(0)] },
-    { title: "Lock the sides with four cam locks", fix: [fx("cam", sideCams(d0), [0, 0, -d0.hz])], tools: ["screwdriver"] },
+    { title: "Lock the sides with four cam locks", fix: sideCams(d0), tools: ["screwdriver"] },
     {
       title: "Bolt on the drawer back",
       detail: "Four long connector bolts through the sides into its ends.",
       add: [`DB${d0.k}`],
-      fix: [fx("bolt", backBolts(d0), [0, 0, -1], { len: 50, dia: 7, name: "Connector bolt" })],
+      fix: backBolts(d0),
       tools: ["allen"],
     },
-    { title: "Slide the bottom in", detail: "Along the grooves, smooth side up, then screw the stop into the back to hold it.", add: [`DT${d0.k}`], fix: [fx("screw", stopScrews(d0), [0, 1, 0], { len: 16, dia: 3.5 })], tools: ["screwdriver"] },
-    { title: "Screw the runner onto the drawer", detail: "Six small screws along the side.", fix: [fx("screw", drawerRunner(d0), [0, 0, -d0.hz], { len: 14, dia: 4 })], tools: ["screwdriver"] },
+    { title: "Slide the bottom in", detail: "Along the grooves, smooth side up, then screw the stop into the back to hold it.", add: [`DT${d0.k}`], fix: [stopScrews(d0)], tools: ["screwdriver"] },
+    { title: "Screw the runner onto the drawer", detail: "Six small screws along the side.", fix: [drawerRunner(d0)], tools: ["screwdriver"] },
     {
       title: "Build the other three drawers the same way",
       detail: "Bolts in the front, sides and cams, the back, the bottom and its stop, then the runner.",
       add: rest.flatMap((d) => [`DF${d.k}`, ...ds(d.k), `DB${d.k}`, `DT${d.k}`]),
-      fix: [
-        fx("camScrew", rest.flatMap(frontBolts), [-1, 0, 0]),
-        fx("cam", rest.flatMap(sideCams), [0, 0, -1]),
-        fx("bolt", rest.flatMap(backBolts), [0, 0, -1], { len: 50, dia: 7, name: "Connector bolt" }),
-        fx("screw", rest.flatMap(stopScrews), [0, 1, 0], { len: 16, dia: 3.5 }),
-        fx("screw", rest.flatMap(drawerRunner), [0, 0, -1], { len: 14, dia: 4 }),
-      ],
+      from: Object.fromEntries(rest.map((d) => [`DF${d.k}`, [d.sx * 300, 0, 0] as Vec3])),
+      fix: rest.flatMap((d) => [frontBolts(d), ...sideCams(d), ...backBolts(d), stopScrews(d), drawerRunner(d)]),
       tools: ["screwdriver", "allen"],
     },
     { title: "Slide the drawers in", detail: "Rest the runners on the ones in the bed and push each drawer in until it closes. Two on each long side.", check: "square" },
   ];
-  void z0;
   return { parts, steps };
 }
 

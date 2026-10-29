@@ -5,7 +5,7 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Produc
  * MULIG clothes rack, read from its manual. Everything is put together lying on the floor: the two uprights are
  * pushed into the bent top rail until their spring buttons click and each is held with a small screw, a bent foot
  * clicks onto the bottom of each upright, and the lower rail is bolted between the feet with two Allen bolts.
- * Then the rack is stood up. The drying rack comes assembled (no manual), so it keeps its old guide.
+ * Then the rack is stood up. The drying rack comes assembled (no manual): its guide only unfolds it.
  */
 
 const at = (kind: CustomFix["kind"], pts: Vec3[], dir: Vec3, on?: string, mate?: string, o: Partial<CustomFix> = {}): CustomFix => ({ kind, count: pts.length, at: pts, dir, on, mate, ...o });
@@ -75,10 +75,51 @@ function clothesRack(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/** The drying rack comes assembled and has no manual: open the legs, then fold out the two wings. */
+function dryingRack(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const t = 14, yr = H - 240, mw = Math.round(W * 0.52), yc = yr / 2;
+  // the middle: a frame of rails with wires across, on two pairs of legs crossed in an X seen from the end
+  const legs: PartPiece[] = [-1, 1].flatMap((sx) =>
+    [-1, 1].map((sz): PartPiece => {
+      const len = Math.hypot(yr, D - 60);
+      return { shape: "cyl", size: [t, len, t], pos: [sx * (mw / 2 - 80), 0, 0], rot: [sz * Math.atan2(D - 60, yr), 0, 0] };
+    }),
+  );
+  const feet: PartPiece[] = [-1, 1].map((sz): PartPiece => ({ shape: "cyl", size: [t, mw - 160, t], pos: [0, -yc + 8, sz * (D / 2 - 30)], rot: [0, 0, Math.PI / 2] }));
+  const wires = (w: number, n: number, y: number, x0: number): PartPiece[] => [
+    ...[-1, 1].map((sz): PartPiece => ({ shape: "cyl", size: [t, w, t], pos: [x0, y, sz * (D / 2 - 40)], rot: [0, 0, Math.PI / 2] })),
+    ...Array.from({ length: n }, (_, k): PartPiece => ({ shape: "cyl", size: [5, w, 5], pos: [x0, y, -D / 2 + 40 + ((D - 80) * (k + 1)) / (n + 1)], rot: [0, 0, Math.PI / 2] })),
+  ];
+  const ww = (W - mw) / 2, lift = 0.45, wy = yr + Math.sin(lift) * (ww / 2);
+  const wing = (sx: number): CustomPart => ({
+    id: sx < 0 ? "WL" : "WR",
+    name: "Wing",
+    size: [ww, 20, D - 60],
+    pos: [sx * (mw / 2 + (Math.cos(lift) * ww) / 2), wy, 0],
+    rot: [0, 0, sx * lift],
+    material: "metal",
+    pieces: wires(ww, 5, 0, 0),
+  });
+  return {
+    parts: [
+      { id: "M", name: "Rack with legs", size: [mw, yr + t, D], pos: [0, yc, 0], material: "metal", pieces: [...legs, ...feet, ...wires(mw, 9, yr - yc, 0)] },
+      wing(-1),
+      wing(1),
+    ],
+    steps: [
+      { title: "Open the legs", detail: "It comes ready made, folded flat. Stand it up and pull the legs apart until the middle lies level and the stays lock.", add: ["M"] },
+      { title: "Fold out the wings", detail: "Lift each end wing up and out until it rests on its stop.", add: ["WL", "WR"], from: { WL: [200, -250, 0], WR: [-200, -250, 0] }, warnings: ["hand"] },
+      { title: "To fold it away", detail: "Lower the wings first, then press the stays and close the legs. Keep your fingers clear of the joints." },
+    ],
+  };
+}
+
 const family: Family = {
   names: ["MULIG"],
   recipe(s) {
     if (/clothes-rack/.test(s.slug ?? "")) return clothesRack(s);
+    if (/drying-rack/.test(s.slug ?? "")) return dryingRack(s);
     return null;
   },
 };

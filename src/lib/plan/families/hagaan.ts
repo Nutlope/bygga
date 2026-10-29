@@ -140,7 +140,7 @@ function recipe(g: Box) {
     steps.push({
       title: "Screw the fittings tight",
       detail: "One screw in each. Turn it in by hand and stop when it's snug, or it strips the board.",
-      fix: [-1, 1].map((sx) => fx("screw", sx < 0 ? "L" : "R", [sx, 0, 0], [[inner(sx), railY + 46, zf + 2]], { len: 25, dia: 4 })),
+      fix: [-1, 1].map((sx) => fx("screw", sx < 0 ? "L" : "R", [sx, 0, 0], [[inner(sx) - sx * 12, railY + 46, zf + 2]], { len: 25, dia: 4 })),
       tools: ["screwdriver"],
       warnings: ["hand"],
     });

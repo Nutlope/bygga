@@ -60,7 +60,8 @@ function recipe(s: ProductSpec): CustomParams {
       pos: [0, ySeat - 20, zSeat],
       material: "wood",
       pieces: [
-        { shape: "box", size: [seatW, 30, seatD], pos: [0, 5, 0] },
+        // the seat sits right on the side frames' seat rails, so the bolts up through them bite into it
+        { shape: "box", size: [seatW, 40, seatD], pos: [0, 0, 0] },
         { shape: "cyl", size: [T, seatW - 60, T], pos: [0, -8, -seatD / 2 + 20], rot: [0, 0, Math.PI / 2], material: "metal" },
       ],
     },

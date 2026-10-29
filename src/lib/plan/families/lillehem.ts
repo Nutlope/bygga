@@ -379,7 +379,7 @@ function build(b: PlanBuilder, s: ProductSpec): boolean {
       for (const t of tables)
         for (const k of ["blockL", "blockR"]) {
           const r = tr(t, k);
-          stage(T, t, [r], [0, 0, 500], [0, 0, 500]);
+          stage(T, t, [r], [0, -200, 0], [0, 0, 500]);
           b.then(0.05);
           fit(HW.dowel, [-20, 20].map((dx) => at(tm(t), [r.lp[0] + dx, 352, 0], [0, -1, 0], r.key, { mate: tr(t, "top").key })), 0.08);
           fit(HW.dowel, [at(tm(t), [r.lp[0], 242, 0], [0, 1, 0], r.key, { mate: tr(t, "bottom").key })]);

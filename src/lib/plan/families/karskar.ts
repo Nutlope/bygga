@@ -206,10 +206,13 @@ function table(s: ProductSpec) {
     {
       title: "Tap the small dowels into the frame rails",
       detail: "Two in each end of the long rails, one in each end of the cross rails. Use the small ones here.",
-      add: [...longRails, ...cross],
+      add: ["AS0"],
       fix: [...longRails.map(endDowels), ...cross.map(crossDowels)],
       pose: "-y",
       warnings: ["floor"],
+      // the cross rails and the other long rail take their fittings beside the build and come in along them
+      wait: ["AS1", ...cross],
+      from: { AS0: [0, 0, -300], AS1: [0, 0, 400], X0: [0, 0, 300], X1: [0, 0, 300] },
     },
     { title: "Screw the cam bolts into the long rails", detail: "Two in the inside face of each long rail, where the cross rails meet it.", fix: longRails.map(camBolts) },
     {
@@ -217,7 +220,7 @@ function table(s: ProductSpec) {
       detail: "Two on each rail, one small screw each.",
       fix: [
         ...longRails.map((id, i): CustomFix => ({ kind: "clip", name: "Slide guide", count: 2, at: guideAt(i), dir: [0, -1, 0], on: id })),
-        { kind: "screw", count: 4, len: 12, dia: 3.5, at: [0, 1].flatMap((i) => guideAt(i).map((p) => [p[0], p[1] + 3, p[2]] as Vec3)), dir: [0, -1, 0] },
+        ...longRails.map((id, i): CustomFix => ({ kind: "screw", count: 2, len: 12, dia: 3.5, at: guideAt(i).map((p) => [p[0], p[1] + 3, p[2]] as Vec3), dir: [0, -1, 0], on: id })),
       ],
       tools: ["screwdriver"],
     },
@@ -226,17 +229,22 @@ function table(s: ProductSpec) {
       detail: "One at each end, two screws each into the long rail.",
       fix: [
         ...[-1, 1].map((sz): CustomFix => ({ kind: "angle", name: "Corner bracket", count: 2, at: bracketAt.filter((p) => Math.sign(p[2]) === sz), dir: [0, 0, sz], on: side(sz) })),
-        { kind: "screw", count: 8, len: 16, dia: 4, at: bracketAt.flatMap((p) => [-1, 1].map((d) => [p[0] - Math.sign(p[0]) * 20, p[1] + d * 18, Math.sign(p[2]) * zIn] as Vec3)), dir: [0, 0, 1] },
+        ...[-1, 1].map((sz): CustomFix => ({ kind: "screw", count: 4, len: 16, dia: 4, at: bracketAt.filter((p) => Math.sign(p[2]) === sz).flatMap((p) => [-1, 1].map((d) => [p[0] - Math.sign(p[0]) * 20, p[1] + d * 18, sz * zIn] as Vec3)), dir: [0, 0, sz], on: side(sz) })),
       ],
       tools: ["screwdriver"],
     },
-    { title: "Push the cross rails between the long rails", detail: "Onto the dowels and cam bolts, from both sides at once." },
+    {
+      title: "Push the cross rails between the long rails",
+      detail: "Onto the dowels and cam bolts of one long rail, then press the other long rail onto their free ends.",
+      add: [...cross, "AS1"],
+      from: { AS1: [0, 0, 400], X0: [0, 0, 300], X1: [0, 0, 300] },
+    },
     { title: "Lock the cams", detail: "Four cams in the cross rails, turned clockwise until they grip the bolts.", fix: [{ kind: "cam", count: 4, to: cross }], tools: ["screwdriver"] },
     { title: "Push the end rails on", detail: "Onto the dowels at both ends of the frame.", add: ends },
     {
       title: "Screw the end rails to the corner brackets",
       detail: "Two screws through each bracket into the end rail.",
-      fix: [{ kind: "screw", count: 8, len: 16, dia: 4, at: bracketAt.flatMap((p) => [-1, 1].map((d) => [Math.sign(p[0]) * (xf - AT), p[1] + d * 18, p[2] - Math.sign(p[2]) * 20] as Vec3)), dir: [1, 0, 0] }],
+      fix: [-1, 1].map((sx): CustomFix => ({ kind: "screw", count: 4, len: 16, dia: 4, at: bracketAt.filter((p) => Math.sign(p[0]) === sx).flatMap((p) => [-1, 1].map((d) => [sx * (xf - AT), p[1] + d * 18, p[2] - Math.sign(p[2]) * 20] as Vec3)), dir: [sx, 0, 0] })),
       tools: ["screwdriver"],
     },
     { title: "Lay the top halves face down and lock them", detail: "On a rug, the two halves edge to edge. Press both latches underneath closed.", add: ["T0", "T1", "LF"], warnings: ["floor"] },
@@ -291,6 +299,8 @@ function table(s: ProductSpec) {
       add: ["E1"],
       fix: [{ kind: "dowel", count: 2, len: 40, dia: 10, to: ["E1"] }, { kind: "camScrew", count: 2, to: ["E1"] }],
       people: 2,
+      // it meets the leg along its length and the long stretcher across it, so it goes on at an angle onto both
+      from: { E1: [250, 0, 250] },
     },
     { title: "Bolt on the last leg", detail: "Press it onto the stretcher, then the rods through the bracket, washers and nuts.", add: ["L11"], fix: [{ kind: "dowel", count: 1, len: 40, dia: 10, to: ["L11"] }, { kind: "camScrew", count: 1, to: ["L11"] }, ...legFix(3)], tools: ["wrench"], people: 2 },
     { title: "Lock the stretcher cams", detail: "Six cams, turned clockwise until they grip.", fix: [{ kind: "cam", count: 6, to: ["E0", "E1", "M"] }], tools: ["screwdriver"] },

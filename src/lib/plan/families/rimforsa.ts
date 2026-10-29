@@ -186,7 +186,8 @@ function recipe(s: ProductSpec): CustomParams {
     {
       title: "Screw the clips to the floor",
       detail: "Move the bench aside first. Floor screws aren't included: pick ones made for your floor, and check for pipes and underfloor heating.",
-      fix: [at("plug", legs.map((p) => [p[0], -30, p[2]] as Vec3), [0, -1, 0], undefined, undefined, { name: "Floor plug" }), at("screw", legs.map((p) => [p[0], 4, p[2]] as Vec3), [0, -1, 0], undefined, undefined, { len: 40, dia: 5 })],
+      // through the hole near the clip's edge (one in its middle would sit on the clip's own point and be moved off it)
+      fix: [at("plug", legs.map((p) => [p[0], -30, p[2] - 23] as Vec3), [0, -1, 0], undefined, undefined, { name: "Floor plug" }), at("screw", legs.map((p) => [p[0], 4, p[2] - 23] as Vec3), [0, -1, 0], undefined, undefined, { len: 40, dia: 5 })],
       tools: ["drill", "screwdriver"],
     },
     { title: "Slide the bench onto the clips", detail: "Each foot goes into its clip from the side.", warnings: ["two"], people: 2 },

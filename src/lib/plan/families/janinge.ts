@@ -84,7 +84,7 @@ function stool(s: ProductSpec): CustomParams {
     {
       title: "Tighten the footrest's grub screws",
       detail: "Two of them, at the back of the clamp, with the small Allen key.",
-      fix: [fx("bolt", [-14, 14].map((x): Vec3 => [x, yFoot, -92]), [0, 0, 1], "FR", { len: 10, dia: 8, name: "Grub screw" })],
+      fix: [fx("bolt", [-14, 14].map((x): Vec3 => [x, yFoot, -33]), [0, 0, 1], "FR", { len: 10, dia: 8, name: "Grub screw" })],
       tools: ["allen"],
     },
     { title: "Drop the seat into the column", detail: "Lower the gas column straight into the top of the lower column. Your weight pushes it home the first time you sit." },

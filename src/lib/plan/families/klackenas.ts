@@ -64,10 +64,12 @@ function recipe(s: ProductSpec): CustomParams {
   const divLocks = (top: boolean) =>
     fx("cam", zz.map((z, i): Vec3 => [i ? t / 2 : -t / 2, top ? yT - t / 2 - 34 : yB + t / 2 + 34, z]), [1, 0, 0], "DV", { dia: 15, name: "Spring cam lock" });
   // plinth: angle brackets on the inside of the rails and ends, under the cabinet's bottom
-  const brackets: Vec3[] = [
-    ...[-400, 0, 400].map((x): Vec3 => [x, ph - 10, pz0 - t - 12]),
-    ...[-400, 0, 400].map((x): Vec3 => [x, ph - 10, pz1 + t + 12]),
-    ...[-1, 1].map((sx): Vec3 => [sx * (px - t / 2 - 12), ph - 10, (pz0 + pz1) / 2]),
+  // each against a piece's inside face: its points, the way its screws go in, and the piece
+  const brackets: { at: Vec3[]; dir: Vec3; on: string }[] = [
+    { at: [-400, 0, 400].map((x): Vec3 => [x, ph - 10, pz0 - t - 3]), dir: [0, 0, 1], on: "PF" },
+    { at: [-400, 0, 400].map((x): Vec3 => [x, ph - 10, pz1 + t + 3]), dir: [0, 0, -1], on: "PB" },
+    { at: [[-(px - t / 2 - 3), ph - 10, (pz0 + pz1) / 2]], dir: [-1, 0, 0], on: "PE1" },
+    { at: [[px - t / 2 - 3, ph - 10, (pz0 + pz1) / 2]], dir: [1, 0, 0], on: "PE2" },
   ];
   const plinth = ["PF", "PB", "PE1", "PE2"];
   const backClips: Vec3[] = [
@@ -125,7 +127,10 @@ function recipe(s: ProductSpec): CustomParams {
     {
       title: "Screw the angle brackets into the plinth",
       detail: "Eight brackets on the inside, flush with the top edge.",
-      fix: [fx("angle", brackets, [0, 0, 1], "PF", { len: 30, dia: 20 }), fx("screw", brackets.map((p): Vec3 => [p[0], p[1] - 15, p[2]]), [0, 0, 1], "PF", { len: 15, dia: 4 })],
+      fix: [
+        ...brackets.map((g) => fx("angle", g.at, g.dir, g.on, { len: 30, dia: 20 })),
+        ...brackets.map((g) => fx("screw", g.at.map((p): Vec3 => [p[0], p[1] - 25, p[2]]), g.dir, g.on, { len: 15, dia: 4 })),
+      ],
     },
     {
       title: "Tap four dowels into the plinth's top edge",
@@ -140,7 +145,7 @@ function recipe(s: ProductSpec): CustomParams {
       from: Object.fromEntries(plinth.map((id) => [id, [0, -300, 0]])) as Record<string, Vec3>,
       pose: "-y",
     },
-    { title: "Screw the brackets to the bottom", detail: "Eight screws, one through each bracket.", fix: [fx("screw", brackets, [0, 1, 0], "BT", { len: 15, dia: 4 })] },
+    { title: "Screw the brackets to the bottom", detail: "Eight screws, one through each bracket.", fix: [fx("screw", brackets.flatMap((g) => g.at.map((p): Vec3 => [p[0] - g.dir[0] * 12, ph - 3, p[2] - g.dir[2] * 12])), [0, 1, 0], "BT", { len: 15, dia: 4 })] },
     {
       title: "Press the wall spacers onto the back",
       detail: "Six of them, on the back edges of the sides and the divider, so the back stays clear of the wall.",

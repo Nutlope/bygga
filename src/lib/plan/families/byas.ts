@@ -97,7 +97,8 @@ function drawerFits(d: Drawer, g: Geo) {
     bolts: per((k, sd) => [{ on: d.front, at: [xs(k), BOX_Y + 85, g.zF], dir: [0, 0, 1], mate: sd, mateHole: 4 }]),
     dowels: per((k, sd) => [{ on: d.front, at: [xs(k), BOX_Y + 30, g.zF], dir: [0, 0, 1], mate: sd }]),
     cams: per((k, sd) => [{ on: sd, at: [d.cx + k * (d.bw / 2), BOX_Y + 85, g.zF - 28], dir: [-k, 0, 0] }]),
-    ribbed: per((k, sd) => [{ on: sd, at: [d.cx + k * (d.bw / 2), BOX_Y + 60, g.zF - BOX_D + 8], dir: [-k, 0, 0], mate: d.back }]),
+    // driven in through the side: drawn from the joint, in the back's end and through the side
+    ribbed: per((k, sd) => [{ on: d.back, at: [d.cx + k * (d.bw / 2 - 16), BOX_Y + 60, g.zF - BOX_D + 8], dir: [-k, 0, 0], mate: sd }]),
     runners: per((k, sd) => [{ on: sd, at: [xs(k), BOX_Y, zc], dir: UP, hole: false }]),
     runnerScrews: per((k, sd) => [-120, 120].map((dz): FitOpts => ({ on: sd, at: [xs(k), BOX_Y, zc + dz], dir: UP }))),
     grip: [{ on: d.front, at: [d.fz, fTop - 8, g.zF], dir: [0, 0, 1], hole: false }] as FitOpts[],
@@ -299,8 +300,9 @@ function benchRecipe(g: Geo): { parts: CustomPart[]; steps: CustomStep[] } {
       title: "Screw the cabinet runners in",
       detail: "One on each wall of the two outer compartments, marked L and R. Two screws each.",
       fix: [
-        fx("runner", [-1, 1].flatMap((sx) => [sideIn(sx), sx * (xv + T / 2)].map((x): Vec3 => [x, BOX_Y + 5, zc])), { name: "Cabinet runner", dir: [0, -1, 0], len: 330, dia: 20 }),
-        fx("screw", [-1, 1].flatMap((sx) => [sideIn(sx), sx * (xv + T / 2)].flatMap((x) => [-120, 120].map((dz): Vec3 => [x, BOX_Y + 5, zc + dz]))), { dir: [0, -1, 0], len: 16, dia: 4 }),
+        // they lie on the bottom along each wall, screwed down into it
+        fx("runner", [-1, 1].flatMap((sx) => [sideIn(sx) - sx * 10, sx * (xv + T / 2 + 10)].map((x): Vec3 => [x, yB, zc])), { name: "Cabinet runner", dir: [0, -1, 0], len: 330, dia: 20 }),
+        fx("screw", [-1, 1].flatMap((sx) => [sideIn(sx) - sx * 10, sx * (xv + T / 2 + 10)].flatMap((x) => [-120, 120].map((dz): Vec3 => [x, yB + 4, zc + dz]))), { dir: [0, -1, 0], len: 16, dia: 4 }),
       ],
       tools: ["screwdriver"],
     },

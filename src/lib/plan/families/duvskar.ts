@@ -5,7 +5,7 @@ import type { CustomParams, CustomPart, CustomStep, PartPiece, ProductSpec, Vec3
  * DUVSKÄR, read from the table's manual. The table comes folded, with no fittings: both leg frames are hinged to
  * the underside of the top. Lying upside down on a rug, one pair of legs swings up and its brace is lifted into
  * place, then the other pair swings up and the legs are pulled apart until the brace clicks and locks. The chair
- * is sold ready to use, with no manual, so it keeps its old guide.
+ * is sold welded and ready to use, with no manual: its guide only unpacks it and checks it stands steady.
  */
 
 const TUBE = 22;
@@ -86,11 +86,50 @@ function table(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/** The stacking chair: one welded steel frame with a perforated seat and back. */
+function chair(s: ProductSpec): CustomParams {
+  // IKEA: 49 wide, 57 deep, 80 high, seat 46 high, 48 wide and 46 deep
+  const W = s.size.w * 10 || 490, D = s.size.d * 10 || 570, H = s.size.h * 10 || 800;
+  const yS = 460, sw = 480, sd = 440;
+  const xl = W / 2 - TUBE / 2 - 10, zf = D / 2 - TUBE / 2 - 30, zb = -D / 2 + TUBE / 2 + 30;
+  const zs0 = zf - sd + 40; // back edge of the seat
+  const segs: [Vec3, Vec3][] = [
+    // front legs up to the seat, back legs up past it to the back
+    [[-xl, 0, zf], [-xl, yS - 20, zf - 20]],
+    [[xl, 0, zf], [xl, yS - 20, zf - 20]],
+    [[-xl, 0, zb], [-xl, yS - 20, zs0]],
+    [[xl, 0, zb], [xl, yS - 20, zs0]],
+    [[-xl, yS - 20, zs0], [-xl, H - 60, zs0 - 90]],
+    [[xl, yS - 20, zs0], [xl, H - 60, zs0 - 90]],
+    // the rails under the seat
+    [[-xl, yS - 20, zf - 20], [-xl, yS - 20, zs0]],
+    [[xl, yS - 20, zf - 20], [xl, yS - 20, zs0]],
+  ];
+  const f = frame("F", "Chair frame", segs);
+  const c = f.pos;
+  // the back follows the back legs' lean, between them
+  const rise = H - 60 - (yS - 20);
+  const backY = (yS + 60 + H) / 2, backZ = zs0 - (90 * (backY - (yS - 20))) / rise;
+  f.pieces = [
+    ...f.pieces!,
+    { shape: "slab", size: [sw, 8, sd], pos: [0, yS - 4 - c[1], (zf + zs0) / 2 - 10 - c[2]], outline: [[-sw / 2, -sd / 2], [sw / 2, -sd / 2], [sw / 2 - 20, sd / 2], [-sw / 2 + 20, sd / 2]], round: 60, material: "metal" },
+    { shape: "box", size: [sw - 40, H - yS - 100, 8], pos: [0, backY - c[1], backZ - c[2]], rot: [Math.atan2(-90, rise), 0, 0], material: "metal" },
+  ];
+  return {
+    parts: [f],
+    steps: [
+      { title: "Take the chair out of its packaging", detail: "It comes ready to use: the frame, seat and back are welded in one piece. Nothing to screw together.", add: ["F"] },
+      { title: "Check it stands steady", detail: "Stand it on a flat floor and press on the seat. Chairs of the same kind stack on top of each other." },
+    ],
+  };
+}
+
 const family: Family = {
   names: ["DUVSKÄR", "DUVSKAR"],
   recipe(s) {
     if (/table/i.test(s.variant)) return table(s);
-    return null; // the chair comes ready to use
+    if (/chair/i.test(s.variant)) return chair(s);
+    return null;
   },
 };
 export default family;

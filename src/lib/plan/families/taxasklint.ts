@@ -27,6 +27,11 @@ function recipe(s: ProductSpec): CustomParams {
     ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [post, Hf, post], pos: [sx * xP, 0, 0] })),
     { shape: "box", size: [2 * (xP - post / 2), railH, t], pos: [0, yR - Hf / 2, 0] },
   ];
+  // a side rail with the ledge along its inside that the slats and the straps sit on
+  const railPieces = (sx: number): PartPiece[] => [
+    { shape: "box", size: [t, railH, Lb / 2 - zHin], pos: [0, 0, 0] },
+    { shape: "box", size: [30, 25, Lb / 2 - zHin], pos: [-sx * (t / 2 + 15), ySlat - 12.5 - yR, 0] },
+  ];
   const strapEnd = (sx: number, sz: number): Vec3 => [sx * 15, ySlat - 2, sz * 700];
   const strap = (id: string, sx: number, sz: number): CustomPart => {
     const a: Vec3 = [sx * xIn, ySlat - 2, 0], b = strapEnd(sx, sz);
@@ -47,10 +52,10 @@ function recipe(s: ProductSpec): CustomParams {
     { id: "P1", name: "Headboard post", size: [post, Hh, post], pos: [-xP, Hh / 2, zHP], material: "wood" },
     { id: "P2", name: "Headboard post", size: [post, Hh, post], pos: [xP, Hh / 2, zHP], material: "wood" },
     { id: "FB", name: "Footboard", size: [W, Hf, post], pos: [0, Hf / 2, zFP], pieces: footboard, material: "wood" },
-    { id: "S1", name: "Side rail", size: [t, railH, Lb / 2 - zHin], pos: [-xR, yR, (zHin + Lb / 2) / 2], material: "wood" },
+    { id: "S1", name: "Side rail", size: [t, railH, Lb / 2 - zHin], pos: [-xR, yR, (zHin + Lb / 2) / 2], material: "wood", pieces: railPieces(-1) },
     strap("T1", -1, -1),
     strap("T2", -1, 1),
-    { id: "S2", name: "Side rail", size: [t, railH, Lb / 2 - zHin], pos: [xR, yR, (zHin + Lb / 2) / 2], material: "wood" },
+    { id: "S2", name: "Side rail", size: [t, railH, Lb / 2 - zHin], pos: [xR, yR, (zHin + Lb / 2) / 2], material: "wood", pieces: railPieces(1) },
     strap("T3", 1, -1),
     strap("T4", 1, 1),
     { id: "CB", name: "Centre beam", size: [50, beamH, beamL], pos: [0, yBeam, zBeam], material: "wood" },
@@ -111,7 +116,7 @@ function recipe(s: ProductSpec): CustomParams {
     {
       title: "Screw the steel straps to the side rails",
       detail: "Two straps on each rail, one screw at the middle of the rail's inside ledge. Let their other ends hang loose.",
-      fix: [-1, 1].flatMap((sx) => [-1, 1].map((sz): CustomFix => ({ kind: "screw", count: 1, len: 16, dia: 4, at: [[sx * (xIn - 8), ySlat, sz * 20]], dir: [0, -1, 0], on: side(sx) }))),
+      fix: [-1, 1].flatMap((sx) => [-1, 1].map((sz): CustomFix => ({ kind: "screw", count: 1, len: 16, dia: 4, at: [[sx * (xIn - 15), ySlat, sz * 20]], dir: [0, -1, 0], on: side(sx) }))),
       wait: ["T1", "T2", "T3", "T4"],
       from: { T1: [-500, 0, 0], T2: [-500, 0, 0], T3: [500, 0, 0], T4: [500, 0, 0] },
     },

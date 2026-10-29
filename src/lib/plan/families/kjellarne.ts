@@ -153,7 +153,7 @@ function desk(s: ProductSpec): CustomParams {
           feet("CL", [cx0 + 60, cx1 - 60].map((x): Vec3 => [x, 0, cz0 + t / 2])),
           feet("CR", [cx0 + 60, cx1 - 60].map((x): Vec3 => [x, 0, cz1 - t / 2])),
           ...[-1, 1].map((g) => F("runner", [[cMid - 10, 640, cFace(g)]], [0, 0, g], { on: cSide(g), len: 440, dia: 20, twist: Math.PI / 2, name: "Cabinet runner" })),
-          ...[-1, 1].map((g) => F("screw", [cMid - 190, cMid + 170].map((x): Vec3 => [x, 640, cFace(g)]), [0, 0, -g], { on: cSide(g), ...SCREW })),
+          ...[-1, 1].map((g) => F("screw", [cMid - 190, cMid + 170].map((x): Vec3 => [x, 640, cFace(g) - g * 2]), [0, 0, g], { on: cSide(g), ...SCREW })), // through the runner into the side
           ...[-1, 1].map((g) => F("camScrew", cCamBolts(g), [0, 0, -g], { on: cSide(g), len: 11 })),
         ],
         pose: "+y",
@@ -210,7 +210,6 @@ function desk(s: ProductSpec): CustomParams {
           F("camScrew", [[cx0 + 116, 665, g < 0 ? cz0 + 36 : cz1 - 36]], [0, 0, -g], { on: "DK", mate: g < 0 ? "DS0" : "DS1", len: 11 }),
           F("dowel", [[cx0 + 116, 615, g < 0 ? cz0 + 36 : cz1 - 36]], [0, 0, -g], { on: "DK", mate: g < 0 ? "DS0" : "DS1" }),
         ]),
-        wait: ["DK"],
       },
       {
         title: "Join the drawer sides to the back",

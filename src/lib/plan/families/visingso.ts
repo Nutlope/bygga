@@ -8,7 +8,7 @@ import { buildCustom } from "../custom";
  * by two nuts: those come off first. The cross is bolted onto the column with one long bolt, then the column is
  * turned over and the four-armed base takes four short bolts. Upside down on the top, the cross goes over the eight
  * studs under the top and takes eight washers and nuts, and the table is stood up and its feet adjusted.
- * The chair with armrests has no manual (its frame is welded in one piece), so it keeps its old guide.
+ * The chair with armrests has no manual (its frame is welded in one piece): its guide only unpacks it.
  */
 
 function fx(kind: CustomFix["kind"], at: Vec3[], dir: Vec3, on?: string, o: Partial<CustomFix> = {}): CustomFix {
@@ -78,9 +78,10 @@ function table(s: ProductSpec): CustomParams {
         detail: "The long bolt with the big washer and a spring washer, down through the cross into the column. Tighten with the Allen key.",
         add: ["COL", "SP"],
         fix: [
+          // the bolt first, so its washers stack on it
+          fx("bolt", [[0, under - 2, 0]], [0, -1, 0], "SP", { len: 90, dia: 8, mate: "COL" }),
           fx("washer", [[0, under - 4, 0]], [0, -1, 0], "SP", { name: "Large washer", dia: 24 }),
           fx("washer", [[0, under - 3, 0]], [0, -1, 0], "SP", { name: "Spring washer", dia: 10 }),
-          fx("bolt", [[0, under - 2, 0]], [0, -1, 0], "SP", { len: 90, dia: 8, mate: "COL" }),
         ],
         pose: "+y",
         tools: ["allen"],
@@ -90,8 +91,8 @@ function table(s: ProductSpec): CustomParams {
         detail: "Four short bolts, each with a spring washer, up through the base into the column. Use the Allen key, not a drill.",
         add: ["BASE"],
         fix: [
-          fx("washer", [-1, 1].flatMap((a) => [-1, 1].map((b): Vec3 => [a * 22, 0, b * 22])), [0, 1, 0], "BASE", { name: "Spring washer", dia: 10 }),
-          fx("bolt", [-1, 1].flatMap((a) => [-1, 1].map((b): Vec3 => [a * 22, -2, b * 22])), [0, 1, 0], "BASE", { len: 60, dia: 8, mate: "COL" }),
+          fx("bolt", [-1, 1].flatMap((a) => [-1, 1].map((b): Vec3 => [a * 22, 8, b * 22])), [0, 1, 0], "BASE", { len: 60, dia: 8, mate: "COL" }),
+          fx("washer", [-1, 1].flatMap((a) => [-1, 1].map((b): Vec3 => [a * 22, 9, b * 22])), [0, 1, 0], "BASE", { name: "Spring washer", dia: 10 }),
         ],
         pose: "-y",
         tools: ["allen"],
@@ -108,12 +109,40 @@ function table(s: ProductSpec): CustomParams {
   };
 }
 
-const recipe = (s: ProductSpec) => (/visingso-table/.test(s.slug ?? "") ? table(s) : null);
+/** The chair with armrests is welded in one piece and has no manual: unpack it and it's ready. */
+function chair(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const ys = 450, t = 22, xl = W / 2 - 60, yc = H / 2;
+  const leg = (x: number, z0: number, z1: number, y1: number): PartPiece => {
+    const len = Math.hypot(y1, z1 - z0);
+    return { shape: "cyl", size: [t, len, t], pos: [x, y1 / 2 - yc, (z0 + z1) / 2], rot: [Math.atan2(z1 - z0, y1), 0, 0] };
+  };
+  const pieces: PartPiece[] = [
+    ...[-1, 1].flatMap((sx) => [leg(sx * xl, D / 2 - 40, D / 2 - 70, ys), leg(sx * xl, -D / 2 + 30, -D / 2 + 70, ys)]),
+    { shape: "slab", size: [W - 120, 14, D - 120], pos: [0, ys + 7 - yc, 10], outline: [[-(W - 120) / 2, -(D - 120) / 2], [(W - 120) / 2, -(D - 120) / 2], [(W - 120) / 2, (D - 120) / 2], [-(W - 120) / 2, (D - 120) / 2]], round: 60 },
+    { shape: "box", size: [W - 140, 260, 14], pos: [0, H - 150 - yc, -D / 2 + 60], rot: [-0.15, 0, 0] },
+    // the armrests: a tube up from each front leg, along to the back and down to the backrest
+    ...[-1, 1].flatMap((sx): PartPiece[] => [
+      { shape: "cyl", size: [t, 240, t], pos: [sx * (W / 2 - t / 2), ys + 120 - yc, D / 2 - 90] },
+      { shape: "cyl", size: [t, D - 150, t], pos: [sx * (W / 2 - t / 2), ys + 240 - yc, -15], rot: [Math.PI / 2, 0, 0] },
+      { shape: "cyl", size: [t, H - ys - 200, t], pos: [sx * (W / 2 - 50), (ys + H - 200) / 2 + 100 - yc, -D / 2 + 70] },
+    ]),
+  ];
+  return {
+    parts: [{ id: "C", name: "Chair", size: [W, H, D], pos: [0, yc, 0], material: "metal", pieces }],
+    steps: [
+      { title: "Take the chair out of its packaging", detail: "It comes welded in one piece, with its glides already on. There's nothing to put together.", add: ["C"] },
+      { title: "Check it stands steady", detail: "Set it on a flat surface. The chairs stack, so you can store them on top of each other." },
+    ],
+  };
+}
+
+const recipe = (s: ProductSpec) => (/visingso-table/.test(s.slug ?? "") ? table(s) : /chair/i.test(s.variant) ? chair(s) : null);
 
 /** The top waits upside down beside the stand while the column, cross and base go together. */
 function build(b: PlanBuilder, s: ProductSpec): boolean {
-  const r = recipe(s);
-  if (!r) return false;
+  if (!/visingso-table/.test(s.slug ?? "")) return false;
+  const r = table(s);
   const start = b.steps.length;
   buildCustom(b, { ...s, custom: r });
   r.steps.forEach((st, i) => {

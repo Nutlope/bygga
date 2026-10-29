@@ -5,18 +5,18 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, ProductSpec, Vec3
  * BORGEBY, read from the side table's manual. The round top lies upside down on a rug and the four bent legs are
  * screwed to it, two screws each. Laid on its side, the storage bowl slides in between the legs and is screwed
  * through the two lower legs, then rolled over for the other two. Every screw is tightened last. The coffee table
- * has no manual to follow here and keeps its old guide.
+ * is sold assembled (its page has care advice but no assembly instructions), so its guide only unpacks it.
  */
 
 const fx = (kind: CustomFix["kind"], at: Vec3[], dir: Vec3, o: Partial<CustomFix> = {}): CustomFix => ({ kind, count: at.length, at, dir, ...o });
 
-function sideTable(s: ProductSpec): CustomParams {
+/** The top, the four bent legs and the storage bowl between them, as they stand finished. */
+function tableParts(s: ProductSpec, bh: number) {
   const W = s.size.w * 10, H = s.size.h * 10;
   const tt = 20; // top
-  const lw = 60, lt = 16; // leg strip: width, thickness
+  const lw = Math.round(Math.max(80, W * 0.13)), lt = 16; // leg strip: width, thickness (wide bent ply, as photographed)
   const ret = 90; // the leg's return under the top
   const free = 60; // under the bowl
-  const bh = 140; // bowl
   const r = W / 2 - 40; // leg centre line from the middle
   const yU = H - tt;
   const bowlR = r - lt / 2;
@@ -46,6 +46,11 @@ function sideTable(s: ProductSpec): CustomParams {
     });
   });
   parts.push({ id: "B", name: "Storage bowl", shape: "cyl", size: [2 * bowlR, bh, 2 * bowlR], pos: [0, free + bh / 2, 0], material: "wood" });
+  return { parts, axes, r, yU, ret, lt, free, bh };
+}
+
+function sideTable(s: ProductSpec): CustomParams {
+  const { parts, axes, r, yU, ret, lt, free, bh } = tableParts(s, 140);
 
   const topScrews: Vec3[] = axes.flatMap(([ax, , az]) => {
     const rr = r - ret / 2 + 10;
@@ -89,11 +94,31 @@ function sideTable(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/** The coffee table: IKEA's page has no assembly instructions, only care advice, so it comes put together. */
+function coffeeTable(s: ProductSpec): CustomParams {
+  const { parts } = tableParts(s, 160);
+  const ids = parts.map((p) => p.id);
+  return {
+    parts,
+    steps: [
+      {
+        title: "Lift the table out of its box",
+        detail: "It comes assembled. Take off all the packaging and lift it by the top, not by the bowl.",
+        add: ids,
+        from: Object.fromEntries(ids.map((id) => [id, [0, 400, 0] as Vec3])),
+      },
+      { title: "Check it over", detail: "Look over the top, the legs and the bowl for any damage from the journey before you use it." },
+      { title: "Set it down where it will stand", detail: "On a flat floor, so all four legs touch. Wipe it with a damp cloth, then a dry one." },
+    ],
+  };
+}
+
 const family: Family = {
   names: ["BORGEBY"],
   recipe(s) {
     if (/side table/i.test(s.variant) || /side-table/.test(s.slug ?? "")) return sideTable(s);
-    return null; // coffee table: no manual
+    if (/coffee/i.test(s.variant) || /coffee-table/.test(s.slug ?? "")) return coffeeTable(s);
+    return null;
   },
 };
 export default family;
