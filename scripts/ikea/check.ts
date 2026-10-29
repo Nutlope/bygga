@@ -101,6 +101,13 @@ async function main() {
   expect("kallax", "kallax-2x2");
   expect("MALM 3 drawers", "malm-3-drawers");
   expect("billy", "billy-80x202");
+  // words in front of the name are not the name: "IKEA KALLAX" opened IKEA PS, "my billy" MYDAL
+  expect("IKEA KALLAX", "kallax-2x2");
+  expect("ikea billy", "billy-80x202");
+  expect("the kallax", "kallax-2x2");
+  expect("my billy", "billy-80x202");
+  // and a name that does start with IKEA still opens
+  expect("IKEA PS cabinet", "ikea-ps-cabinet-119-x-63");
   expect("markus", "markus-office-chair");
   expect("markus office chair", "markus-office-chair");
   // a real name we don't draw (chair cushions) must not land on a near miss (FRÖSET)

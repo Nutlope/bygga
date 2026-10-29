@@ -151,8 +151,20 @@ export function searchText(e: CatalogEntry) {
   return rowOf.get(e)?.padded ?? ` ${fold([e.category, e.name, e.variant].join(" "))} `;
 }
 
+// Words people put before the name, on the box or in a sentence: "IKEA KALLAX", "the billy", "my malm".
+// The first word is read as the name, so they matched IKEA PS or MYDAL instead.
+const LEAD = new Set(["ikea", "the", "a", "an", "my", "our", "your", "this"]);
+
+/** The folded query without those words in front. A query made only of them stays as it is. */
+function leadless(q: string) {
+  const words = fold(q).split(" ");
+  let at = 0;
+  while (at < words.length - 1 && LEAD.has(words[at])) at++;
+  return words.slice(at).join(" ");
+}
+
 export function searchCatalog(q: string, limit = 8): Hit[] {
-  const f = fold(q);
+  const f = leadless(q);
   if (!f) return [];
   const no = articleNo(q);
   if (no) {
@@ -217,7 +229,7 @@ export function matchCatalog(q: string): ProductSpec | null {
   const [a, b] = searchCatalog(q, 2);
   if (!a || a.score < 50) return null;
   // a real IKEA name we can't draw must not land on a different product
-  if (!a.exact && isGuardedName(fold(q).split(" ")[0] ?? "")) return null;
+  if (!a.exact && isGuardedName(leadless(q).split(" ")[0] ?? "")) return null;
   // a typo match only counts when it is clearly the best one
   if (a.score < 60 && b && b.score >= a.score - 4 && fold(b.entry.name) !== fold(a.entry.name)) return null;
   return toSpec(a.entry);
