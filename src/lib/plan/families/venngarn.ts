@@ -9,7 +9,7 @@ import { buildCustom } from "../custom";
  * with washers and wing nuts. Each armrest, laid on the floor inside up, gets four studs and a spacer disc on each,
  * then two people push them onto the ends of the base and the back, fastened the same way from inside. Four corner
  * legs are bolted on with two bolts each and get two felt pads, then the sofa is turned up onto its legs and the
- * seat, back and scatter cushions go on.
+ * seat, back and scatter cushions go on. The 1.5-seat armchair's manual is the same, with two studs in the base.
  */
 
 const AW = 260; // armrest width
@@ -26,6 +26,8 @@ function fx(kind: CustomFix["kind"], at: Vec3[], dir: Vec3, on?: string, o: Part
 function recipe(s: ProductSpec): CustomParams {
   const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
   const xi = W / 2 - AW; // inside face of an armrest
+  // the 1.5-seat armchair: two studs for the back instead of four, and one seat, back and scatter cushion
+  const chair = /armchair|1-5-seat/i.test(`${s.slug ?? ""} ${s.variant}`);
   const deck = 400; // top of the seat base
   const backTop = H - 160; // the back's frame, under the back cushions
   const seatTop = 530;
@@ -55,20 +57,22 @@ function recipe(s: ProductSpec): CustomParams {
     parts.push({ id, name: "Leg", size: [120, LEG_H, 120], pos: legAt(sx, sz), material: "wood" });
   }));
   // two seat cushions on the base, two back cushions leaning on the back, two scatter cushions in front of them
-  const half = xi;
+  const half = chair ? 2 * xi : xi;
+  const cxs = chair ? [0] : [-1, 1];
   const zc1 = D / 2 - 10, zbc = zc1 - 700; // the back cushions' front, a seat depth behind the front edge
-  [-1, 1].forEach((sx, i) => {
+  cxs.forEach((sx, i) => {
     parts.push({ id: `SEAT${i}`, name: "Seat cushion", size: [half - 10, seatTop - deck, zc1 - zb1], pos: [sx * (half / 2), (deck + seatTop) / 2, (zb1 + zc1) / 2], material: "soft" });
   });
-  [-1, 1].forEach((sx, i) => {
+  cxs.forEach((sx, i) => {
     parts.push({ id: `BCUSH${i}`, name: "Back cushion", size: [half - 20, H - seatTop - 10, zbc - zb1], pos: [sx * (half / 2), (seatTop + H - 10) / 2 + 5, (zb1 + zbc) / 2 - 10], rot: [-0.1, 0, 0], material: "soft" });
   });
-  [-1, 1].forEach((sx, i) => {
+  cxs.forEach((sx, i) => {
     parts.push({ id: `PILLOW${i}`, name: "Scatter cushion", size: [440, 440, 140], pos: [sx * (half / 2), seatTop + 260, zbc + 50], rot: [-0.25, 0, 0], material: "soft" });
   });
 
   const zs = (zb0 + zb1) / 2;
-  const baseStuds = [-0.7, -0.25, 0.25, 0.7].map((t): Vec3 => [t * xi, deck, zs]);
+  const baseStuds = (chair ? [-0.45, 0.45] : [-0.7, -0.25, 0.25, 0.7]).map((t): Vec3 => [t * xi, deck, zs]);
+  const nStuds = chair ? "two" : "four";
   const backNuts = baseStuds.map((p): Vec3 => [p[0], deck + 50, p[2]]);
   // each armrest: two studs into the end of the base, two into the end of the back
   const armStuds = (sx: number) => {
@@ -93,13 +97,13 @@ function recipe(s: ProductSpec): CustomParams {
 
   const steps: CustomStep[] = [
     {
-      title: "Screw four studs into the seat base",
+      title: `Screw ${nStuds} studs into the seat base`,
       detail: "Stand the base on a rug. Turn each stud in by hand into the holes along the back edge until it stops.",
       add: ["BASE"],
       fix: [fx("stud", baseStuds, [0, -1, 0], "BASE", { ...STUD, mate: "BACK" })],
       warnings: ["floor"],
     },
-    { title: "Lower the back onto the studs", detail: "Hold it upright over the back edge of the base so all four studs go through the holes in its bottom.", add: ["BACK"], from: { BACK: [0, 320, 0] }, people: 2 },
+    { title: "Lower the back onto the studs", detail: `Hold it upright over the back edge of the base so the ${chair ? "two" : "four"} studs go through the holes in its bottom.`, add: ["BACK"], from: { BACK: [0, 320, 0] }, people: 2 },
     {
       title: "Fasten the back with wing nuts",
       detail: "Reach in from behind: a washer, then a wing nut on each stud, turned tight by hand.",
@@ -130,8 +134,12 @@ function recipe(s: ProductSpec): CustomParams {
       people: 2,
     },
     { title: "Stick two felt pads under each leg", detail: "Over the bolt heads, pressed on firmly.", fix: legs.map((id, i) => fx("glide", legBolts(i), [0, 1, 0], id, { dia: 40 })) },
-    { title: "Stand it up and lay in the seat cushions", detail: "Lift it together onto its legs. The seat cushions lie on the base, zips to the back.", add: ["SEAT0", "SEAT1"], pose: "+y", people: 2, warnings: ["two"] },
-    { title: "Put the back cushions in place", detail: "Lean them against the back, then the two scatter cushions in front.", add: ["BCUSH0", "BCUSH1", "PILLOW0", "PILLOW1"] },
+    chair
+      ? { title: "Stand it up and lay in the seat cushion", detail: "Lift it together onto its legs. The cushion lies on the base, zip to the back.", add: ["SEAT0"], pose: "+y", people: 2, warnings: ["two"] }
+      : { title: "Stand it up and lay in the seat cushions", detail: "Lift it together onto its legs. The seat cushions lie on the base, zips to the back.", add: ["SEAT0", "SEAT1"], pose: "+y", people: 2, warnings: ["two"] },
+    chair
+      ? { title: "Put the back cushion in place", detail: "Lean it against the back, then the scatter cushion in front.", add: ["BCUSH0", "PILLOW0"] }
+      : { title: "Put the back cushions in place", detail: "Lean them against the back, then the two scatter cushions in front.", add: ["BCUSH0", "BCUSH1", "PILLOW0", "PILLOW1"] },
   ];
   return { parts, steps };
 }

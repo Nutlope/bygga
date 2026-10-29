@@ -2,7 +2,7 @@ import type { Family } from "./family";
 import type { CustomFix, CustomParams, CustomPart, PartPiece, ProductSpec, Vec3 } from "../../types";
 
 /**
- * BRÄNNBOLL, read from the side table's manual. Built upside down on the steel rim: the two leg frames push onto the
+ * BRÄNNBOLL. The side table, read from its manual: Built upside down on the steel rim: the two leg frames push onto the
  * rim's four stubs and are locked with grub screws, the castors are bolted into the forked legs, then the board
  * slides in onto the leg frames' crossbars and is screwed up from below and bolted to the rim's brackets.
  */
@@ -100,5 +100,78 @@ function recipe(s: ProductSpec): CustomParams {
   };
 }
 
-const family: Family = { names: ["BRÄNNBOLL"], recipe };
+
+/**
+ * The shelving unit on castors, from its own manual (the version with the slatted divider, as in the photo). Lying on
+ * its back, the divider's pegs go into the two boards, an end frame is bolted on at each side, then upside down the
+ * four castors are screwed into the tube ends and tightened with the spanner. Stood up, plugs close the spare holes.
+ */
+function shelving(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10 || 560, D = s.size.d * 10 || 400, H = s.size.h * 10 || 620;
+  const T = 20, r = T / 2;
+  const fx0 = W / 2 - r, fz = D / 2 - r; // the end frames' tubes
+  const foot = 100; // the castors' height, up to the tube ends
+  const bt = 20, bw = 2 * (fx0 - r), bd = D - 20;
+  const lowY = foot + 70, topY = H - 70; // the boards' top faces
+  const bys = [lowY - bt / 2, topY - bt / 2];
+  const fh = H - foot, fm = foot + fh / 2;
+  const frame: PartPiece[] = [
+    ...[-1, 1].map((sz): PartPiece => ({ shape: "cyl", size: [T, fh - T, T], pos: [0, -T / 2, sz * fz] })),
+    { shape: "box", size: [T, T, D], pos: [0, fh / 2 - r, 0] }, // the handle over the top
+    ...bys.map((y): PartPiece => ({ shape: "box", size: [T, T, 2 * fz], pos: [0, y - fm, 0] })),
+    { shape: "box", size: [2, bys[1] - bys[0] - T, 2 * fz - T], pos: [0, (bys[0] + bys[1]) / 2 - fm, 0] }, // pegboard
+  ];
+  const board = (y: number): PartPiece[] => [
+    { shape: "box", size: [bw, bt - 6, bd], pos: [0, -3, 0] },
+    ...[-1, 1].map((sz): PartPiece => ({ shape: "box", size: [bw, 6, 3], pos: [0, bt / 2 - 3, sz * (bd / 2 - 1.5)] })),
+  ];
+  const vh = bys[1] - bys[0] - bt, vd = bd - 40;
+  const divider: PartPiece[] = [
+    ...[-1, 1].map((sz): PartPiece => ({ shape: "box", size: [10, vh, 10], pos: [0, 0, sz * (vd / 2 - 5)] })),
+    ...Array.from({ length: 14 }, (_, i): PartPiece => ({ shape: "cyl", size: [5, vd - 20, 5], pos: [0, -vh / 2 + 15 + (i * (vh - 30)) / 13, 0], rot: [Math.PI / 2, 0, 0] })),
+  ];
+  const parts: CustomPart[] = [
+    { id: "B", name: "Board", size: [bw, bt, bd], pos: [0, bys[0], 0], material: "metal", pieces: board(bys[0]) },
+    { id: "V", name: "Slatted divider", size: [10, vh, vd], pos: [0, (bys[0] + bys[1]) / 2, 0], material: "metal", pieces: divider },
+    { id: "T", name: "Board", size: [bw, bt, bd], pos: [0, bys[1], 0], material: "metal", pieces: board(bys[1]) },
+    { id: "E0", name: "End frame", size: [T, fh, D], pos: [-fx0, fm, 0], material: "metal", pieces: frame },
+    { id: "E1", name: "End frame", size: [T, fh, D], pos: [fx0, fm, 0], material: "metal", pieces: frame },
+  ];
+  const bz = fz - 70;
+  const bolts = (g: number): CustomFix =>
+    fx("bolt", bys.flatMap((y) => [-1, 1].map((sz): Vec3 => [g * (W / 2), y, sz * bz])), { len: 40, dia: 6, dir: [-g, 0, 0], on: g < 0 ? "E0" : "E1" });
+  const ends = (g: number): Vec3[] => [-1, 1].map((sz): Vec3 => [g * fx0, foot, sz * fz]);
+  return {
+    parts,
+    steps: [
+      {
+        title: "Fit the divider between the boards",
+        detail: "Lay it all on its back on a rug. The divider's four pegs push into the holes in the two boards.",
+        add: ["B", "V", "T"],
+        pose: "+z",
+        warnings: ["floor"],
+      },
+      { title: "Bolt on one end frame", detail: "Two bolts into each board. Check the bolt heads sit flush in their recesses.", add: ["E0"], fix: [bolts(-1)], tools: ["allen"] },
+      { title: "Bolt on the other end frame", detail: "Four more bolts the same way, then tighten all eight.", add: ["E1"], fix: [bolts(1)], tools: ["allen"] },
+      {
+        title: "Screw in the castors",
+        detail: "Turn the unit upside down. The two with brakes go at one end. Screw each one into a tube end by hand.",
+        fix: [
+          fx("castor", ends(1), { name: "Castor with brake", dir: UP, len: foot, dia: 75, on: "E1" }),
+          fx("castor", ends(-1), { dir: UP, len: foot, dia: 75, on: "E0" }),
+        ],
+        pose: "-y",
+      },
+      { title: "Tighten the castors", detail: "Hold each one and tighten its nut with the spanner.", tools: ["wrench"] },
+      {
+        title: "Plug the spare holes",
+        detail: "Stand it on its castors and push a plastic plug into each of the four empty holes in the end frames.",
+        fix: [-1, 1].map((g) => fx("cap", [-1, 1].map((sz): Vec3 => [g * (fx0 - 1), (bys[0] + bys[1]) / 2, sz * bz]), { name: "Plastic plug", dir: [-g, 0, 0], on: g < 0 ? "E0" : "E1" })),
+        pose: "+y",
+      },
+    ],
+  };
+}
+
+const family: Family = { names: ["BRÄNNBOLL"], recipe: (s) => (/shelving-unit/.test(s.slug ?? "") ? shelving(s) : recipe(s)) };
 export default family;

@@ -92,7 +92,7 @@ function baseMatch(name: string, draw: Draw): CatalogEntry | undefined {
   const g = p ? { w: draw.guessed.w || p.w, h: draw.guessed.h || p.h, d: draw.guessed.d || p.d } : draw.guessed;
   // a cube shelf with inserts or on an underframe is more than the hand made shelf of the same size, and a modular
   // chest's drawers and open sections are its own
-  if (draw.x.ins || draw.x.uf || draw.x.mods) return undefined;
+  if (draw.x.ins || draw.x.uf || draw.x.mods || draw.own) return undefined;
   for (const e of BASE) {
     if (fold(e.name) !== fam) continue;
     if (e.archetype !== spec.archetype && e.category !== spec.category) continue;
@@ -100,6 +100,8 @@ function baseMatch(name: string, draw: Draw): CatalogEntry | undefined {
     if (LATER_KINDS.has(draw.kind) && e.category !== spec.category) continue;
     // IKEA's own name for what it is sets it apart from a hand made entry of another category
     if (draw.x.cat && e.category !== spec.category) continue;
+    // an open wall shelf is not the cabinet with a door of the same size
+    if (draw.kind === "wallshelf" && e.category === "Cabinet") continue;
     if (draw.kind === "bed") {
       if (e.bed?.mattressW === draw.x.m && (e.bed?.mattressL ?? 200) === (draw.x.l ?? 200)) return e;
       continue;

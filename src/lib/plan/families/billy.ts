@@ -607,9 +607,270 @@ function drawerKit(k: Kit, u: Unit, f: Frame) {
   );
 }
 
+/* ---------- the bookcase with a foldable table ---------- */
+
+/**
+ * Its own manual, in two bags. The bookcase: a shelf box (top, fixed shelf and a board back between them) is
+ * built first, then it and a low back rail stand on one side lying on the floor and the other side goes on; it is
+ * fixed to the wall with two brackets under the fixed shelf. The rolling unit is a small open bookcase built the
+ * same way on its side, with a hardboard back held by push pins, castors at the front and back and a castor arm
+ * underneath. The table is two boards hinged together: rollers on the back board run in curved tracks in the
+ * bookcase sides, the front board is the unit's top. Drawn unfolded, as in the photo.
+ */
+function foldTable(k: Kit): boolean {
+  const { b } = k;
+  const W = 800, H = 1060, D = 325;
+  const Wi = W - 2 * T, xi = Wi / 2;
+  const zbk = -D / 2;
+  const sx2 = [-1, 1];
+
+  // the bookcase
+  const sideL = k.part("Side", [T, H, D], [-W / 2 + T / 2, H / 2, 0]);
+  const sideR = k.part("Side", [T, H, D], [W / 2 - T / 2, H / 2, 0]);
+  const yTop = H - T / 2, ySh = 790;
+  const top = k.part("Top", [Wi, T, D], [0, yTop, 0]);
+  const shelf = k.part("Fixed shelf", [Wi, T, D], [0, ySh, 0]);
+  const bY0 = ySh + T / 2, bY1 = H - T, zB = zbk + T / 2;
+  const back = k.part("Shelf back", [Wi, bY1 - bY0, T], [0, (bY0 + bY1) / 2, zB]);
+  const rail = k.part("Bottom rail", [Wi, PL, T], [0, PL / 2, zB]);
+
+  // the rolling unit, in front of the bookcase with the table unfolded
+  const UW = 760, UWi = UW - 2 * T, ux = UW / 2 - T / 2;
+  const uB = 659, uF = 939; // back (hardboard) and front
+  const uD = uF - (uB + 3), uz = (uB + 3 + uF) / 2;
+  const uTop = 728, uBot = 20;
+  const uSideL = k.part("Unit side", [T, uTop - uBot, uD], [-ux, (uTop + uBot) / 2, uz]);
+  const uSideR = k.part("Unit side", [T, uTop - uBot, uD], [ux, (uTop + uBot) / 2, uz]);
+  const rY0 = 58, zR = uF - 20 - T / 2, yR = rY0 + PL / 2;
+  const uRail = k.part("Castor rail", [UWi, PL, T], [0, yR, zR]);
+  const uBY = rY0 + PL + T / 2, uSY = 430;
+  const uBottom = k.part("Unit bottom", [UWi, T, uD], [0, uBY, uz]);
+  const uShelf = k.part("Unit shelf", [UWi, T, uD], [0, uSY, uz]);
+  const uBackP = k.part("Unit back", [UW, uTop - (uBY - T / 2), 3], [0, (uTop + uBY - T / 2) / 2, uB + 1.5], { material: "fiber" });
+
+  // the table: the back board's rollers sit just inside the bookcase sides, the front board is the unit's top
+  const yT = uTop + T / 2, lz0 = 140;
+  const leaf = k.part("Table back board", [UW, T, uB - lz0], [0, yT, (lz0 + uB) / 2]);
+  const front = k.part("Table front board", [UW, T, uF - uB], [0, yT, (uB + uF) / 2]);
+
+  const SCREW: HwDef = { kind: "screw", len: 12, dia: 5 };
+  const SMALL_DOWEL: HwDef = { kind: "dowel", len: 25, dia: 6 };
+  const BOLT: HwDef = { kind: "bolt", len: 12, dia: 6 };
+  const BRAKE: HwDef = { kind: "castor", len: 58, dia: 50, name: "Castor with brake" };
+  const WHEEL: HwDef = { kind: "castor", len: 58, dia: 44, name: "Back wheel" };
+  const ARM: HwDef = { kind: "castor", len: uBY - T / 2, dia: 60, name: "Castor arm" };
+  const ROLLER: HwDef = { kind: "plate", len: 4, dia: 50, name: "Roller plate" };
+  const WALLPLATE: HwDef = { kind: "plate", len: 3, dia: 40, name: "Wall plate" };
+  const COVER: HwDef = { kind: "cap", len: 30, dia: 50, name: "Bracket cover" };
+  const PLUG: HwDef = { kind: "plug", len: 20, dia: 6, name: "Expanding plug" };
+  const PUSH: HwDef = { kind: "pin", len: 22, dia: 4, name: "Locking pin" };
+
+  // a sub-assembly built in its own scene sits where it ends up, moved to the middle of that scene
+  const put = (key: string, shift: Vec3, from?: Vec3) => {
+    const p = b.partItem(key).final;
+    b.stage(key, [p.pos[0] + shift[0], p.pos[1] + shift[1], p.pos[2] + shift[2]], p.rot, from);
+  };
+  const flatRow = (list: [string, Vec3][]) => {
+    b.stagger(0.12);
+    list.forEach(([key, rot], i) => b.stage(key, [0, T / 2, (i - (list.length - 1) / 2) * 420], rot));
+    b.then(0.15);
+  };
+  const FLAT: Vec3 = [0, 0, 0], UPRIGHT: Vec3 = [Math.PI / 2, 0, 0], SIDEWAYS: Vec3 = [0, 0, Math.PI / 2];
+  const ends = (key: string, half: number, y: number, zs: number[], def: HwDef = HW.dowel): void =>
+    k.fits(def, sx2.flatMap((sx) => zs.map((z) => ({ on: key, at: [sx * half, y, z] as Vec3, dir: [-sx, 0, 0] as Vec3 }))));
+
+  /* bag 1: the bookcase */
+  const dz = D / 2 - 35, bz = D / 2 - 75;
+  const yBk = [bY0 + 32, bY1 - 32], yBkBolt = [bY0 + 82, bY1 - 82];
+  const xEdge = [-150, 150], xEdgeBolt = [-250, 250];
+  k.step({ title: "Tap the dowels into the top, the fixed shelf and the shelf back", detail: "Two into each end of all three, and two into each long edge of the shelf back.", kind: "dowels", tools: ["hammer"], scene: "pieces", warnings: ["floor"] }, () => {
+    flatRow([[top, FLAT], [shelf, FLAT], [back, UPRIGHT]]);
+    ends(top, xi, yTop, [-dz, dz]);
+    ends(shelf, xi, ySh, [-dz, dz]);
+    k.fits(HW.dowel, [
+      ...sx2.flatMap((sx) => yBk.map((y) => ({ on: back, at: [sx * xi, y, zB] as Vec3, dir: [-sx, 0, 0] as Vec3 }))),
+      ...xEdge.map((x) => ({ on: back, at: [x, bY1, zB] as Vec3, dir: [0, -1, 0] as Vec3 })),
+      ...xEdge.map((x) => ({ on: back, at: [x, bY0, zB] as Vec3, dir: [0, 1, 0] as Vec3 })),
+    ]);
+  });
+  k.step({ title: "Screw the cam bolts into the top and the fixed shelf", detail: "Two into each, in the holes near the back edge. Turn them in until they stop.", kind: "cams", tools: ["screwdriver"], scene: "pieces" }, () =>
+    k.fits(HW.camScrew, [
+      ...xEdgeBolt.map((x) => ({ on: top, at: [x, bY1, zB] as Vec3, dir: [0, 1, 0] as Vec3, mate: back })),
+      ...xEdgeBolt.map((x) => ({ on: shelf, at: [x, bY0, zB] as Vec3, dir: [0, -1, 0] as Vec3, mate: back })),
+    ]),
+  );
+  const box: Vec3 = [0, -(bY0 - T), 0];
+  k.step({ title: "Stand the shelf back on the fixed shelf", detail: "Along its back edge, onto the two dowels and the two cam bolts.", kind: "join", scene: "box" }, () => {
+    put(shelf, box);
+    b.then(0.15);
+    put(back, box, [0, 300, 0]);
+  });
+  k.step({ title: "Lower the top onto the shelf back", detail: "One of you at each end, every dowel and bolt into its hole.", kind: "join", scene: "box", people: 2 }, () => put(top, box, [0, 300, 0]));
+  k.step({ title: "Turn the cam locks in the shelf back", detail: "Four, two at the top and two at the bottom. Then turn the box over.", kind: "cams", tools: ["screwdriver"], scene: "box" }, () =>
+    k.fits(HW.cam, [bY1 - 25, bY0 + 25].flatMap((y) => xEdgeBolt.map((x) => ({ on: back, at: [x, y, zB + T / 2] as Vec3, dir: [0, 0, -1] as Vec3 })))),
+  );
+
+  // each side takes seven cam bolts: two each for the top and the fixed shelf, two for the shelf back, one for the rail
+  const yRailBolt = 38, yRailDowel = 16;
+  const joints: { piece: string; y: number; z: number; lock: (sx: number) => FitOpts }[] = [];
+  for (const [piece, y] of [[top, yTop], [shelf, ySh]] as const)
+    for (const z of [-bz, bz]) joints.push({ piece, y, z, lock: (sx) => ({ on: piece, at: [sx * (xi - 25), y - T / 2, z], dir: [0, 1, 0] }) });
+  for (const y of yBkBolt) joints.push({ piece: back, y, z: zB, lock: (sx) => ({ on: back, at: [sx * (xi - 25), y, zB + T / 2], dir: [0, 0, -1] }) });
+  joints.push({ piece: rail, y: yRailBolt, z: zB, lock: (sx) => ({ on: rail, at: [sx * (xi - 25), yRailBolt, zB + T / 2], dir: [0, 0, -1] }) });
+  const bolts = (sx: number): FitOpts[] => joints.map((j) => ({ on: sx < 0 ? sideL : sideR, at: [sx * xi, j.y, j.z] as Vec3, dir: [sx, 0, 0] as Vec3, mate: j.piece }));
+  const locks = (sx: number) => k.fits(HW.cam, joints.map((j) => j.lock(sx)));
+
+  k.step({ title: "Screw the cam bolts into both sides", detail: "Seven into each side. Turn them in until they stop.", kind: "cams", tools: ["screwdriver"], scene: "sides" }, () => {
+    flatRow([[sideL, SIDEWAYS], [sideR, SIDEWAYS]]);
+    k.fits(HW.camScrew, [...bolts(-1), ...bolts(1)]);
+  });
+  const up: Vec3 = [420, 0, 0];
+  k.step({ title: "Lay one side down and stand the shelf box on it", detail: "At the top end of the side, the shelf back along the back edge.", kind: "join", pose: "+x", warnings: ["floor"] }, () => {
+    b.add(sideL, [0, 0, 0]);
+    b.then(0.15);
+    b.stagger(0);
+    for (const key of [shelf, back, top]) b.add(key, up);
+  });
+  k.step({ title: "Tap the dowels into the bottom rail", detail: "One into each end.", kind: "dowels", tools: ["hammer"], scene: "rail", warnings: ["floor"] }, () => {
+    flatRow([[rail, UPRIGHT]]);
+    ends(rail, xi, yRailDowel, [zB]);
+  });
+  k.step({ title: "Stand the bottom rail on the side", detail: "At the bottom end, along the back edge.", kind: "join", pose: "+x" }, () => b.add(rail, up));
+  k.step({ title: "Turn the cam locks", detail: "Seven, arrow towards the bolt, then clockwise until each piece pulls tight to the side.", kind: "cams", tools: ["screwdriver"], pose: "+x" }, () => locks(-1));
+  k.step({ title: "Lower the other side on", detail: "Guide every dowel and cam bolt into its hole, then press it down evenly.", kind: "join", pose: "+x" }, () => b.add(sideR, [460, 0, 0]));
+  k.step({ title: "Turn the other cam locks", detail: "All seven, the same way as on the first side.", kind: "cams", tools: ["screwdriver"], pose: "+x" }, () => locks(1));
+
+  const yBr = 750, zBr = zbk + 28;
+  k.step(
+    { title: "Stand it against the wall and screw on the brackets", detail: "One inside each side, just under the fixed shelf at the back, with two screws.", kind: "screws", tools: ["screwdriver"], wall: true },
+    () => {
+      k.fits(named(b, HW.bracket, "Wall bracket"), sx2.map((sx) => ({ on: sx < 0 ? sideL : sideR, at: [sx * xi, yBr, zBr] as Vec3, dir: [sx, 0, 0] as Vec3, hole: false as const })));
+      k.fits(SCREW, sx2.flatMap((sx) => [zBr - 12, zBr + 12].map((z) => ({ on: sx < 0 ? sideL : sideR, at: [sx * xi, yBr, z] as Vec3, dir: [sx, 0, 0] as Vec3 }))));
+    },
+  );
+  k.step(
+    { title: "Fix the brackets to the wall", detail: `A wall plate on each bracket, then a screw through it into the wall. Use pan head screws. ${WALL_DETAIL}`, kind: "anchor", tools: ["drill", "screwdriver", "pencil"], wall: true, warnings: ["wall", "tip"] },
+    () => {
+      const at = (sx: number, dzz: number): FitOpts => ({ on: sx < 0 ? sideL : sideR, at: [sx * (xi - 20), yBr, zbk + dzz], dir: [0, 0, -1], hole: false });
+      k.fits(WALLPLATE, sx2.map((sx) => at(sx, 4)));
+      k.fits(HW.plug, sx2.map((sx) => at(sx, 0)));
+      k.fits(HW.wallScrew, sx2.map((sx) => at(sx, 6)));
+    },
+  );
+  k.step({ title: "Clip the covers over the brackets", detail: "One on each, pressed on until it sits flat.", kind: "general", wall: true }, () =>
+    k.fits(COVER, sx2.map((sx) => ({ on: sx < 0 ? sideL : sideR, at: [sx * (xi - 20), yBr, zBr], dir: [sx, 0, 0] as Vec3, hole: false as const }))),
+  );
+
+  /* bag 2: the rolling unit */
+  const uh = UWi / 2;
+  const udz = [uz - 105, uz + 105], ubz = [uz - 65, uz + 65];
+  const topDowelZ = [uz - 40, uz + 40], topBoltZ = [uz - 95, uz + 95];
+  const ushift: Vec3 = [0, 0, -uz];
+  const sideTopDowels = (side: string, sx: number) => k.fits(HW.dowel, topDowelZ.map((z) => ({ on: side, at: [sx * ux, uTop, z] as Vec3, dir: [0, -1, 0] as Vec3 })));
+  const uJoints: { piece: string; y: number; z: number; lock: (sx: number) => FitOpts }[] = [];
+  for (const [piece, y, face] of [[uBottom, uBY, -1], [uShelf, uSY, 1]] as const)
+    for (const z of ubz) uJoints.push({ piece, y, z, lock: (sx) => ({ on: piece, at: [sx * (uh - 25), y - (face * T) / 2, z], dir: [0, face, 0] }) });
+  uJoints.push({ piece: uRail, y: yR, z: zR, lock: (sx) => ({ on: uRail, at: [sx * (uh - 25), yR, zR - T / 2], dir: [0, 0, 1] }) });
+  const uBolts = (sx: number) => k.fits(HW.camScrew, uJoints.map((j) => ({ on: sx < 0 ? uSideL : uSideR, at: [sx * uh, j.y, j.z] as Vec3, dir: [sx, 0, 0] as Vec3, mate: j.piece })));
+  const uLocks = (sx: number) => k.fits(HW.cam, uJoints.map((j) => j.lock(sx)));
+
+  k.step({ title: "Tap the dowels into the unit's bottom, shelf and one side", detail: "Two into each end of the bottom and the shelf, two into the top end of the side.", kind: "dowels", tools: ["hammer"], scene: "unit-a", warnings: ["floor"] }, () => {
+    flatRow([[uBottom, FLAT], [uShelf, FLAT], [uSideL, SIDEWAYS]]);
+    ends(uBottom, uh, uBY, udz);
+    ends(uShelf, uh, uSY, udz);
+    sideTopDowels(uSideL, -1);
+  });
+  k.step({ title: "Screw the cam bolts into that side", detail: "Five: two for the bottom, two for the shelf and one for the castor rail.", kind: "cams", tools: ["screwdriver"], scene: "unit-a" }, () => uBolts(-1));
+  const uup: Vec3 = [380, 0, 0];
+  k.step({ title: "Lay the side down and stand the bottom and shelf on it", detail: "Cam bolts facing up, the cam lock holes towards the open front.", kind: "join", scene: "unit", pose: "+x", warnings: ["floor"] }, () => {
+    put(uSideL, ushift);
+    b.then(0.15);
+    put(uBottom, ushift, uup);
+    put(uShelf, ushift, uup);
+  });
+  k.step({ title: "Tap the small dowels into the castor rail", detail: "Two into each end. These are the short, thin dowels.", kind: "dowels", tools: ["hammer"], scene: "unit-rail", warnings: ["floor"] }, () => {
+    flatRow([[uRail, UPRIGHT]]);
+    k.fits(SMALL_DOWEL, sx2.flatMap((sx) => [yR - 20, yR + 20].map((y) => ({ on: uRail, at: [sx * uh, y, zR] as Vec3, dir: [-sx, 0, 0] as Vec3 }))));
+  });
+  const cx = uh - 45;
+  k.step({ title: "Bolt the castors with brakes onto the rail", detail: "One at each end, two bolts in each. Tighten them with the Allen key.", kind: "legs", tools: ["allen"], scene: "unit-rail" }, () => {
+    k.fits(BRAKE, sx2.map((sx) => ({ on: uRail, at: [sx * cx, rY0, zR] as Vec3, dir: [0, 1, 0] as Vec3, hole: false as const })));
+    k.fits(BOLT, sx2.flatMap((sx) => [-14, 14].map((d) => ({ on: uRail, at: [sx * cx + d, yR, zR + T / 2] as Vec3, dir: [0, 0, -1] as Vec3 }))));
+  });
+  k.step({ title: "Stand the castor rail on the side", detail: "At the bottom end of the front edge, castors pointing out.", kind: "join", scene: "unit", pose: "+x" }, () => put(uRail, ushift, uup));
+  k.step({ title: "Turn the cam locks", detail: "Five, until the bottom, shelf and rail pull tight to the side.", kind: "cams", tools: ["screwdriver"], scene: "unit", pose: "+x" }, () => uLocks(-1));
+  k.step({ title: "Tap two dowels into the other side", detail: "Into its top end.", kind: "dowels", tools: ["hammer"], scene: "unit-b", warnings: ["floor"] }, () => {
+    flatRow([[uSideR, SIDEWAYS]]);
+    sideTopDowels(uSideR, 1);
+  });
+  k.step({ title: "Screw the cam bolts into the other side", detail: "Five, the same holes as on the first side.", kind: "cams", tools: ["screwdriver"], scene: "unit-b" }, () => uBolts(1));
+  k.step({ title: "Lower the other side on", detail: "Every dowel and cam bolt into its hole, then press it down evenly.", kind: "join", scene: "unit", pose: "+x" }, () => put(uSideR, ushift, [420, 0, 0]));
+  k.step({ title: "Turn the other cam locks", detail: "All five, the same way.", kind: "cams", tools: ["screwdriver"], scene: "unit", pose: "+x" }, () => uLocks(1));
+  k.step({ title: "Lay it on its front and slide the back in", detail: "On a rug. Push the hardboard back in from the top until it stops at the bottom.", kind: "join", scene: "unit", pose: "-z", warnings: ["floor"] }, () => put(uBackP, ushift, [0, 650, 0]));
+  const wx = uh - 25, wz = uB + 3 + 40;
+  k.step({ title: "Screw the back wheels on", detail: "One inside each back corner at the bottom, two screws in each.", kind: "legs", tools: ["screwdriver"], scene: "unit", pose: "-z" }, () => {
+    k.fits(WHEEL, sx2.map((sx) => ({ on: sx < 0 ? uSideL : uSideR, at: [sx * wx, rY0, wz] as Vec3, dir: [0, 1, 0] as Vec3, hole: false as const })));
+    k.fits(SCREW, sx2.flatMap((sx) => [wz - 12, wz + 12].map((z) => ({ on: sx < 0 ? uSideL : uSideR, at: [sx * uh, rY0 - 14, z] as Vec3, dir: [sx, 0, 0] as Vec3 }))));
+  });
+  const pinAt: { x: number; y: number; mate: string }[] = [
+    ...sx2.flatMap((sx) => [250, 480, 690].map((y) => ({ x: sx * ux, y, mate: sx < 0 ? uSideL : uSideR }))),
+    ...[-250, 0, 250].map((x) => ({ x, y: uSY, mate: uShelf })),
+    ...[-250, 0, 250].map((x) => ({ x, y: uBY, mate: uBottom })),
+  ];
+  k.step({ title: "Fix the back with the push pins", detail: "Twelve: push a plug through each hole in the back, then press a pin into it.", kind: "general", scene: "unit", pose: "-z" }, () => {
+    k.fits(PLUG, pinAt.map((p) => ({ on: uBackP, at: [p.x, p.y, uB] as Vec3, dir: [0, 0, 1] as Vec3, mate: p.mate })));
+    k.fits(PUSH, pinAt.map((p) => ({ on: uBackP, at: [p.x, p.y, uB - 1] as Vec3, dir: [0, 0, 1] as Vec3, hole: false as const })));
+  });
+  const az = uB + 3 + 45, yUnder = uBY - T / 2;
+  k.step({ title: "Screw the castor arm under the bottom", detail: "In the middle at the back, four screws.", kind: "legs", tools: ["screwdriver"], scene: "unit", pose: "-z" }, () => {
+    k.fits(ARM, [{ on: uBottom, at: [0, yUnder, az], dir: [0, 1, 0], hole: false }]);
+    k.fits(SCREW, [-20, 20].flatMap((x) => [az - 15, az + 15].map((z) => ({ on: uBottom, at: [x, yUnder, z] as Vec3, dir: [0, 1, 0] as Vec3 }))));
+  });
+
+  /* the table top, upside down on a rug */
+  const tshift: Vec3 = [0, -(uTop), -(lz0 + uF) / 2];
+  const yU = uTop; // the boards' undersides
+  const rx = UW / 2 - 40, rz = lz0 + 35;
+  k.step({ title: "Screw the roller plates onto the back board", detail: "Underside up, one at each corner of the back edge, rollers facing out. Four screws in each.", kind: "screws", tools: ["screwdriver"], scene: "table", pose: "-y", warnings: ["floor"] }, () => {
+    put(leaf, tshift);
+    b.then(0.15);
+    k.fits(ROLLER, sx2.map((sx) => ({ on: leaf, at: [sx * rx, yU, rz] as Vec3, dir: [0, 1, 0] as Vec3, hole: false as const })));
+    k.fits(SCREW, sx2.flatMap((sx) => [-14, 14].flatMap((d) => [-14, 14].map((e) => ({ on: leaf, at: [sx * rx + d, yU, rz + e] as Vec3, dir: [0, 1, 0] as Vec3 })))));
+  });
+  k.step({ title: "Lay the front board against it", detail: "Underside up too, the long edges pushed together.", kind: "join", scene: "table", pose: "-y" }, () => put(front, tshift, [0, 0, 250]));
+  const hx = UW / 2 - 130;
+  k.step({ title: "Screw the hinges across the joint", detail: "Two hinges, eight screws in each: four into each board.", kind: "hinges", tools: ["screwdriver"], scene: "table", pose: "-y" }, () => {
+    k.fits(HW.hinge, sx2.map((sx) => ({ on: leaf, at: [sx * hx, yU, uB] as Vec3, dir: [0, 1, 0] as Vec3, hole: false as const })));
+    k.fits(SCREW, sx2.flatMap((sx) => [-16, 16].flatMap((d) => [-1, 1].flatMap((side) => [14, 34].map((e) => ({ on: side < 0 ? leaf : front, at: [sx * hx + d, yU, uB + side * e] as Vec3, dir: [0, 1, 0] as Vec3 }))))));
+  });
+  k.step({ title: "Screw the cam bolts into the front board", detail: "Four, two near each end. Keep your fingers clear of the hinges when you fold it.", kind: "cams", tools: ["screwdriver"], scene: "table", pose: "-y", warnings: ["hand"] }, () =>
+    k.fits(HW.camScrew, sx2.flatMap((sx) => topBoltZ.map((z) => ({ on: front, at: [sx * ux, yU, z] as Vec3, dir: [0, 1, 0] as Vec3, mate: sx < 0 ? uSideL : uSideR })))),
+  );
+
+  /* together */
+  const lift: Vec3 = [0, 90, 0];
+  k.step({ title: "Hook the table top into the tracks", detail: "Back board first: drop each roller into the top of the curved track inside the sides, then hold the front board up.", kind: "join" }, () => {
+    b.stagger(0);
+    put(leaf, lift, [0, 0, 400]);
+    put(front, lift, [0, 0, 400]);
+  });
+  k.step({ title: "Roll the unit in and lower the table onto it", detail: "Push the unit under the front board, then let the board down onto its dowels and cam bolts.", kind: "join" }, () => {
+    b.stagger(0);
+    for (const key of [uSideL, uSideR, uBottom, uShelf, uRail, uBackP]) b.add(key, [0, 0, 600]);
+    b.then(0.2);
+    b.add(leaf, lift);
+    b.add(front, lift);
+  });
+  k.step({ title: "Turn the cam locks under the table top", detail: "Four, two inside each side of the unit, until the front board pulls tight.", kind: "cams", tools: ["screwdriver"] }, () =>
+    k.fits(HW.cam, sx2.flatMap((sx) => topBoltZ.map((z) => ({ on: sx < 0 ? uSideL : uSideR, at: [sx * (ux - T / 2), uTop - 25, z] as Vec3, dir: [sx, 0, 0] as Vec3 })))),
+  );
+  return true;
+}
+
 /* ---------- putting one unit together, in the manuals' order ---------- */
 
 function build(b: PlanBuilder, s: ProductSpec): boolean {
+  if (/foldable table/i.test(s.variant)) return foldTable(new Kit(b));
   const u = unitOf(s);
   if (!u) return combo(b, s);
   const k = new Kit(b);

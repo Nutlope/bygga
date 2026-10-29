@@ -6,8 +6,8 @@ import type { CustomParams, CustomPart, CustomStep, PartPiece, ProductSpec, Vec3
  * each other at the pivots and one frame hinged to the slatted top. You lay the top upside down, open the frames
  * into an X and push the pegs at the top of the legs out into the keyhole slots of the top's two steel bars, then
  * slide them along to lock. The table has a V brace that swings up and is held under the top with one knob bolt.
- * The stool sold with a cushion gets its cushion last. The folding chair is sold ready to use and has no manual:
- * its guide only unfolds it and checks it stands firm.
+ * The stool sold with a cushion gets its cushion last. The folding chair and the folding bench are sold ready to use
+ * and have no manual: their guides only unfold them and check they stand firm.
  */
 
 const TUBE = 16;
@@ -157,8 +157,9 @@ function table(): CustomParams {
   return { parts, steps };
 }
 
-/** The folding chair: one steel frame (back legs, back slats, the crossed front legs) and the slatted seat hinged in it. */
-function chair(s: ProductSpec): CustomParams {
+/** The folding chair or bench: one steel frame (back legs, back slats, the crossed front legs) and the slatted seat hinged in it. */
+function chair(s: ProductSpec, bench = false): CustomParams {
+  const what = bench ? "bench" : "chair";
   const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
   const xl = W / 2 - TUBE, yS = 450, foot = 12;
   const zBf = -D / 2 + 15, zBt = -D / 2 + 40; // back legs: foot and top
@@ -172,10 +173,10 @@ function chair(s: ProductSpec): CustomParams {
     pieces.push(tube([x - sx * 2 * TUBE, yS - 20, D / 2 - 70], [x - sx * 2 * TUBE, foot + 60, zBack(foot + 60) + 2 * TUBE]));
     for (const z of [zBf, D / 2 - 15]) pieces.push({ shape: "box", size: [22, foot, 30], pos: [x, foot / 2, z], material: "metal" });
   }
-  for (const y of [H - 60, H - 170]) pieces.push({ shape: "box", size: [2 * xl + TUBE, 15, 55], pos: [0, y, zBack(y) + TUBE / 2 + 8], rot: [Math.atan2(zBt - zBf, H), 0, 0], material: "wood" });
+  for (const y of bench ? [H - 50, H - 145, H - 240] : [H - 60, H - 170]) pieces.push({ shape: "box", size: [2 * xl + TUBE, 15, 55], pos: [0, y, zBack(y) + TUBE / 2 + 8], rot: [Math.atan2(zBt - zBf, H), 0, 0], material: "wood" });
   pieces.push(tube([-xl, 120, D / 2 - 50], [xl, 120, D / 2 - 50], 10));
-  const frame = compound("F", "Chair frame", pieces, "metal");
-  const SD = 280, slats = 5, gap = 8, sw = (SD - gap * (slats - 1)) / slats;
+  const frame = compound("F", bench ? "Bench frame" : "Chair frame", pieces, "metal");
+  const SD = bench ? 340 : 280, slats = 5, gap = 8, sw = (SD - gap * (slats - 1)) / slats;
   const z0 = zBack(yS) + TUBE + 10;
   const seatPieces: PartPiece[] = [];
   for (let i = 0; i < slats; i++) seatPieces.push({ shape: "box", size: [2 * xl - 2 * TUBE, 15, sw], pos: [0, yS - 7.5, z0 + sw / 2 + i * (sw + gap)], material: "wood" });
@@ -185,7 +186,7 @@ function chair(s: ProductSpec): CustomParams {
     parts: [frame, seat],
     steps: [
       {
-        title: "Stand the chair up and open the legs",
+        title: `Stand the ${what} up and open the legs`,
         detail: "It comes ready to use, with nothing to screw. Stand it on its feet and pull the front legs forward, away from the back.",
         add: ["F"],
       },
@@ -198,7 +199,7 @@ function chair(s: ProductSpec): CustomParams {
       },
       {
         title: "Check it stands firm",
-        detail: "All four feet flat on the floor and the seat level. To fold it, lift the front edge of the seat up to the back.",
+        detail: `All four feet flat on the floor and the seat level. To fold the ${what}, lift the front edge of the seat up to the back.`,
       },
     ],
   };
@@ -211,6 +212,7 @@ const family: Family = {
     if (/^stool/.test(v)) return stool(s);
     if (/^table/.test(v)) return table();
     if (/chair/.test(v)) return chair(s);
+    if (/^bench/.test(v)) return chair(s, true);
     return null;
   },
 };

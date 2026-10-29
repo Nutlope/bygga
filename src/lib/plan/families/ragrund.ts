@@ -8,6 +8,8 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Produc
  * slatted shelf goes in between the legs on four more long bolts.
  * Shelving unit: lying on its back, the four shelves stand on one ready-made side ladder with two bolts at each
  * end, the other ladder goes on top the same way, and stood up a bracket under the top shelf holds it to the wall.
+ * Tall 33 cm unit: a deep lower section (two ladders, four shelves) and a shallow upper one (two short ladders,
+ * three narrow shelves) are bolted up lying down, joined with two bolts, stood up and strapped to the wall.
  * Trolley: lying on its front, the three slatted shelves stand on the front frame with two bolts each, the two
  * top bars with one bolt each, the back frame goes on with eight more, then a castor is screwed to each post end.
  */
@@ -143,6 +145,95 @@ function shelving(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/* ---------------------------------------------------------------- tall shelving unit (33 cm) */
+
+/**
+ * The tall 33 cm unit is two sections: a deep lower one of two ladders and four shelves, and a shallow upper one of
+ * two short ladders and three narrow shelves that stands on the lower top shelf at the back. All 30 bolts are the same.
+ */
+function tower(s: ProductSpec): CustomParams {
+  const W = Math.round(s.size.w * 10) || 330, H = Math.round(s.size.h * 10) || 1630, D = Math.round(s.size.d * 10) || 280;
+  const P = 28, ST = 18, UT = 15, BL = 50;
+  const BOLT = { kind: "bolt" as const, name: "Allen bolt", len: BL, dia: 6 };
+  const px = W / 2 - P / 2, pz = D / 2 - P / 2, iw = W - 2 * P;
+  const HL = Math.round(H * 0.62); // the lower section's posts
+  const tops = [160, Math.round(HL * 0.49), Math.round(HL * 0.735), HL - 20]; // lower shelves, bottom up
+  const sy = (i: number) => tops[i] - ST / 2;
+  const ladder = (h: number, d: number, rungs: number[], rh: number[]): PartPiece[] => [
+    ...[-1, 1].map((z): PartPiece => ({ shape: "box", size: [P, h, P], pos: [0, 0, z * (d / 2 - P / 2)] })),
+    ...rungs.map((y, i): PartPiece => ({ shape: "box", size: [20, rh[i], d - 2 * P], pos: [0, y - h / 2, 0] })),
+  ];
+  const lower = ladder(HL, D, [40, HL - 35], [30, 30]);
+  // the upper section, as wide as the space between the lower posts and a little under half as deep
+  const UW = iw, UD = 130, uy0 = tops[3], UH = H - uy0;
+  const ux = UW / 2 - P / 2, uz = -D / 2 + UD / 2, uzp = UD / 2 - P / 2, uiw = UW - 2 * P;
+  const utops = [uy0 + Math.round(UH * 0.33), uy0 + Math.round(UH * 0.66), H - 10];
+  const upper = ladder(UH, UD, [20, UH - 40], [40, 30]);
+  const parts: CustomPart[] = [
+    { id: "L", name: "Side ladder", size: [P, HL, D], pos: [-px, HL / 2, 0], material: "wood", pieces: lower },
+    ...tops.map((_, i): CustomPart => ({ id: `S${i}`, name: "Shelf", size: [iw, ST, D], pos: [0, sy(i), 0], material: "wood" })),
+    { id: "R", name: "Side ladder", size: [P, HL, D], pos: [px, HL / 2, 0], material: "wood", pieces: lower },
+    { id: "UL", name: "Short ladder", size: [P, UH, UD], pos: [-ux, uy0 + UH / 2, uz], material: "wood", pieces: upper },
+    ...utops.map((t, i): CustomPart => ({ id: `U${i}`, name: "Narrow shelf", size: [uiw, UT, UD], pos: [0, t - UT / 2, uz], material: "wood" })),
+    { id: "UR", name: "Short ladder", size: [P, UH, UD], pos: [ux, uy0 + UH / 2, uz], material: "wood", pieces: upper },
+  ];
+  const lowerBolts = (g: number, shelves: number[]): CustomFix => ({
+    ...BOLT,
+    count: shelves.length * 2,
+    on: g < 0 ? "L" : "R",
+    at: shelves.flatMap((i) => [-1, 1].map((z) => pt(g * (W / 2), sy(i), z * pz))),
+    dir: [-g, 0, 0],
+  });
+  const upperBolts = (g: number): CustomFix => ({
+    ...BOLT,
+    count: 6,
+    on: g < 0 ? "UL" : "UR",
+    at: utops.flatMap((t) => [-1, 1].map((z) => pt(g * (UW / 2), t - UT / 2, uz + z * uzp))),
+    dir: [-g, 0, 0],
+  });
+  const sb = tops[3] - ST; // under the lower top shelf
+  const steps: CustomStep[] = [
+    {
+      title: "Stand the top shelf on a side ladder",
+      detail: "Lay one long ladder flat on a rug and stand the shelf up at its top end, holes lined up with the posts.",
+      add: ["L", "S3"],
+      pose: "+x",
+      warnings: ["floor"],
+    },
+    { title: "Bolt the shelf to the ladder", detail: "Two bolts through the posts, with the Allen key.", fix: [lowerBolts(-1, [3])], tools: ["allen"] },
+    { title: "Bolt on the other three shelves", detail: "Two bolts in each, the bottom shelf at the far end of the ladder.", add: ["S2", "S1", "S0"], fix: [lowerBolts(-1, [2, 1, 0])], tools: ["allen"] },
+    { title: "Bolt on the other side ladder", detail: "Lower it onto the shelves and drive in eight bolts.", add: ["R"], fix: [lowerBolts(1, [0, 1, 2, 3])], tools: ["allen"], check: "square" },
+    {
+      title: "Put the upper section together",
+      detail: "The short ladders and the three narrow shelves, two bolts at each shelf end.",
+      add: ["UL", "U0", "U1", "U2", "UR"],
+      fix: [upperBolts(-1), upperBolts(1)],
+      tools: ["allen"],
+    },
+    {
+      title: "Bolt the upper section on",
+      detail: "It sits on the top shelf of the lower section at the back. One bolt up through the shelf into each short ladder.",
+      fix: [{ ...BOLT, count: 2, on: "S3", at: [-1, 1].map((g) => pt(g * ux, sb, uz)), dir: [0, 1, 0] }],
+      tools: ["allen"],
+    },
+    { title: "Stand it up", detail: "Lift it with a helper onto its feet, close to the wall.", pose: "+y", people: 2 },
+    {
+      title: "Fix it to the wall",
+      detail: "Mark the underside of the lower top shelf on the wall, screw the strap to the wall 30 mm below, then screw the strap up into the shelf. Wall screws and plugs aren't included.",
+      fix: [
+        { kind: "strap", count: 1, on: "S3", at: [pt(0, sb, -D / 2 + 25)], dir: [0, 1, 0] },
+        { kind: "screw", count: 1, len: 16, dia: 4, included: true, on: "S3", at: [pt(0, sb, -D / 2 + 30)], dir: [0, 1, 0] },
+        { kind: "plug", count: 1, at: [pt(0, sb - 30, -D / 2 - 20)], dir: [0, 0, -1] },
+        { ...W_SCREW, count: 1, at: [pt(0, sb - 30, -D / 2 - 4)], dir: [0, 0, -1] },
+      ],
+      tools: ["screwdriver", "drill", "pencil", "tape"],
+      wall: true,
+      warnings: ["wall", "tip"],
+    },
+  ];
+  return { parts, steps };
+}
+
 /* ---------------------------------------------------------------- trolley */
 
 function trolley(s: ProductSpec): CustomParams {
@@ -207,6 +298,7 @@ const family: Family = {
   recipe(s) {
     const slug = s.slug ?? "";
     if (/^ragrund-bench/.test(slug)) return bench(s);
+    if (slug === "ragrund-shelving-unit-33") return tower(s);
     if (/^ragrund-shelving-unit/.test(slug)) return shelving(s);
     if (/^ragrund-trolley/.test(slug)) return trolley(s);
     return null;

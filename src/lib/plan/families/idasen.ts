@@ -14,6 +14,13 @@ import { buildCustom } from "../custom";
  * upside down the castors and the back panel. Each drawer is a steel box of three sheets hooked together, with a
  * bottom dropped in, set on its front and screwed, then the runner couplings, label holder and handle go on; the
  * deep file drawer also gets a support wheel. Both slide onto the runners last.
+ * The sit/stand underframe with motors, from its manual: the beam slides together and is bolted at length upside
+ * down, the motor columns and end brackets go on its ends, the A legs slide over the columns' feet and are bolted,
+ * the feet go in and it is turned over; the cables plug into the control box, the cable net goes under the top
+ * (sold separately), the top is screwed to the brackets and the control panel under its front edge.
+ * The cabinet with sliding glass doors, from its manual: steel panels that click together standing, the sides onto
+ * the two leg frames, the top pressed on, four rivets, the two back halves slid in, the floor panel, grommets, the
+ * wall fittings, twelve shelf clips and three shelves, then the two glass doors hung in their tracks.
  */
 
 const TOP_T = 25;
@@ -125,6 +132,259 @@ function desk(s: ProductSpec): CustomParams {
       tools: ["hammer"],
     },
     { title: "Turn the desk over and level it", detail: "Lift it together onto its feet. Turn the feet to stop it rocking.", pose: "+y", people: 2, warnings: ["two"] },
+  ];
+  return { parts, steps };
+}
+
+// ---------- the sit/stand underframe with motors ----------
+
+function sitStand(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const yU = H; // underside of the top, at the lowest height
+  const yB = yU - BEAM_H / 2;
+  const xc = W / 2 - 130;
+  const xe = xc + 40;
+  const xj = 320;
+  const CD = 70; // the motor columns
+  const parts: CustomPart[] = [
+    { id: "BEAM_L", name: "Beam end", size: [xe - xj, BEAM_H - 4, BEAM_D - 6], pos: [-(xe + xj) / 2, yB, 0], material: "metal" },
+    { id: "BEAM_C", name: "Beam centre", size: [2 * xj, BEAM_H, BEAM_D], pos: [0, yB, 0], material: "metal" },
+    { id: "BEAM_R", name: "Beam end", size: [xe - xj, BEAM_H - 4, BEAM_D - 6], pos: [(xe + xj) / 2, yB, 0], material: "metal" },
+  ];
+  const cols = ["COL_L", "COL_R"], brackets = ["BR_L", "BR_R"], legs = ["LEG_L", "LEG_R"];
+  const yS1 = 360; // the top of the A legs' sleeves
+  const colY0 = yS1 - 60, colY1 = yB - BEAM_H / 2;
+  [-1, 1].forEach((sx, i) =>
+    parts.push({
+      id: cols[i],
+      name: "Motor column",
+      size: [CD + 10, colY1 - colY0, CD + 10],
+      pos: [sx * xc, (colY0 + colY1) / 2, 0],
+      material: "metal",
+      // the column steps in where its inner tube comes out
+      pieces: [
+        { shape: "cyl", size: [CD + 10, (colY1 - colY0) * 0.55, CD + 10], pos: [0, -(colY1 - colY0) * 0.225, 0] },
+        { shape: "cyl", size: [CD, (colY1 - colY0) * 0.45, CD], pos: [0, (colY1 - colY0) * 0.275, 0] },
+      ],
+    }),
+  );
+  const brD = D - 120;
+  [-1, 1].forEach((sx, i) => parts.push({ id: brackets[i], name: "End bracket", size: [40, 12, brD], pos: [sx * (xe + 20), yU - 6, 0], material: "metal" }));
+  // each A leg: a sleeve round the column's foot, two struts down to the feet and a bar across low down
+  const zFoot = D / 2 - 60, yBar = 120;
+  const ang = Math.atan2(zFoot, yS1 - 20);
+  const strutLen = Math.hypot(zFoot, yS1 - 20);
+  const legC: Vec3 = [0, (yS1 + 15) / 2, 0];
+  const legPieces: PartPiece[] = [
+    { shape: "cyl", size: [CD + 24, 120, CD + 24], pos: [0, yS1 - 60 - legC[1], 0] },
+    ...[-1, 1].map((sz): PartPiece => ({ shape: "box", size: [40, strutLen, 40], pos: [0, (yS1 + 20) / 2 - legC[1], (sz * zFoot) / 2], rot: [-sz * ang, 0, 0] })),
+    { shape: "box", size: [32, 32, 2 * zFoot * ((yS1 - yBar) / (yS1 - 20))], pos: [0, yBar - legC[1], 0] },
+  ];
+  [-1, 1].forEach((sx, i) => parts.push({ id: legs[i], name: "A leg", size: [64, yS1 - 15, 2 * zFoot + 60], pos: [sx * xc, legC[1], 0], pieces: legPieces, material: "metal" }));
+  const TW = 1600, TD = 800;
+  parts.push({ id: "TOP", name: "Table top", size: [TW, TOP_T, TD], pos: [0, yU + TOP_T / 2, 0], material: "board", extra: true });
+  const netW = 2 * xc - 300, netD = 200, netH = 60, zNet = -(BEAM_D / 2 + 30 + netD / 2);
+  parts.push({
+    id: "NET",
+    name: "Cable net",
+    size: [netW, netH, netD],
+    pos: [0, yU - netH / 2, zNet],
+    pieces: [
+      { shape: "box", size: [netW, 3, netD], pos: [0, -netH / 2 + 1.5, 0] },
+      ...[-1, 1].map((sz): PartPiece => ({ shape: "box", size: [netW, netH, 3], pos: [0, 0, (sz * (netD - 3)) / 2] })),
+    ],
+    material: "metal",
+  });
+  const joints = [-1, 1].flatMap((j) => [j * (xj - 40), j * (xj + 40)].flatMap((x) => [yB - 10, yB + 10].map((y): Vec3 => [x, y, BEAM_D / 2])));
+  const colBolts = (sx: number, i: number) =>
+    [-1, 1].map((sz) => fx("bolt", [xc - 20, xc + 20].map((x): Vec3 => [sx * x, yB, sz * (BEAM_D / 2 - 3)]), [0, 0, -sz], i ? "BEAM_R" : "BEAM_L", { len: 12, dia: 6, mate: cols[i] }));
+  const netPts = [-0.4, 0, 0.4].flatMap((t) => [-1, 1].map((sz): Vec3 => [t * netW, yU, zNet + (sz * (netD - 10)) / 2]));
+  const feet = [-1, 1].flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xc, 0, sz * zFoot]));
+  const steps: CustomStep[] = [
+    { title: "Slide the beam together", detail: "On a rug, upside down. Push the two ends into the middle section.", add: ["BEAM_C", "BEAM_L", "BEAM_R"], from: { BEAM_L: [-260, 0, 0], BEAM_R: [260, 0, 0] }, pose: "-y", warnings: ["floor"] },
+    {
+      title: "Bolt it at the length for the top",
+      detail: "Eight bolts through the joints, each with a nut inside. The holes for a 160 x 80 top are the outer ones; a 120 x 70 top takes four.",
+      fix: [fx("bolt", joints, [0, 0, -1], "BEAM_C", { len: 16, dia: 6 }), fx("nut", joints.map((p): Vec3 => [p[0], p[1], -BEAM_D / 2]), [0, 0, -1], "BEAM_C", { dia: 10 })],
+      tools: ["allen"],
+    },
+    { title: "Push the motor columns into the beam ends", detail: "Turn the beam the other way up first. Each column's bracket slides into an end, the cable side to the back.", add: cols, from: { COL_L: [-260, 0, 0], COL_R: [260, 0, 0] } },
+    { title: "Bolt the columns to the beam", detail: "Four bolts for each, two through each side of the beam end.", fix: [...colBolts(-1, 0), ...colBolts(1, 1)], tools: ["allen"] },
+    {
+      title: "Screw on the end brackets",
+      detail: "One across each end of the beam, two screws each.",
+      add: brackets,
+      fix: [-1, 1].map((sx, i) => fx("screw", [-20, 20].map((z): Vec3 => [sx * (xe + 20), yU, z]), [0, -1, 0], brackets[i], { len: 10, dia: 6, mate: i ? "BEAM_R" : "BEAM_L" })),
+      tools: ["screwdriver"],
+    },
+    { title: "Push the A legs onto the columns", detail: "Over the end of each column as far as they go.", add: legs, from: { LEG_L: [0, -300, 0], LEG_R: [0, -300, 0] } },
+    {
+      title: "Bolt each leg to its column",
+      detail: "Two bolts in each, through the top of the leg's sleeve.",
+      fix: [-1, 1].map((sx, i) => fx("bolt", [-15, 15].map((x): Vec3 => [sx * xc + x, yS1 - 120, 0]), [0, 1, 0], legs[i], { len: 16, dia: 8, mate: cols[i] })),
+      tools: ["allen"],
+    },
+    { title: "Screw in the feet and turn it over", detail: "One foot into each end of the legs, by hand. Then turn the frame onto its feet together.", fix: [fx("foot", feet, [0, 1, 0], undefined, { dia: 60, len: 20 })], people: 2, warnings: ["two"] },
+    {
+      title: "Plug the motor cables into the control box",
+      detail: "Each column's cable into its socket in the control box in the beam, until it clicks.",
+      fix: [fx("connector", [-1, 1].map((sx): Vec3 => [sx * 120, yB, -BEAM_D / 2]), [0, 0, 1], "BEAM_C", { name: "Motor cable", len: 20, dia: 12 })],
+      pose: "+y",
+    },
+    { title: "Plug in the power supply", detail: "Its cable into the control box, then clip the box's cover shut. Use the plug for your country.", fix: [fx("connector", [[0, yB, -BEAM_D / 2]], [0, 0, 1], "BEAM_C", { name: "Power supply", len: 40, dia: 30 })] },
+    { title: "Clip the cable into the beam", detail: "Press it into the clips along the beam so nothing hangs loose." },
+    {
+      title: "Fit the cable net under the top",
+      detail: "Lay the top face down on a rug. Push in the six holders, hook the net on and tap in the six pins.",
+      fix: [fx("clip", netPts, [0, 1, 0], "NET", { name: "Net holder", mate: "TOP" }), fx("nail", netPts.map((p): Vec3 => [p[0] + 25, p[1], p[2]]), [0, 1, 0], "NET", { name: "Pin", len: 14, dia: 5, mate: "TOP" })],
+      wait: ["TOP", "NET"],
+      tools: ["hammer"],
+      warnings: ["floor"],
+    },
+    { title: "Raise the frame a little", detail: "Plug it into the wall and press the up switch on the control cable until the columns rise." },
+    { title: "Lay the top on the frame", detail: "Face up, centred on the end brackets. Lift it together.", add: ["TOP", "NET"], from: { TOP: [0, 300, 0], NET: [0, 300, 0] }, people: 2, warnings: ["two"] },
+    {
+      title: "Screw the top to the end brackets",
+      detail: "Four screws up through each bracket.",
+      fix: [-1, 1].map((sx, i) => fx("screw", [-1, 1].flatMap((sz) => [brD / 2 - 30, brD / 2 - 90].map((z): Vec3 => [sx * (xe + 20), yU - 12, sz * z])), [0, 1, 0], brackets[i], { len: 20, dia: 6, mate: "TOP" })),
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Screw the control panel under the front edge",
+      detail: "Two wood screws, where your right hand falls.",
+      fix: [
+        fx("connector", [[W / 2 - 300, yU, TD / 2 - 60]], [0, 1, 0], "TOP", { name: "Control panel", len: 25, dia: 60 }),
+        fx("screw", [[W / 2 - 320, yU - 20, TD / 2 - 60], [W / 2 - 280, yU - 20, TD / 2 - 60]], [0, 1, 0], undefined, { len: 30, dia: 4, name: "Wood screw", mate: "TOP" }),
+      ],
+      tools: ["screwdriver"],
+    },
+    { title: "Reset it and level the feet", detail: "Hold the down switch until it stops at the bottom and jogs. Then turn the feet so it stands steady. It takes 75 kg at most." },
+  ];
+  return { parts, steps };
+}
+
+// ---------- the cabinet with sliding glass doors ----------
+
+/** A glass door: a slim steel frame round a pane, built where it hangs. */
+function glassDoor(id: string, x0: number, x1: number, y0: number, y1: number, z: number): CustomPart {
+  const w = x1 - x0, h = y1 - y0, f = 30, t = 18;
+  return {
+    id,
+    name: "Glass door",
+    size: [w, h, t],
+    pos: [(x0 + x1) / 2, (y0 + y1) / 2, z],
+    material: "glass",
+    pieces: [
+      { shape: "box", size: [w - 2 * f, h - 2 * f, 5], pos: [0, 0, 0] },
+      { shape: "box", size: [w, f, t], pos: [0, h / 2 - f / 2, 0], material: "metal" },
+      { shape: "box", size: [w, f, t], pos: [0, -h / 2 + f / 2, 0], material: "metal" },
+      { shape: "box", size: [f, h - 2 * f, t], pos: [-w / 2 + f / 2, 0, 0], material: "metal" },
+      { shape: "box", size: [f, h - 2 * f, t], pos: [w / 2 - f / 2, 0, 0], material: "metal" },
+    ],
+  };
+}
+
+function cabinet(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
+  const LEG = 100, ST = 20; // legs, steel panels
+  const yB = LEG + 40; // top of the base rails
+  const xs = W / 2 - ST / 2;
+  const legFrame = (id: string, z: number): CustomPart => ({
+    id,
+    name: "Leg frame",
+    size: [W, yB, 30],
+    pos: [0, yB / 2, z],
+    material: "metal",
+    pieces: [
+      { shape: "box", size: [W - 60, 40, 30], pos: [0, yB / 2 - 20, 0] },
+      ...[-1, 1].map((g): PartPiece => ({ shape: "box", size: [30, yB, 30], pos: [g * (W / 2 - 15), 0, 0] })),
+    ],
+  });
+  const shelfYs = [0.3, 0.52, 0.74].map((f) => Math.round(yB + f * (H - yB)));
+  const yD0 = yB + 25, yD1 = H - 30; // the doors
+  const parts: CustomPart[] = [
+    legFrame("FL", D / 2 - 15),
+    ...[-1, 1].map((g, i): CustomPart => ({ id: i ? "SR" : "SL", name: "Side panel", size: [ST, H - ST - LEG, D], pos: [g * xs, (LEG + H - ST) / 2, 0], material: "metal" })),
+    legFrame("BL", -D / 2 + 15),
+    { id: "TOP", name: "Top", size: [W, ST, D], pos: [0, H - ST / 2, 0], material: "metal" },
+    ...[-1, 1].map((g, i): CustomPart => ({ id: i ? "BK2" : "BK1", name: "Back panel", size: [W / 2 - ST, H - ST - yB, 3], pos: [(g * W) / 4 - g * (ST / 2), (yB + H - ST) / 2, -D / 2 + 3], material: "metal" })),
+    { id: "FLR", name: "Floor panel", size: [W - 2 * ST, 20, D - 40], pos: [0, yB + 10, 0], material: "metal" },
+    ...shelfYs.map((y, i): CustomPart => ({ id: `SH${i + 1}`, name: "Shelf", size: [W - 2 * ST - 6, 20, D - 90], pos: [0, y + 10, -20], material: "metal" })),
+    glassDoor("D1", -W / 2 + ST, 30, yD0, yD1, D / 2 - 45),
+    glassDoor("D2", -30, W / 2 - ST, yD0, yD1, D / 2 - 15),
+  ];
+  const sides = ["SL", "SR"];
+  const both = [-1, 1];
+  const steps: CustomStep[] = [
+    { title: "Click a side panel onto the front leg frame", detail: "On a rug. Hook the panel's bottom corner over the leg and press until it clicks.", add: ["FL", "SL"], from: { SL: [0, 300, 0] }, warnings: ["floor"] },
+    { title: "Click on the other side panel", detail: "The same way at the other end of the frame.", add: ["SR"], from: { SR: [0, 300, 0] } },
+    { title: "Click in the back leg frame", detail: "Push it onto the back corners of both sides until both ends click. The rail goes at the bottom.", add: ["BL"], from: { BL: [0, 0, -300] } },
+    { title: "Press the top on", detail: "Lower it onto the sides and press down at all four corners until they click.", add: ["TOP"], from: { TOP: [0, 300, 0] }, people: 2, warnings: ["two"] },
+    {
+      title: "Push in the four rivets",
+      detail: "Through the bottom of each side into the leg frames, two each side.",
+      fix: sides.map((id, i) => fx("clip", both.map((sz): Vec3 => [both[i] * (W / 2 - ST), LEG + 20, sz * (D / 2 - 15)]), [both[i], 0, 0], id, { name: "Plastic rivet", len: 14, dia: 8 })),
+    },
+    { title: "Slide in the right back panel", detail: "Into the grooves at the back, its edge into the side's slot.", add: ["BK2"], from: { BK2: [0, 0, -300] } },
+    { title: "Slide in the left back panel", detail: "The same on the other side, until the two halves meet.", add: ["BK1"], from: { BK1: [0, 0, -300] } },
+    { title: "Press the back panels up under the top", detail: "Push the top edge into the rail under the top at four places." },
+    { title: "Hook the backs to the top rail", detail: "Bend the two tabs in the middle over the rail." },
+    { title: "Hook the outer corners", detail: "The two tabs at the ends, the same way." },
+    { title: "Drop in the floor panel", detail: "Lay it on the base rails and press it down at the back until both sides click.", add: ["FLR"], from: { FLR: [0, 0, 400] } },
+    {
+      title: "Fit the cable grommets",
+      detail: "The round one into the hole in the floor panel, the two oval ones into the holes in the back.",
+      fix: [
+        fx("cap", [[W / 4, yB + 20, -D / 2 + 80]], [0, -1, 0], "FLR", { name: "Round grommet", len: 6, dia: 60 }),
+        fx("cap", both.map((g): Vec3 => [(g * W) / 4, H - 200, -D / 2 + 1]), [0, 0, -1], undefined, { name: "Oval grommet", len: 6, dia: 50 }),
+      ],
+    },
+    {
+      title: "Fit the wall fittings on the back",
+      detail: "Clip a fitting into each hole at the top of the back. If it won't go on a wall, push the two caps into the holes instead.",
+      fix: [fx("bracket", both.map((g): Vec3 => [g * (W / 2 - 100), H - 70, -D / 2]), [0, 0, 1], "TOP", { name: "Wall fitting", len: 10, dia: 40 })],
+    },
+    { title: "Stand it against the wall and level it", detail: "Turn the feet under the legs until it stands level and the doors will run true.", warnings: ["tip"] },
+    {
+      title: "Screw it to the wall",
+      detail: "Mark through the fittings, drill, then one screw in each. Plugs and screws for your wall are not included.",
+      fix: [
+        fx("plug", both.map((g): Vec3 => [g * (W / 2 - 100), H - 70, -D / 2 - 10]), [0, 0, -1], undefined, { len: 40, dia: 8 }),
+        fx("screw", both.map((g): Vec3 => [g * (W / 2 - 100), H - 70, -D / 2 + 2]), [0, 0, -1], undefined, { len: 50, dia: 5 }),
+      ],
+      wall: true,
+      warnings: ["wall", "tip"],
+      tools: ["drill", "screwdriver"],
+    },
+    {
+      title: "Hook in the shelf clips",
+      detail: "Twelve clips, four for each shelf at the same height on both sides.",
+      fix: sides.map((id, i) => fx("pin", shelfYs.flatMap((y) => [-D / 2 + 60, D / 2 - 110].map((z): Vec3 => [both[i] * (W / 2 - ST), y - 5, z])), [both[i], 0, 0], id, { name: "Shelf clip", len: 16, dia: 6 })),
+    },
+    { title: "Lay in the three shelves", detail: "Tilt each one in and rest it on its four clips.", add: shelfYs.map((_, i) => `SH${i + 1}`), from: Object.fromEntries(shelfYs.map((_, i) => [`SH${i + 1}`, [0, 0, 400] as Vec3])) },
+    {
+      title: "Screw a guide onto each door",
+      detail: "Lay the doors on a rug. One guide on the top of each, one screw.",
+      fix: [
+        fx("clip", [[-W / 4, yD1, D / 2 - 45], [W / 4, yD1, D / 2 - 15]], [0, -1, 0], undefined, { name: "Door guide", len: 10, dia: 30 }),
+        fx("screw", [[-W / 4, yD1 + 4, D / 2 - 45]], [0, -1, 0], "D1", { len: 14, dia: 4 }),
+        fx("screw", [[W / 4, yD1 + 4, D / 2 - 15]], [0, -1, 0], "D2", { len: 14, dia: 4 }),
+      ],
+      wait: ["D1", "D2"],
+      tools: ["screwdriver"],
+      warnings: ["floor"],
+    },
+    { title: "Unlock the rollers", detail: "Slide the four roller catches at the bottom of the doors to open." },
+    {
+      title: "Hang the doors",
+      detail: "Top first into the top track, then lower the rollers into the bottom track. The back one first.",
+      add: ["D1", "D2"],
+      from: { D1: [0, 0, 300], D2: [0, 0, 300] },
+      people: 2,
+      warnings: ["two"],
+    },
+    { title: "Lock the rollers", detail: "Push the catches up on both doors until they click." },
+    { title: "Slide the doors to check", detail: "They should run the full width and click shut at the ends." },
   ];
   return { parts, steps };
 }
@@ -271,6 +531,8 @@ function buildUnit(b: PlanBuilder, s: ProductSpec) {
 const family: Family = {
   names: ["IDÅSEN", "IDASEN"],
   recipe(s) {
+    if (/sliding glass doors/i.test(s.variant)) return cabinet(s);
+    if (/^underframe sit\/stand/i.test(s.variant)) return sitStand(s);
     if (s.archetype !== "table" || !/desk/i.test(`${s.variant} ${s.slug ?? ""}`)) return null;
     // the sit/stand desk with a motor has its own manual
     if (/sit|stand|electric/i.test(s.variant)) return null;

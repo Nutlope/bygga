@@ -1560,6 +1560,187 @@ function sideboard(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/**
+ * TV bench with sliding doors (2025), from its manual: the cabinet stands on a rug and goes together on dowels and
+ * pre-fitted clips (bottom, sides, divider), the back slides down its grooves, the two doors drop into their tracks
+ * and the top is screwed on. The base (two leg panels, two rails on cam bolts and dowels, adjustable feet) is set on
+ * the cabinet upside down and bolted, then it is turned up for the back clips, wall spacers, levelling, the wall
+ * fixing, two shelves and the two low cable covers.
+ */
+function tvBench(s: ProductSpec): CustomParams {
+  const { W, H, D } = dims(s);
+  const t = 18, yB = 150, yIn = yB + t, hIn = H - t - yIn; // the cabinet's bottom, inside height
+  const xs = W / 2 - t / 2, xi = W / 2 - t;
+  const zBk = -D / 2 + 5, zD0 = D / 2 - 10, zD1 = D / 2 - 30; // back panel, the two door tracks
+  const dvD = zD1 - 8 - (zBk + 4);
+  const cw = (2 * xi - t) / 2; // each compartment
+  const cx = (sx: number) => sx * (t / 2 + cw / 2);
+  const lx = 600, lt = 30, ld = 380, rz = 110, rh = 60;
+  const parts: CustomPart[] = [
+    part("BT", "Bottom", [W, t, D], [0, yB + t / 2, 0]),
+    part("SL", "Side panel", [t, hIn, D], [-xs, yIn + hIn / 2, 0]),
+    part("SR", "Side panel", [t, hIn, D], [xs, yIn + hIn / 2, 0]),
+    part("DV", "Divider", [t, hIn, dvD], [0, yIn + hIn / 2, zBk + 4 + dvD / 2]),
+    part("BK", "Back panel", [2 * xi, hIn, 8], [0, yIn + hIn / 2, zBk]),
+    ...SIDES.map((sx, i) => part(`D${i}`, "Sliding door", [cw + t + 8, hIn - 6, 16], [sx * (xi - (cw + t + 8) / 2), yIn + hIn / 2, i ? zD1 : zD0])),
+    part("TP", "Top", [W, t, D], [0, H - t / 2, 0]),
+    ...SIDES.map((sx, i) => part(i ? "LR" : "LL", "Leg panel", [lt, yB, ld], [sx * lx, yB / 2, 0], { material: "wood" })),
+    ...SIDES.map((sz, i) => part(`R${i}`, "Rail", [2 * (lx - lt / 2), rh, t], [0, yB - rh / 2, sz * rz])),
+    ...SIDES.map((sx, i) => part(`SH${i}`, "Shelf", [cw - 4, 16, 340], [cx(sx), yIn + 190, -20])),
+    ...SIDES.map((sx, i) => part(`CC${i}`, "Cable cover", [cw - 4, 90, 16], [cx(sx), yIn + 45, zBk + 20])),
+  ];
+  // oak veneer all over
+  for (const p of parts) p.material = "wood";
+  const zEdge = [-130, 130];
+  const legIn = (sx: number) => sx * (lx - lt / 2);
+  const railEnds = (sx: number, ys: number[]) => SIDES.flatMap((sz) => ys.map((y) => [legIn(sx), y, sz * rz] as Vec3));
+  const yR = yB - rh / 2;
+  const supports = (sx: number): { at: Vec3; on: string; dir: Vec3 }[] =>
+    [-150, 120].flatMap((z) => [
+      { at: [sx * xi, yIn + 190 - 8, z] as Vec3, on: sx < 0 ? "SL" : "SR", dir: [sx, 0, 0] as Vec3 },
+      { at: [sx * (t / 2), yIn + 190 - 8, z] as Vec3, on: "DV", dir: [-sx, 0, 0] as Vec3 },
+    ]);
+  const pins = (sx: number) =>
+    [yIn + 15, yIn + 75].flatMap((y) => [
+      { at: [sx * xi, y, zBk + 20] as Vec3, on: sx < 0 ? "SL" : "SR", dir: [sx, 0, 0] as Vec3 },
+      { at: [sx * (t / 2), y, zBk + 20] as Vec3, on: "DV", dir: [-sx, 0, 0] as Vec3 },
+    ]);
+  const byHost = (kind: CustomFix["kind"], name: string, list: { at: Vec3; on: string; dir: Vec3 }[], o: Partial<CustomFix> = {}) =>
+    [...new Set(list.map((p) => `${p.on}|${p.dir.join(",")}`))].map((k) => {
+      const l = list.filter((p) => `${p.on}|${p.dir.join(",")}` === k);
+      return named(kind, name, l.map((p) => p.at), { on: l[0].on, dir: l[0].dir, ...o });
+    });
+  const backClips: Vec3[] = [yIn + 25, H - t - 25].flatMap((y) => [-3, -2, -1, 1, 2, 3].map((k) => [k * (xi / 3.4), y, zBk - 4] as Vec3));
+  const spacers: Vec3[] = SIDES.map((sx) => [sx * (xi - 60), H - t - 50, zBk - 4]);
+  const wallAt: Vec3[] = SIDES.map((sx) => [sx * (xi - 160), H - t - 70, zBk - 4]);
+  const steps: CustomStep[] = [
+    {
+      title: "Tap the dowels into the sides and the divider",
+      detail: "Lay the three short panels on a rug. Two dowels in the bottom edge of each.",
+      fix: [
+        ...SIDES.map((sx) => fx("dowel", zEdge.map((z) => [sx * xs, yIn, z] as Vec3), { dir: UP, on: sx < 0 ? "SL" : "SR", mate: "BT" })),
+        fx("dowel", [-150, 100].map((z) => [0, yIn, z] as Vec3), { dir: UP, on: "DV", mate: "BT" }),
+      ],
+      wait: ["SL", "SR", "DV"],
+      tools: ["hammer"],
+      warnings: ["floor"],
+    },
+    {
+      title: "Click a side onto the bottom",
+      detail: "Lay the bottom on the rug, tracks up. Push the side down onto the dowels until its three clips snap into the bottom.",
+      add: ["BT", "SL"],
+    },
+    { title: "Click on the other side", detail: "The same way at the other end.", add: ["SR"] },
+    { title: "Click in the divider", detail: "In the middle, its notched edge to the back.", add: ["DV"] },
+    { title: "Slide the back panel down its grooves", detail: "Hole for the cables at the bottom. Push it down until it sits in the groove in the bottom.", add: ["BK"], from: { BK: [0, 420, 0] } },
+    { title: "Drop the back door into its track", detail: "The inner track. Lower its bottom edge into the track and let it stand.", add: ["D1"], from: { D1: [0, 420, 0] } },
+    { title: "Drop the front door into its track", detail: "The outer track, the same way.", add: ["D0"], from: { D0: [0, 420, 0] } },
+    {
+      title: "Screw the top on",
+      detail: "Lower it so the doors' top edges go into its tracks, then six screws through it into the sides and the divider.",
+      add: ["TP"],
+      fix: [
+        ...SIDES.map((sx) => fx("screw", [-120, 120].map((z) => [sx * xs, H, z] as Vec3), { dir: DOWN, on: "TP", mate: sx < 0 ? "SL" : "SR", len: 50, dia: 5 })),
+        fx("screw", [-100, 80].map((z) => [0, H, z] as Vec3), { dir: DOWN, on: "TP", mate: "DV", len: 50, dia: 5 }),
+      ],
+      tools: ["allen"],
+    },
+    {
+      title: "Screw cam bolts into the leg panels",
+      detail: "Four in the inside face of each, two where each rail meets it.",
+      fix: SIDES.map((sx) => fx("camScrew", railEnds(sx, [yR - 18, yR + 18]), { dir: [sx, 0, 0], on: sx < 0 ? "LL" : "LR" })),
+      wait: ["LL", "LR", "R0", "R1"],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Tap dowels into the ends of the rails",
+      detail: "One in each end.",
+      fix: SIDES.flatMap((sz, i) => SIDES.map((sx) => fx("dowel", [[legIn(sx), yR, sz * rz]], { dir: [-sx, 0, 0], on: `R${i}`, mate: sx < 0 ? "LL" : "LR" }))),
+      tools: ["hammer"],
+    },
+    {
+      title: "Join the rails to the leg panels",
+      detail: "Rails onto the cam bolts and dowels, then two cam locks in each end of each rail, turned until tight.",
+      add: ["LL", "R0", "R1", "LR"],
+      fix: SIDES.map((sz, i) => fx("cam", SIDES.flatMap((sx) => [yR - 18, yR + 18].map((y) => [legIn(sx) - sx * 30, y, sz * (rz - t / 2)] as Vec3)), { dir: [0, 0, sz], on: `R${i}` })),
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Screw a foot under each leg panel",
+      detail: "Two in each, by hand all the way in. Then turn the base over.",
+      fix: SIDES.map((sx) => named("foot", "Adjustable foot", [-150, 150].map((z) => [sx * lx, 0, z] as Vec3), { dir: UP, on: sx < 0 ? "LL" : "LR", len: 20, dia: 26 })),
+      warnings: ["hand"],
+    },
+    {
+      title: "Tap dowels into the tops of the leg panels",
+      detail: "Two in each.",
+      fix: SIDES.map((sx) => fx("dowel", [-120, 120].map((z) => [sx * lx, yB, z] as Vec3), { dir: DOWN, on: sx < 0 ? "LL" : "LR", mate: "BT" })),
+      tools: ["hammer"],
+    },
+    {
+      title: "Turn the cabinet upside down and set the base on",
+      detail: "Lay the cabinet top down on the rug together, then lower the base onto it so the dowels find their holes.",
+      pose: "-y",
+      people: 2,
+      warnings: ["two", "floor"],
+    },
+    {
+      title: "Bolt the base on",
+      detail: "Four long bolts through the ends of the rails into the bottom of the cabinet, with the Allen key.",
+      fix: SIDES.map((sz, i) => named("bolt", "Long bolt", SIDES.map((sx) => [legIn(sx) - sx * 45, yB - rh, sz * rz] as Vec3), { dir: UP, on: `R${i}`, mate: "BT", len: 80, dia: 6 })),
+      tools: ["allen"],
+    },
+    {
+      title: "Turn it up and screw the back to the divider",
+      detail: "Stand it on its feet together. Two screws through the back into the divider.",
+      fix: [fx("screw", [yIn + 100, H - t - 100].map((y) => [0, y, zBk - 4] as Vec3), { dir: [0, 0, 1], on: "BK", mate: "DV", len: 50, dia: 5 })],
+      pose: "+y",
+      people: 2,
+      tools: ["allen"],
+      warnings: ["two"],
+    },
+    {
+      title: "Fit the clips along the back",
+      detail: "Twelve clips in the holes along the top and bottom edges, a cover pressed into each, then turned to lock the back in.",
+      fix: [named("clip", "Back clip", backClips, { dir: [0, 0, 1], on: "BK", len: 14, dia: 12 }), named("cap", "Clip cover", backClips, { dir: [0, 0, 1], on: "BK", len: 4, dia: 14 })],
+    },
+    { title: "Press the wall spacers into the back", detail: "One near each top corner.", fix: [named("spacer", "Wall spacer", spacers, { dir: [0, 0, 1], on: "BK", len: 20, dia: 30 })] },
+    {
+      title: "Screw the extenders onto the spacers",
+      detail: "Only if the wall has a skirting board: they hold the top out as far as the board.",
+      fix: [named("spacer", "Extender", spacers.map(([x, y, z]) => [x, y, z - 20] as Vec3), { dir: [0, 0, 1], on: "BK", len: 20, dia: 30 })],
+    },
+    { title: "Set the spacers against the wall", detail: "Push it to the wall and turn each spacer until the back is straight with the wall.", warnings: ["wall"] },
+    { title: "Lead the cables in", detail: "Through the hole in the back, behind the cable covers." },
+    { title: "Level it with the feet", detail: "Turn the four feet with the spanner until the top is level side to side and front to back.", tools: ["wrench", "level"] },
+    {
+      title: "Screw it to the wall",
+      detail: "Mark through the two holes near the top of the back, drill, and a washer on each screw. Click the covers on. Wall screws aren't included: pick ones made for your wall.",
+      fix: [
+        fx("plug", wallAt.map((p) => [p[0], p[1], -D / 2 - 30] as Vec3), { dir: [0, 0, -1] }),
+        fx("washer", wallAt, { dir: [0, 0, -1], dia: 24 }),
+        fx("screw", wallAt, { dir: [0, 0, -1], len: 50, dia: 5 }),
+        fx("cap", wallAt.map((p) => [p[0], p[1], p[2] + 3] as Vec3), { dir: [0, 0, -1], dia: 24 }),
+      ],
+      tools: ["screwdriver", "drill"],
+      wall: true,
+      warnings: ["wall", "tip"],
+    },
+    { title: "Push in the shelf supports on the right", detail: "Slide the doors aside. Four supports at the same height.", fix: byHost("pin", "Shelf support", supports(1), { len: 16, dia: 12 }) },
+    { title: "Lay the right shelf in", detail: "Tilt it in through the open side and lower it onto the supports.", add: ["SH1"], from: { SH1: [0, 0, 300] } },
+    { title: "Push in the shelf supports on the left", fix: byHost("pin", "Shelf support", supports(-1), { len: 16, dia: 12 }) },
+    { title: "Lay the left shelf in", add: ["SH0"], from: { SH0: [0, 0, 300] } },
+    { title: "Push in the pins for the cable covers", detail: "Eight, two at each end of each cover, low down at the back.", fix: [...byHost("pin", "Pin", pins(1), { len: 12, dia: 6 }), ...byHost("pin", "Pin", pins(-1), { len: 12, dia: 6 })] },
+    {
+      title: "Hang the cable covers",
+      detail: "Slot each one over its pins at the back and push it down.",
+      add: ["CC0", "CC1"],
+      from: { CC0: [0, 160, 0], CC1: [0, 160, 0] },
+    },
+  ];
+  return { parts, steps };
+}
+
 const family: Family = {
   names: ["STOCKHOLM"],
   recipe(s) {
@@ -1570,6 +1751,7 @@ const family: Family = {
     if (/coffee table/.test(v)) return /2025/.test(slug) ? slatCoffee(s) : ovalCoffee(s);
     if (/shelving unit\/bench/.test(v) || /shelving-unit-bench/.test(slug)) return shelvingBench(s);
     if (/shelving unit/.test(v)) return shelvingUnit(s);
+    if (/tv bench/.test(v)) return tvBench(s);
     if (/bench/.test(v)) return bench(s);
     if (/easy chair/.test(v)) return easyChair(s);
     if (/armchair/.test(v)) return roundArmchair(s);

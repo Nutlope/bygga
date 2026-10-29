@@ -117,6 +117,15 @@ export const FIXES: Record<string, Fix> = {
   "alseda-stool": { size: [60, 18, 60] },
   "forsiktig-children-s-stool": { size: [37, 13, 24] },
   "sundvik-changing-table-chest-drawers-78-x-79-x-9": { size: [78, 99, 79] },
+  "bergmund-bar-stool-backrest-62": { size: [45, 97, 48] },
+  "langdhopp-pull-out-desk-90-x-39-71": { size: [90, 87, 39] },
+  "tittebo-roll-front-cabinet-61": { size: [61, 72, 30] },
+  "vitval-underbed-90-x-200": { size: [197, 20, 90] },
+  "yxstaby-gaming-thumbstick-stool": { size: [37.5, 44, 37.5] },
+  "ivar-2-sec-storage-unit-w-foldable-table-134-x-9": { size: [134, 179, 30] },
+  "smastad-loft-bed-twin-97-x-191": { size: [197, 182, 114] },
+  "resaro-mobile-drop-leaf-table-w-storage": { size: [123, 91, 64] },
+  "billy-bookcase-foldable-table-80-x-33-112-x-106": { size: [80, 106, 112] }, // drawn with the table open
   "bolmen-step-stool": { size: [44, 25, 35] },
   "sigfinn-monitor-stand-fixed-height": { size: [53, 10, 24] },
   "smagora-changing-table-bookshelf-60-x-81-x-103": { size: [60, 103, 81] },
@@ -145,6 +154,7 @@ export const SAME: Record<string, string> = {
   "tarva-chest-6-drawers": "tarva-6-drawer-dresser-151-x-92",
   "tarva-nightstand": "tarva-nightstand-48-x-39-x-62",
   "havsta-sideboard-100-x-89": "havsta-sideboard-basic-unit-121-x-47-x-89",
+  "eket-wall-mounted-shelving-unit-70-x-35-x-70": "eket-wall-cb-2-doors-70-x-35-x-70",
   "brimnes-cabinet-doors-39-x-95": "brimnes-cabinet-doors-78-x-95",
   "hemnes-glass-door-cabinet-90-x-197": "hemnes-glass-door-cabinet-3-drawers-90-x-197",
 };

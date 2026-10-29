@@ -2,7 +2,7 @@
 
 Every catalog guide is being rebuilt to follow its product's IKEA assembly manual: the same steps in the same order, the same parts, fittings and counts, the build poses the manual shows (lying on its back, upside down) and two people where it shows two. The drawings and words are our own.
 
-**Status: 2,139 of 2,166 guides (99%) are built from their manuals; every guide builds.** The 27 left have no manual anywhere (discontinued products); they keep the old builder.
+**Status: 2,198 of 2,225 guides (99%) are built from their manuals; every guide builds.** The 27 left have no manual anywhere (discontinued products); they keep the old builder.
 
 On 29 October every guide was also checked for impossible moves: a part sliding across dowels or cam bolts instead of along them, and screws or bolts that end in thin air. Those were fixed family by family; what the check still reports (about 190 guides) was looked at and is a false alarm (a frame that moves in one piece, a screw into a handle or the floor).
 
@@ -13,6 +13,10 @@ On 29 October every guide was also checked for impossible moves: a part sliding 
 - `npm run families` rewrites `families/index.ts` from the files in the folder.
 - New fitting kinds: clip, strap, nut, washer, stud, clamp, angle, foot, cap, spacer; fittings can carry their own name. New part material `glass`, half-disc pieces for split round tops.
 - Product data: `src/data/fixes.ts` holds about 90 single-product corrections; `scripts/ikea/classify.ts` now reads corner sofas, bed frames, sofa-beds, office chairs and more from IKEA's measurements.
+
+## Products added on 29 October
+
+59 assemblable IKEA products had no guide (fold-out tables, loft and bunk beds with underbeds, KALLAX TV benches, gaming furniture, stands and racks). They are listed by article number in `ADDED` in `scripts/ikea/classify.ts`, so `npm run ikea:build` gives them rows, slugs and article numbers, and each has a guide from its manual in its family file. `scripts/ikea/skips.ts` lists what the listings still skip and why.
 
 ## To do next
 

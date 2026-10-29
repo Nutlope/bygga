@@ -130,6 +130,15 @@ function comboOf(slug: string, W: number, H: number, D: number): Layout | null {
       ...[-1200, -600, 600, 1200].map((x, i) => col(x, i + 1)),
     ];
     return { W, H, D, df: D - DOOR, frames: fs.map((f, i) => ({ ...f, id: `F${i}` })), legs: false, feet: true, top: false, wallLast: true };
+  } else if (slug === "platsa-cabinet-5-doors-180-x-42-x-103") {
+    // a 60 frame, two 40 frames stacked, and a 40 frame on a 60 frame, a door on each, a SPILDRA top on each column
+    cols = [
+      { hs: [600], o: [{ door: "L", inside: sh(300) }] },
+      { hs: [400, 400], o: [{ door: "L" }, { door: "L" }] },
+      { hs: [600, 400], o: [{ door: "L", inside: sh(200, 400) }, { door: "L", inside: sh(200) }] },
+    ];
+    feet = true;
+    tops = [[0, 0], [1, 1], [2, 1]];
   } else return null;
   const y0 = feet ? FEET : leg;
   const x0 = -W / 2 + 300;
@@ -200,6 +209,14 @@ function layoutOf(s: ProductSpec): Layout | null {
       ...col(300, 600, [1200], () => ({ door: "R", inside: [120, 360, 600, 840].map((y) => ({ kind: "shoe", y })) })),
     ];
     return { W, H, D, df: D - DOOR, frames: ids(fs), legs: false, top: true, wallLast: false };
+  }
+  if (slug === "platsa-storage-bench-120-x-57-x-63") {
+    // two 60 frames side by side on adjustable feet under one SPILDRA top: a shelf on the left, a shelf and a basket on the right
+    const fs = [
+      ...col(-300, 600, [600], () => ({ door: "L", inside: [{ kind: "shelf", y: 300 }] }), FEET),
+      ...col(300, 600, [600], () => ({ door: "R", inside: [{ kind: "shelf", y: 340 }, { kind: "basket", y: 60 }] }), FEET),
+    ];
+    return { W, H, D, df: D - DOOR, frames: ids(fs), legs: false, feet: true, top: true, wallLast: false };
   }
   if (slug === "platsa-chest-2-drawers-60-x-57-x-53") {
     return { W, H, D, df: D - DOOR, frames: ids(col(0, 600, [400], () => ({ drawers: 2 }), LEG)), legs: true, top: true, wallLast: false };

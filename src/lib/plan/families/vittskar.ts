@@ -1,6 +1,7 @@
 import type { Family } from "./family";
-import type { PartPiece, Pose, ProductSpec, StepKind, ToolId, Vec3, WarnId } from "../../types";
+import type { CustomFix, CustomParams, CustomPart, PartPiece, Pose, ProductSpec, StepKind, ToolId, Vec3, WarnId } from "../../types";
 import type { FitOpts, HwDef, PlanBuilder } from "../builder";
+import { buildCustom } from "../custom";
 
 /**
  * VITTSKÄR, from IKEA's manuals: outdoor furniture in plastic rattan.
@@ -469,6 +470,118 @@ function chair(b: PlanBuilder, s: ProductSpec): boolean {
   return true;
 }
 
+/* ---------- the round table: four top quarters face down, four leg panels slid into their tracks ---------- */
+
+/**
+ * From the round table's manual: the four quarters of the top are laid face down and pushed together into halves and
+ * then a whole, the four leg panels slide into the tracks under the seams, a cross connector is screwed over their
+ * free ends, each panel is bolted to the top's brackets, four braces go in between the panels' outer ends, all 20
+ * fittings are tightened, and two people turn it over and level the feet.
+ */
+function roundTable(s: ProductSpec): CustomParams {
+  const R = (s.size.w * 10) / 2 || 935, H = s.size.h * 10 || 740;
+  const TT = 40, ty = H - TT / 2, under = H - TT;
+  const PT = 30, arm = Math.round(R * 0.62); // the leg panels, from the middle out
+  const RH = 40, ry = under - RH / 2; // the brackets under the top, beside each panel
+  const arc = (sx: number, sz: number): [number, number][] => {
+    const h = R / 2;
+    const pts: [number, number][] = [[-sx * h, -sz * h]];
+    for (let i = 0; i <= 12; i++) {
+      const a = (i / 12) * (Math.PI / 2);
+      pts.push([sx * R * Math.cos(a) - sx * h, sz * R * Math.sin(a) - sz * h]);
+    }
+    return pts;
+  };
+  const quads: [number, number][] = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  // the panels lie along the seams: +x, -x, +z, -z
+  const dirs: Vec3[] = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
+  const mid = (PT / 2 + arm) / 2, len = arm - PT / 2;
+  const panelAt = (d: Vec3): Vec3 => [d[0] * mid, (H - TT) / 2, d[2] * mid];
+  const panelSize = (d: Vec3): Vec3 => (d[0] ? [len, H - TT, PT] : [PT, H - TT, len]);
+  // each panel's bracket under the top runs beside it, on its clockwise side
+  const side = (d: Vec3): Vec3 => [-d[2], 0, d[0]];
+  // the brackets come fixed under the top, one per panel, on the quarter beside it
+  const brackets = dirs.map((d) => {
+    const sd = side(d), bl = 260, bm = PT / 2 + 40 + bl / 2;
+    const pos: Vec3 = [d[0] * bm + sd[0] * (PT / 2 + 15), ry, d[2] * bm + sd[2] * (PT / 2 + 15)];
+    return { pos, size: (d[0] ? [bl, RH, 30] : [30, RH, bl]) as Vec3, q: quads.findIndex(([sx, sz]) => Math.sign(pos[0]) === sx && Math.sign(pos[2]) === sz) };
+  });
+  const parts: CustomPart[] = [
+    ...quads.map(([sx, sz], i): CustomPart => {
+      const pos: Vec3 = [(sx * R) / 2, ty, (sz * R) / 2];
+      const own = brackets.filter((k) => k.q === i).map((k): PartPiece => ({ shape: "box", size: k.size, pos: [k.pos[0] - pos[0], k.pos[1] - ty, k.pos[2] - pos[2]] }));
+      return { id: `Q${i}`, name: "Top quarter", size: [R, TT, R], pos, material: "wood", pieces: [{ shape: "slab", size: [R, TT, R], pos: [0, 0, 0], outline: arc(sx, sz) }, ...own] };
+    }),
+    ...dirs.map((d, i): CustomPart => ({ id: `P${i}`, name: "Leg panel", size: panelSize(d), pos: panelAt(d), material: "wood" })),
+    // braces between neighbouring panels' outer ends, on the underside of the top
+    ...[[0, 2], [2, 1], [1, 3], [3, 0]].map(([a, b], i): CustomPart => {
+      const da = dirs[a], db = dirs[b];
+      const r0 = arm - 120;
+      const cx = ((da[0] + db[0]) * r0) / 2, cz = ((da[2] + db[2]) * r0) / 2;
+      const L = Math.SQRT2 * r0 - 140;
+      return { id: `B${i}`, name: "Brace", size: [L, RH, 30], pos: [cx, ry, cz], rot: [0, cx * cz > 0 ? Math.PI / 4 : -Math.PI / 4, 0], material: "metal" };
+    }),
+  ];
+  const panelBolts = dirs.flatMap((d, i): CustomFix[] => {
+    const sd = side(d);
+    const at = [140, 260].map((r): Vec3 => [d[0] * (PT / 2 + r) - sd[0] * (PT / 2), ry, d[2] * (PT / 2 + r) - sd[2] * (PT / 2)]);
+    return [
+      { kind: "washer", count: 2, at: at.map((p): Vec3 => [p[0] - sd[0] * 2, p[1], p[2] - sd[2] * 2]), dir: sd, on: `P${i}`, len: 2, dia: 18 },
+      { kind: "bolt", count: 2, at, dir: sd, on: `P${i}`, mate: `Q${brackets[i].q}`, len: 55, dia: 6 },
+    ];
+  });
+  const braceBolts: CustomFix[] = parts
+    .filter((p) => p.id.startsWith("B"))
+    .flatMap((p): CustomFix[] => {
+      const a = p.rot![1], h = p.size[0] / 2 - 30;
+      const at = [-1, 1].map((g): Vec3 => [p.pos[0] + g * h * Math.cos(a), under - RH, p.pos[2] - g * h * Math.sin(a)]);
+      return [
+        { kind: "washer", count: 2, at: at.map((q): Vec3 => [q[0], q[1] - 2, q[2]]), dir: [0, 1, 0], on: p.id, len: 2, dia: 18 },
+        { kind: "bolt", count: 2, at, dir: [0, 1, 0], on: p.id, len: 55, dia: 6 },
+      ];
+    });
+  return {
+    parts,
+    steps: [
+      {
+        title: "Push the top quarters together in pairs",
+        detail: "Lay all four face down on a rug, with a helper. Slide each pair together until the pegs at the seam lock.",
+        add: ["Q0", "Q1"],
+        pose: "-y",
+        people: 2,
+        warnings: ["floor", "two"],
+        from: { Q0: [-300, 0, 0], Q1: [300, 0, 0] },
+      },
+      {
+        title: "Push the two halves together",
+        detail: "Join the other pair the same way, then line up the four pegs along the middle seam and press until it closes.",
+        add: ["Q2", "Q3"],
+        from: { Q2: [0, 0, 400], Q3: [0, 0, 400] },
+      },
+      {
+        title: "Slide the leg panels into their tracks",
+        detail: "One at a time, from the rim inwards along a seam, until each panel's end reaches the middle.",
+        add: ["P0", "P1", "P2", "P3"],
+        from: { P0: [500, 0, 0], P1: [-500, 0, 0], P2: [0, 0, 500], P3: [0, 0, -500] },
+      },
+      {
+        title: "Screw the cross connector on",
+        detail: "Over the four panels' free ends in the middle, a screw into each.",
+        fix: [
+          { kind: "connector", name: "Cross connector", count: 1, at: [[0, 0, 0]], dir: [0, 1, 0], on: "P0", len: 30, dia: 120 },
+          { kind: "screw", count: 4, at: dirs.map((d): Vec3 => [d[0] * 60, 0, d[2] * 60]), dir: [0, 1, 0], on: "P0", len: 20, dia: 5 },
+        ],
+        tools: ["allen"],
+      },
+      { title: "Bolt the panels to the top's brackets", detail: "Two bolts with washers through each panel, by hand for now.", fix: panelBolts, tools: ["allen"], warnings: ["loose"] },
+      { title: "Fit the four braces", detail: "Each goes between two panels' outer ends, flat on the underside of the top. Two bolts with washers in each.", add: ["B0", "B1", "B2", "B3"], fix: braceBolts, tools: ["allen"] },
+      { title: "Tighten all the bolts", detail: "All 16 bolts and the 4 connector screws, firmly.", tools: ["allen"] },
+      { title: "Turn the table over together", detail: "Lift it by the edge of the top with a helper, not by one leg panel.", pose: "+y", people: 2, warnings: ["two"] },
+      { title: "Level the feet", detail: "Turn the foot under each panel until the table stands steady." },
+    ],
+  };
+}
+
 /* ---------- the tables: the base first, then upside down on the top ---------- */
 
 function slats(x0: number, x1: number, z0: number, z1: number, y0: number, y1: number, n: number, gap = 8): PartPiece[] {
@@ -581,6 +694,10 @@ function build(b: PlanBuilder, s: ProductSpec): boolean {
   const slug = s.slug ?? "";
   if (/chair-armrests/.test(slug)) return chair(b, s);
   if (/coffee-table/.test(slug)) return coffee(b, s);
+  if (slug === "vittskar-table-187") {
+    buildCustom(b, { ...s, custom: roundTable(s) });
+    return true;
+  }
   if (/vittskar-table/.test(slug)) return dining(b, s);
   const lay = layout(s);
   return lay ? sofa(b, s, lay) : false;

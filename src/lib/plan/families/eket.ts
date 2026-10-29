@@ -34,7 +34,8 @@ function kindOf(s: ProductSpec): G | null {
   const W = s.size.w * 10, H = s.size.h * 10, D = s.size.d * 10;
   let kind: Kind | null = null;
   let rail = false;
-  if (/wall-mounted-shelving-unit/.test(slug)) (kind = "open"), (rail = true);
+  // the 70 x 70 one is the cabinet with two doors and a shelf, in white, on its rail
+  if (/wall-mounted-shelving-unit/.test(slug)) (kind = W >= 600 && H >= 600 ? "doors2" : "open"), (rail = true);
   else if (/glass/.test(slug) || /glass/.test(v) || slug === "eket-cabinet") (kind = "glass"), (rail = true);
   else if (/2-doors/.test(slug)) (kind = "doors2"), (rail = true);
   else if (/shlf-door/.test(slug)) (kind = "door"), (rail = true);

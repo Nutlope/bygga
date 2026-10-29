@@ -93,6 +93,7 @@ function layout(s: ProductSpec): Layout | null {
     case "soderhamn-3-seat-section": return { row: [S3] };
     case "soderhamn-corner-section": return { corner: true, back: [], wing: [] };
     case "soderhamn-3-seat-sofa": return { row: ["arm", S3, "arm"] };
+    case "soderhamn-armchair": return { row: ["arm", S1, "arm"] }; // the 1-seat section with an armrest each side
     case "soderhamn-2-seat-sofa": return { row: [S1, "chaise"] }; // the 2-seat sofa with chaise longue
     case "soderhamn-4-seat-sofa-chaise-longue": return { row: ["arm", S3, "chaise"] };
     case "soderhamn-corner-sofa-4-seat": return { corner: true, back: [S3, "arm"], wing: [S1] };

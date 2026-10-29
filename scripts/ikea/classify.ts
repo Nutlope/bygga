@@ -34,6 +34,8 @@ export interface Draw {
   /** which of w/h/d the listing left out and the product page filled in: matching treats them as unknown, so a
    * product keeps the guide (and the link) it had before its page was read */
   paged?: { w: boolean; h: boolean; d: boolean };
+  /** one of the ADDED products: its own guide, never merged into a hand made entry */
+  own?: boolean;
 }
 
 export type Verdict = { draw: Draw } | { skip: string };
@@ -663,7 +665,84 @@ function chestShape(total: number, w: number, h: number): { rows: number; cols: 
 /** IKEA's top level ranges that hold no furniture: food, textiles, kitchenware, lamps, plants, decoration and so on. */
 const NOT_FURNITURE = /^(fb|tl|kt|li|pp|de|wt|he|hs|lc|pt|sp)\d/;
 
+/**
+ * Products no rule above draws (fold-out tables, loft beds, stands, sliding doors...) that have a guide written from
+ * their manual in src/lib/plan/families. Keyed by one article number of the product; kind and outer size w, h, d in cm,
+ * which the product page's measurements replace when it has been read.
+ */
+const ADDED: Record<string, { kind: Kind; w: number; h: number; d: number; x?: X }> = {
+  "00579755": { kind: "bookcase", w: 80, h: 106, d: 33 }, // BILLY bookcase with foldable table
+  "10495133": { kind: "lounger", w: 310, h: 110, d: 110 }, // BOCKÖN hammock stand
+  "10269168": { kind: "open", w: 160, h: 95, d: 28 }, // BRIMNES headboard with storage
+  "60586258": { kind: "trolley", w: 56, h: 62, d: 40 }, // BRÄNNBOLL shelving unit on castors
+  "50219044": { kind: "desk", w: 140, h: 146, d: 74 }, // FREDDE gaming desk
+  "20575030": { kind: "daybed", w: 207, h: 81, d: 97, x: { m: 90 } }, // GLAMBERGET extendable bed
+  "80609683": { kind: "wallshelf", w: 110, h: 31, d: 12 }, // GULLABERG add-on unit
+  "40609680": { kind: "desk", w: 84, h: 85, d: 41 }, // GULLABERG gateleg desk
+  "70624603": { kind: "wallcab", w: 28, h: 37.5, d: 11 }, // HUSBYÅN wall cabinet
+  "20411982": { kind: "desk", w: 146, h: 70, d: 70 }, // IDÅSEN underframe sit/stand
+  "80360951": { kind: "slidecab", w: 120, h: 140, d: 45 }, // IDÅSEN cabinet with sliding glass doors
+  "40512466": { kind: "dropleaf", w: 80, h: 74, d: 91 }, // IVAR folding table
+  "79469527": { kind: "open", w: 89, h: 179, d: 30 }, // IVAR 1 section with foldable table
+  "69606577": { kind: "open", w: 134, h: 179, d: 95 }, // IVAR 2 sections with foldable table
+  "80562096": { kind: "tv", w: 147, h: 60, d: 39 }, // KALLAX TV bench
+  "19552176": { kind: "tv", w: 147, h: 78, d: 39 }, // KALLAX TV bench with underframe
+  "19278272": { kind: "cube", w: 77, h: 77, d: 39 }, // KALLAX shelving unit with doors
+  "90480401": { kind: "side", w: 44, h: 61, d: 44 }, // KVISTBRO storage table
+  "40539263": { kind: "dining", w: 150, h: 72, d: 146 }, // LERHOLMEN picnic table
+  "30587080": { kind: "desk", w: 90, h: 80, d: 39 }, // LÄNGDHOPP pull-out desk
+  "00492795": { kind: "desk", w: 120, h: 75, d: 58 }, // LÄRANDE desk with pull-out storage
+  "30180504": { kind: "dropleaf", w: 74, h: 74, d: 60 }, // NORBERG wall-mounted drop-leaf table
+  "80583433": { kind: "daybed", w: 193, h: 40, d: 80, x: { m: 80 } }, // NORRUDDEN guest bed
+  "69638111": { kind: "bench", w: 120, h: 63, d: 57 }, // PLATSA storage bench
+  "99614255": { kind: "cabinet", w: 180, h: 103, d: 42 }, // PLATSA cabinet with 5 doors
+  "20533337": { kind: "dropleaf", w: 63, h: 74, d: 40 }, // RESARÖ mobile drop-leaf table
+  "70228325": { kind: "kidstable", w: 79, h: 50, d: 89 }, // RESÖ children's picnic table
+  "60569744": { kind: "kidschair", w: 40, h: 50, d: 40 }, // SMÅSKRAKE child chair/table
+  "29437483": { kind: "loft", w: 207, h: 182, d: 99, x: { m: 90 } }, // SMÅSTAD loft bed
+  "70567805": { kind: "wallcab", w: 36, h: 20, d: 29 }, // STOMSÖ wall-mounted bedside table
+  "80371520": { kind: "stool", w: 40, h: 33, d: 38 }, // TROGEN children's step stool
+  "00575540": { kind: "side", w: 40, h: 74, d: 40 }, // VISINGSÖ plant stand
+  "90620005": { kind: "side", w: 45, h: 60, d: 45 }, // YXSTABY gaming side table on castors
+  "10620009": { kind: "stool", w: 40, h: 45, d: 40 }, // YXSTABY gaming thumbstick stool
+  "20512660": { kind: "nightstand", w: 40, h: 52, d: 40 }, // TOLKNING bedside table
+  "30253067": { kind: "bookcase", w: 33, h: 163, d: 28 }, // RÅGRUND shelving unit
+  "80624645": { kind: "shoerack", w: 60, h: 40, d: 27 }, // VASSKÄR shoe rack
+  "90600291": { kind: "shoerack", w: 58, h: 17, d: 27 }, // GREJIG shoe rack
+  "90609178": { kind: "bench", w: 90, h: 30, d: 30 }, // FLISAT children's bench
+  "30609181": { kind: "desk", w: 83, h: 70, d: 58 }, // FLISAT children's desk
+  "00290778": { kind: "wallshelf", w: 70, h: 16, d: 9 }, // FLISAT wall storage
+  "40586508": { kind: "tv", w: 179, h: 56, d: 42 }, // STOCKHOLM 2025 TV bench with sliding doors
+  "00439468": { kind: "wardrobe", w: 120, h: 186, d: 47, x: { doors: 1 } }, // NORDKISA open wardrobe with sliding door
+  "19302922": { kind: "bunk", w: 207, h: 161, d: 97, x: { m: 90 } }, // VITVAL bunk bed with underbed
+  "10448325": { kind: "daybed", w: 200, h: 25, d: 90, x: { m: 90 } }, // VITVAL underbed
+  "99239451": { kind: "daybed", w: 200, h: 25, d: 90, x: { m: 90 } }, // SLÄKT underbed with storage
+  "50603263": { kind: "dining", w: 187, h: 74, d: 187 }, // VITTSKÄR table
+  "39284998": { kind: "cabinet", w: 60, h: 202, d: 40 }, // BESTÅ cabinet unit
+  "99384693": { kind: "bar", w: 42, h: 90, d: 47 }, // BERGMUND bar stool with backrest
+  "59471786": { kind: "bar", w: 42, h: 90, d: 47 }, // BERGMUND bar stool with backrest (US)
+  "40582044": { kind: "stool", w: 40, h: 45, d: 40 }, // HAUGA stool (US)
+  "50606624": { kind: "chair", w: 46, h: 81, d: 53 }, // HÄGERNÄS chair (US)
+  "00534903": { kind: "bench", w: 110, h: 45, d: 35 }, // TÄRNÖ bench (US)
+  "90503346": { kind: "bar", w: 45, h: 100, d: 50 }, // SEGERÖN bar stool (US)
+  "10516772": { kind: "trolley", w: 54, h: 81, d: 40 }, // RULLEBÖR cart (US)
+  "20569227": { kind: "cabinet", w: 61, h: 60, d: 30 }, // TITTEBO roll-front cabinet (US)
+  "69329764": { kind: "armchair", w: 93, h: 83, d: 99 }, // SÖDERHAMN armchair (US)
+  "60427641": { kind: "lounger", w: 60, h: 95, d: 100 }, // KLÖVEN deck chair (US)
+  "40613903": { kind: "armchair", w: 84, h: 100, d: 95 }, // GRYTERYD recliner rocker (US)
+  "70632684": { kind: "armchair", w: 110, h: 85, d: 90 }, // VENNGARN 1.5-seat armchair (US)
+};
+
 export function classify(f: Fact, hints: Hints): Verdict {
+  const added = f.items.map((i) => ADDED[i]).find(Boolean);
+  if (added) {
+    const page = f.m ? fromPage(added.kind, f.m) : null;
+    const w = page?.w ?? added.w, h = page?.h ?? added.h, d = page?.d ?? added.d;
+    const label = f.type.replace(/\s+/g, " ").trim();
+    const size = f.size.replace(/\s*x\s*/g, " × ").trim();
+    const outdoor = /outdoor/i.test(label);
+    return { draw: { kind: added.kind, x: { ...added.x, ...page?.x }, w: Math.round(w), h: Math.round(h), d: Math.round(d), label, size: /\d/.test(size) ? size : "", kw: outdoor ? ["outdoor", "garden"] : [], guessed: { w: false, h: false, d: false }, own: true } };
+  }
   if (NOT_FURNITURE.test(f.cats[0] ?? "")) return { skip: "not furniture" };
   const raw = f.type.replace(/\s+/g, " ").trim();
   let t = raw.toLowerCase();

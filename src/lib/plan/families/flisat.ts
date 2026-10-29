@@ -5,7 +5,8 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Produc
  * FLISAT, read from its manuals. The children's table is a frame with two lids: a middle bar on two dowels drops
  * into the frame, four screws hold it from underneath, the legs (their bolts already fitted) turn in by hand and
  * the lids lie in on top. The stool is just four splayed legs turned into the seat. The open storage is built from
- * ladder frames held by long bolts and shelves on dowels; see `storage`.
+ * ladder frames held by long bolts and shelves on dowels; see `storage`. The bench and desk share end frames with
+ * knob-bolted legs (`bench`, `desk`); the wall storage is a small box on cam locks (`wallStorage`).
  */
 
 const r = (n: number) => Math.round(n * 10) / 10;
@@ -328,6 +329,318 @@ function storage(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/**
+ * The height-adjustable bench and desk share one build: two end frames (glued rectangles), long rails on one dowel
+ * per end stood in one end frame lying on the rug, the other frame on top and screws through both frames. The
+ * outer legs come last, two green knob bolts each, in one of three rows of holes for the height.
+ */
+const lean = (y: number, top: number, foot: number, h: number) => foot - ((foot - top) * y) / h;
+
+/** One end frame: two posts on the legs' slant, a top bar and a bottom bar, as pieces of one part. */
+function endFrame(id: string, sx: -1 | 1, x: number, t: number, y0: number, y1: number, zAt: (y: number) => number, bars: { y: number; h: number }[], postTop = y1): CustomPart {
+  const cy = (y0 + y1) / 2;
+  const th = Math.atan2(zAt(y0) - zAt(postTop), postTop - y0);
+  const pieces: PartPiece[] = [-1, 1].map((sz) => ({
+    shape: "box" as const,
+    size: [t, Math.hypot(postTop - y0, zAt(y0) - zAt(postTop)), 40] as Vec3,
+    pos: [0, (y0 + postTop) / 2 - cy, sz * (zAt(y0) + zAt(postTop)) / 2] as Vec3,
+    rot: [-sz * th, 0, 0] as Vec3,
+  }));
+  for (const b of bars) pieces.push({ shape: "box", size: [t, b.h, 2 * zAt(b.y) + 30], pos: [0, b.y - cy, 0] });
+  return { id, name: "End frame", size: [t, y1 - y0, 2 * zAt(y0) + 40], pos: [sx * x, cy, 0], pieces, material: "wood" };
+}
+
+/** An outer leg on the slant, front (sz 1) or back (sz -1). */
+function slantLeg(id: string, sx: number, sz: number, x: number, h: number, top: number, foot: number, t = 30, d = 45): CustomPart {
+  const th = Math.atan2(foot - top, h);
+  return { id, name: "Leg", size: [t, Math.hypot(h, foot - top), d], pos: [sx * x, h / 2, sz * (top + foot) / 2], rot: [-sz * th, 0, 0], material: "wood" };
+}
+
+const KNOB = { name: "Knob bolt", len: 45, dia: 8 };
+
+function bench(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10 || 610, H = s.size.h * 10 || 470, D = s.size.d * 10 || 360;
+  const LT = 30, FT = 24; // legs and end frames, thickness along x
+  const xl = W / 2 - LT / 2, xf = xl - LT / 2 - FT / 2, xi = xf - FT / 2; // leg, frame centres, frame inner face
+  const foot = D / 2 - 22, top = foot - 28;
+  const zAt = (y: number) => lean(y, top, foot, H);
+  const yS = H - 30, ST = 18; // seat top, the legs stand a little above it
+  const y0 = yS - 300; // bottom of the end frames
+  const yA = yS - ST - 35, zA = 125, yL = y0 + 30; // aprons under the seat, low rail
+  const parts: CustomPart[] = [
+    endFrame("E0", -1, xf, FT, y0, yS, zAt, [{ y: yS - 30, h: 60 }, { y: yL, h: 60 }]),
+    ...[-1, 1].map((sz, i): CustomPart => ({ id: `A${i}`, name: "Seat rail", size: [2 * xi, 70, 20], pos: [0, yA, sz * zA], material: "wood" })),
+    { id: "LR", name: "Low rail", size: [2 * xi, 60, 22], pos: [0, yL, 0], material: "wood" },
+    { id: "S", name: "Seat", size: [2 * xi, ST, 300], pos: [0, yS - ST / 2, 0], material: "board" },
+    endFrame("E1", 1, xf, FT, y0, yS, zAt, [{ y: yS - 30, h: 60 }, { y: yL, h: 60 }]),
+    ...[-1, 1].flatMap((sx, i) => [-1, 1].map((sz, j) => slantLeg(`G${i}${j}`, sx, sz, xl, H, top, foot))),
+  ];
+  const ends = (id: string, pts: [number, number][]) => [-1, 1].map((sx) => fx("dowel", id, [-sx, 0, 0], pts.map(([y, z]) => [sx * xi, y, z] as Vec3)));
+  const rails: [string, number, number][] = [["A0", yS - 25, -zA], ["A1", yS - 25, zA], ["LR", yL, 0]];
+  const screws = (sx: -1 | 1, f: string) => fx("bolt", f, [-sx, 0, 0], rails.map(([, y, z]) => [sx * (xf + FT / 2), y, z] as Vec3), { name: "Screw", len: 50, dia: 6 });
+  const legs = parts.filter((p) => p.name === "Leg").map((p) => p.id);
+  return {
+    parts,
+    steps: [
+      {
+        title: "Tap the dowels into the seat and the rails",
+        detail: "One in each end of the three rails, two in each end of the seat. Ten in all.",
+        fix: [...ends("S", [[yS - ST / 2, -80], [yS - ST / 2, 80]]), ...ends("A0", [[yA, -zA]]), ...ends("A1", [[yA, zA]]), ...ends("LR", [[yL, 0]])],
+        wait: ["S", "A0", "A1", "LR"],
+        tools: ["hammer"],
+        warnings: ["floor"],
+      },
+      {
+        title: "Stand the rails in one end frame",
+        detail: "Lay an end frame flat on the rug and push the two seat rails and the low rail onto its holes, standing straight up.",
+        add: ["E0", "A0", "A1", "LR"],
+        from: { A0: [320, 0, 0], A1: [320, 0, 0], LR: [320, 0, 0] },
+        pose: "+x",
+      },
+      { title: "Slide the seat in", detail: "Down between the seat rails, white side out, onto its two dowels.", add: ["S"], from: { S: [360, 0, 0] } },
+      { title: "Lay the other end frame on top", detail: "Line up the holes and press it down onto all the dowels.", add: ["E1"], from: { E1: [300, 0, 0] } },
+      { title: "Screw the top end frame on", detail: "Three screws, one into each rail, with the Allen key. Not a drill.", fix: [screws(1, "E1")], tools: ["allen"] },
+      { title: "Turn it over and screw the other frame", detail: "Three more screws, the same way.", fix: [screws(-1, "E0")], pose: "-x", tools: ["allen"] },
+      {
+        title: "Screw the seat rails to the seat",
+        detail: "Turn the bench upside down. Two long screws through each seat rail into the seat, by hand.",
+        fix: [fx("screw", "A0", [0, 1, 0], [-150, 150].flatMap((x) => [-zA, zA].map((z) => [x, yA - 35, z] as Vec3)), { len: 80, dia: 4, mate: "S" })].map((f) => ({ ...f, on: undefined })),
+        pose: "-y",
+        tools: ["screwdriver"],
+      },
+      {
+        title: "Bolt on the legs at the height you want",
+        detail: "Stand it up. Two knob bolts through each leg into the end frame, all four legs in the same row of holes.",
+        add: legs,
+        from: Object.fromEntries(legs.map((id) => [id, [id[1] === "0" ? -200 : 200, 0, 0] as Vec3])),
+        fix: [-1, 1].flatMap((sx, i) => [-1, 1].map((sz) => fx("bolt", `E${i}`, [-sx, 0, 0], [y0 + 70, yS - 60].map((y) => [sx * (xl + LT / 2), y, sz * zAt(y)] as Vec3), KNOB))).map((f) => ({ ...f, on: undefined })),
+        pose: "+y",
+      },
+    ],
+  };
+}
+
+/**
+ * The desk: the same frame with four rails, then a tilting top built from a white board and a raised wooden edge
+ * on three sides. It hooks onto two pivot bolts at the front and rests on two rubber stops at the back; two swing
+ * arms prop it up when tilted and a strap stops it tipping too far. A rod for a paper roll lies in the back notches.
+ */
+function desk(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10 || 970, H = s.size.h * 10 || 590, D = s.size.d * 10 || 650;
+  const LT = 30, FT = 24;
+  const xl = W / 2 - LT / 2, xf = xl - LT / 2 - FT / 2, xi = xf - FT / 2;
+  const foot = D / 2 - 25, top = foot - 65, hL = H - 30;
+  const zAt = (y: number) => lean(y, top, foot, hL);
+  const y0 = 150, yTb = 510, yBb = y0 + 30; // end frame bottom, top bar and bottom bar centres
+  const RW = 2 * xi, RT = 22;
+  const zLo = 200, zF = 200, zK = -zAt(H) - 10; // low rails, front top rail, back top rail
+  const yF = yTb, yK = 490;
+  const yB = 542, BT = 18, LH = 30, LW = 20; // the top: board and its raised edge
+  const xT = xi - 2, zT0 = -zAt(H) - 21, zT1 = D / 2 - 35;
+  const zTc = (zT0 + zT1) / 2, dT = zT1 - zT0;
+  const yE = yB + BT + LH / 2;
+  const xPiv = xi - 2 - LW / 2, zPiv = zAt(yE) - 4, yPiv = yE;
+  const parts: CustomPart[] = [
+    endFrame("E0", -1, xf, FT, y0, H, zAt, [{ y: yTb, h: 60 }, { y: yBb, h: 60 }]),
+    ...[-1, 1].map((sz, i): CustomPart => ({ id: `R${i}`, name: "Low rail", size: [RW, 60, RT], pos: [0, yBb, sz * zLo], material: "wood" })),
+    { id: "RK", name: "Back rail", size: [RW, 60, RT], pos: [0, yK, zK], material: "wood" },
+    { id: "RF", name: "Front rail", size: [RW, 60, RT], pos: [0, yF, zF], material: "wood" },
+    endFrame("E1", 1, xf, FT, y0, H, zAt, [{ y: yTb, h: 60 }, { y: yBb, h: 60 }]),
+    ...[-1, 1].map((sx, i): CustomPart => ({ id: `SA${i}`, name: "Swing arm", size: [20, 110, 36], pos: [sx * (xi - 10), yTb - 40, -120], material: "wood" })),
+    {
+      id: "T",
+      name: "Desk top",
+      size: [2 * xT, BT + LH, dT],
+      pos: [0, yB + (BT + LH) / 2, zTc],
+      material: "board",
+      // the white board with its raised wooden edge on three sides, built on the rug first
+      pieces: [
+        { shape: "box", size: [2 * xT, BT, dT], pos: [0, -LH / 2, 0] },
+        { shape: "box", size: [2 * xT - 2 * LW, LH, LW], pos: [0, BT / 2, -dT / 2 + LW / 2], material: "wood" },
+        ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [LW, LH, dT], pos: [sx * (xT - LW / 2), BT / 2, 0], material: "wood" })),
+      ],
+    },
+    ...[-1, 1].flatMap((sx, i) => [-1, 1].map((sz, j) => slantLeg(`G${i}${j}`, sx, sz, xl, hL, top, foot))),
+    { id: "PR", name: "Paper roll rod", size: [2 * xT - 2 * LW, 24, 24], pos: [0, yB + BT + LH, zT0 + LW + 14], shape: "cyl", material: "wood" },
+    { id: "ST", name: "Strap", size: [40, 110, 3], pos: [0, (yK - 20 + yE + 8) / 2, zT0 - 1.5], material: "soft" },
+  ];
+  const ends = (id: string, y: number, z: number) => [-1, 1].map((sx) => fx("dowel", id, [-sx, 0, 0], [[sx * xi, y, z]]));
+  const big = (sx: -1 | 1, f: string) =>
+    fx("bolt", f, [-sx, 0, 0], ([[yBb, -zLo], [yBb, zLo], [yK, zK]] as const).map(([y, z]) => [sx * (xf + FT / 2), y, z] as Vec3), { name: "Screw", len: 50, dia: 6 });
+  const mid = (sx: -1 | 1, f: string) => fx("bolt", f, [-sx, 0, 0], [[sx * (xf + FT / 2), yF, zF]], { name: "Screw", len: 40, dia: 6 });
+  const legs = parts.filter((p) => p.name === "Leg").map((p) => p.id);
+  const lipScrews: Vec3[] = [
+    ...[-300, 0, 300].map((x): Vec3 => [x, yB, zT0 + LW / 2]),
+    ...[-1, 1].flatMap((sx) => [zT0 + 120, zTc, zT1 - 60].map((z): Vec3 => [sx * (xT - LW / 2), yB, z])),
+  ];
+  const lipDowels = [
+    fx("dowel", "T", [0, 1, 0], [-200, 200].map((x) => [x, yB + BT, zT0 + LW / 2] as Vec3)),
+    ...[-1, 1].map((sx) => fx("dowel", "T", [0, 1, 0], [zT0 + 200, zT1 - 120].map((z) => [sx * (xT - LW / 2), yB + BT, z] as Vec3))),
+  ];
+  const cones = [-1, 1].map((sx) => [sx * (xi - 60), yK + 30, zK] as Vec3);
+  return {
+    parts,
+    steps: [
+      {
+        title: "Stand the two low rails in one end frame",
+        detail: "Lay an end frame flat on the rug. A dowel in each end of both low rails, then push them into the bottom bar.",
+        add: ["E0", "R0", "R1"],
+        fix: [...ends("R0", yBb, -zLo), ...ends("R1", yBb, zLo)],
+        from: { R0: [320, 0, 0], R1: [320, 0, 0] },
+        pose: "+x",
+        tools: ["hammer"],
+        warnings: ["floor"],
+      },
+      { title: "Add the back rail", detail: "Two dowels in it, then push it into the top bar at the back.", add: ["RK"], fix: ends("RK", yK, zK), from: { RK: [320, 0, 0] } },
+      { title: "Add the front rail", detail: "The same way, into the top bar at the front.", add: ["RF"], fix: ends("RF", yF, zF), from: { RF: [320, 0, 0] } },
+      { title: "Lay the other end frame on top", detail: "Press it down onto all four dowels.", add: ["E1"], from: { E1: [300, 0, 0] } },
+      { title: "Screw the low rails and the back rail", detail: "Three of the big screws through the end frame, with the Allen key. Not a drill.", fix: [big(1, "E1")], tools: ["allen"] },
+      { title: "Screw the front rail", detail: "One of the two medium screws, into the front rail.", fix: [mid(1, "E1")], tools: ["allen"] },
+      { title: "Turn it over together", detail: "Two people, so the joints don't twist.", pose: "-x", people: 2 },
+      { title: "Screw the other end frame", detail: "Three big screws into the low rails and the back rail.", fix: [big(-1, "E0")], tools: ["allen"] },
+      { title: "Screw the front rail on this side", detail: "The last medium screw.", fix: [mid(-1, "E0")], tools: ["allen"] },
+      {
+        title: "Bolt the swing arms inside the end frames",
+        detail: "Stand the frame up. A barrel nut into the outside of each end frame, then a bolt through the arm into it. Leave the arms free to swing.",
+        add: ["SA0", "SA1"],
+        fix: [
+          ...[-1, 1].map((sx, i) => fx("nut", `E${i}`, [-sx, 0, 0], [[sx * (xf + FT / 2), yTb - 70, -120]], { name: "Barrel nut", len: 20, dia: 10 })),
+          ...[-1, 1].map((sx, i) => fx("bolt", `SA${i}`, [sx, 0, 0], [[sx * (xi - 20), yTb - 70, -120]], { mate: `E${i}`, len: 35, dia: 6 })),
+        ],
+        from: { SA0: [200, 0, 0], SA1: [-200, 0, 0] },
+        pose: "+y",
+        tools: ["allen"],
+      },
+      {
+        title: "Screw the rubber stops onto the back rail",
+        detail: "One near each end, a small washer under each long screw.",
+        fix: [
+          fx("cap", "RK", [0, -1, 0], cones.map(([x, y, z]) => [x, y + 20, z] as Vec3), { name: "Rubber stop", len: 20, dia: 30 }),
+          fx("screw", "RK", [0, -1, 0], cones.map(([x, y, z]) => [x, y + 22, z] as Vec3), { len: 50, dia: 4 }),
+          fx("washer", "RK", [0, -1, 0], cones.map(([x, y, z]) => [x, y + 22, z] as Vec3), { dia: 10 }),
+        ],
+        tools: ["screwdriver"],
+      },
+      {
+        title: "Join the edges of the top",
+        detail: "Two dowels in each end of the back edge, then push the two side edges onto them.",
+        fix: [-1, 1].map((sx) => fx("dowel", "T", [-sx, 0, 0], [yE - 7, yE + 7].map((y) => [sx * (xT - LW), y, zT0 + LW / 2] as Vec3))),
+        wait: ["T"],
+        tools: ["hammer"],
+      },
+      { title: "Tap dowels into the edge", detail: "Six along the underside of the edge frame you just made.", fix: lipDowels, tools: ["hammer"] },
+      { title: "Lay the board on the edge frame", detail: "Turn the edge frame over, dowels down, and press it onto the board. Then turn the top face down on the rug, carefully." },
+      { title: "Screw the board to the edge frame", detail: "Nine screws up through the board, with the Allen key.", fix: [fx("screw", "T", [0, 1, 0], lipScrews, { len: 40, dia: 5 })], tools: ["allen"] },
+      {
+        title: "Push the barrel nuts into the top's sides",
+        detail: "One near the front of each side edge, its slot turned to take the bolt.",
+        fix: [-1, 1].map((sx) => fx("nut", "T", [sx, 0, 0], [[sx * (xT - LW), yPiv, zPiv]], { name: "Barrel nut", len: 20, dia: 10 })),
+      },
+      {
+        title: "Put washers on the pivot holes",
+        detail: "Press one onto the inside of each end frame, over the hole near the top front.",
+        fix: [-1, 1].map((sx, i) => fx("washer", `E${i}`, [sx, 0, 0], [[sx * xi, yPiv, zPiv]], { dia: 20 })),
+      },
+      { title: "Lower the top into the frame", detail: "Between the end frames, the raised edge at the back.", add: ["T"], from: { T: [0, 260, 0] } },
+      { title: "Hook the top onto the pivots", detail: "Slide it forward until the slots under its sides sit on both washers." },
+      {
+        title: "Bolt the top to the end frames",
+        detail: "One bolt through each end frame into the barrel nut. Firm, but the top must still tilt.",
+        fix: [-1, 1].map((sx, i) => fx("bolt", `E${i}`, [-sx, 0, 0], [[sx * (xf + FT / 2), yPiv, zPiv]], { mate: "T", len: 40, dia: 6 })),
+        tools: ["allen"],
+      },
+      {
+        title: "Tap a glide into each leg",
+        detail: "Into the hole in the foot end, with a hammer.",
+        fix: legs.map((id) => {
+          const p = parts.find((q) => q.id === id)!;
+          return fx("glide", id, [0, 1, 0], [[p.pos[0], 0, (id[2] === "0" ? -1 : 1) * foot]], { name: "Glide" });
+        }),
+        wait: legs,
+        tools: ["hammer"],
+      },
+      {
+        title: "Bolt on the legs at the height you want",
+        detail: "Two knob bolts through each leg into the end frame, all four legs in the same row of holes.",
+        add: legs,
+        from: Object.fromEntries(legs.map((id) => [id, [id[1] === "0" ? -200 : 200, 0, 0] as Vec3])),
+        fix: [-1, 1].flatMap((sx, i) => [-1, 1].map((sz) => fx("bolt", `E${i}`, [-sx, 0, 0], [y0 + 120, yTb - 80].map((y) => [sx * (xl + LT / 2), y, sz * zAt(y)] as Vec3), KNOB))).map((f) => ({ ...f, on: undefined })),
+      },
+      { title: "Lay the rod in the back notches", detail: "It holds a paper roll behind the raised edge.", add: ["PR"], from: { PR: [0, 160, 0] } },
+      { title: "Try the tilt", detail: "Lift the back of the top and swing the arms up under it to hold it. Lower it again to lay it flat." },
+      {
+        title: "Screw on the strap",
+        detail: "From the back edge of the top down to the back rail, a washer under each small screw. It stops the top tipping too far.",
+        add: ["ST"],
+        fix: [
+          fx("screw", "ST", [0, 0, 1], [[0, yE, zT0 - 3]], { len: 16, dia: 4, mate: "T" }),
+          fx("screw", "ST", [0, 0, 1], [[0, yK - 15, zT0 - 3]], { len: 16, dia: 4, mate: "RK" }),
+          fx("washer", "ST", [0, 0, 1], [[0, yE, zT0 - 3], [0, yK - 15, zT0 - 3]], { dia: 12 }),
+        ],
+        from: { ST: [0, 0, -120] },
+        tools: ["screwdriver"],
+      },
+    ],
+  };
+}
+
+/**
+ * The wall storage: two end pieces take two cam bolts each, the bottom (grooved for the back) and the back board
+ * take dowels, one end goes on, the back drops into the groove, the other end closes it and four cam locks pull it
+ * tight. Lying on its back, the front rail lies in the notches of the ends and a long screw holds each end. Two
+ * screws (not included) through the back hang it on the wall.
+ */
+function wallStorage(s: ProductSpec): CustomParams {
+  const W = s.size.w * 10 || 700, H = s.size.h * 10 || 160, D = s.size.d * 10 || 90;
+  const ET = 18, xi = W / 2 - ET, xe = W / 2 - ET / 2;
+  const KT = 12, zK = -D / 2 + KT / 2, BT = 18;
+  const yR = H - 32, zR = D / 2 - 16;
+  const parts: CustomPart[] = [
+    ...[-1, 1].map((sx, i): CustomPart => ({ id: `E${i}`, name: "End piece", size: [ET, H, D], pos: [sx * xe, H / 2, 0], material: "wood" })),
+    { id: "B", name: "Bottom", size: [2 * xi, BT, D - KT - 4], pos: [0, BT / 2, (D / 2 - 4 + -D / 2 + KT) / 2], material: "wood" },
+    { id: "K", name: "Back board", size: [2 * xi, H - 6, KT], pos: [0, (H + 6) / 2, zK], material: "wood" },
+    { id: "R", name: "Front rail", size: [W + 4, 20, 20], pos: [0, yR, zR], shape: "cyl", material: "wood" },
+  ];
+  const yKb = H / 2 + 20, zB = 8;
+  const cams = [-1, 1].map((sx, i) => fx("camScrew", `E${i}`, [sx, 0, 0], [[sx * xi, yKb, zK], [sx * xi, BT / 2, zB]], { len: 34, dia: 6 }));
+  const locks = (i: number) => {
+    const sx = i ? 1 : -1;
+    return [fx("cam", "K", [0, 0, 1], [[sx * (xi - 26), yKb, -D / 2]], { dia: 15 }), fx("cam", "B", [0, 1, 0], [[sx * (xi - 26), 0, zB]], { dia: 15 })];
+  };
+  return {
+    parts,
+    steps: [
+      { title: "Screw the cam bolts into the end pieces", detail: "Two in each, by hand with a screwdriver. Not a drill.", fix: cams, wait: ["E0", "E1"], tools: ["screwdriver"], warnings: ["floor"] },
+      { title: "Tap the dowels into the bottom", detail: "Two in each end.", fix: [-1, 1].map((sx) => fx("dowel", "B", [-sx, 0, 0], [-15, 25].map((z) => [sx * xi, BT / 2, z] as Vec3))), wait: ["B"], tools: ["hammer"] },
+      { title: "Push one end piece onto the bottom", detail: "Its notch at the top and the groove of the bottom towards the back.", add: ["B", "E0"], from: { E0: [-160, 0, 0] } },
+      { title: "Tap the dowels into the back board", detail: "One in each end.", fix: [-1, 1].map((sx) => fx("dowel", "K", [-sx, 0, 0], [[sx * xi, H - 30, zK]])), wait: ["K"], tools: ["hammer"] },
+      { title: "Fit the back board", detail: "Its lower edge in the groove of the bottom, its dowel and bolt into the end piece.", add: ["K"], from: { K: [260, 0, 0] } },
+      { title: "Put on the other end piece and lock it", detail: "Press it onto the dowels and bolts, then turn the four cam locks clockwise until they pull tight.", add: ["E1"], from: { E1: [160, 0, 0] }, fix: [...locks(0), ...locks(1)], tools: ["screwdriver"] },
+      {
+        title: "Screw in the front rail",
+        detail: "Turn it onto its back. Lay the rail in the notches and drive a long screw through each end into the end piece.",
+        add: ["R"],
+        from: { R: [0, 0, 120] },
+        fix: [-1, 1].map((sx) => fx("bolt", "R", [0, 0, -1], [[sx * xe, yR, zR + 10]], { name: "Screw", len: 40, dia: 5, mate: sx < 0 ? "E0" : "E1" })),
+        pose: "+z",
+        tools: ["allen"],
+      },
+      {
+        title: "Hang it on the wall",
+        detail: "Two screws through the back board. They aren't included: pick ones made for your wall, with heads that don't sink in.",
+        fix: [
+          fx("plug", "K", [0, 0, -1], [-1, 1].map((sx) => [sx * (xi - 60), H - 30, -D / 2 - 30] as Vec3)),
+          fx("screw", "K", [0, 0, -1], [-1, 1].map((sx) => [sx * (xi - 60), H - 30, -D / 2 + KT] as Vec3), { len: 50, dia: 5 }),
+        ].map((f) => ({ ...f, on: undefined })),
+        pose: "+y",
+        tools: ["screwdriver", "drill", "pencil", "level"],
+        wall: true,
+        warnings: ["wall"],
+      },
+    ],
+  };
+}
+
 const family: Family = {
   names: ["FLISAT"],
   recipe(s) {
@@ -335,6 +648,9 @@ const family: Family = {
     if (/children-s-table/.test(slug)) return table(s);
     if (/children-s-stool/.test(slug)) return stool(s);
     if (/open-storage/.test(slug)) return storage(s);
+    if (/children-s-bench/.test(slug)) return bench(s);
+    if (/children-s-desk/.test(slug)) return desk(s);
+    if (/wall-storage/.test(slug)) return wallStorage(s);
     return null;
   },
 };

@@ -343,13 +343,16 @@ function underframeSteps(b: PlanBuilder, g: Grid) {
 }
 
 /** Inserts with a door, from their own manual: the folded insert into its cube, hinge plates, door on its hinges, knob. */
-function insertRecipe(g: Grid, n: number): CustomParams {
+function insertRecipe(g: Grid, n: number, bottomUp = false): CustomParams {
   const { W, H, D, U, T, ti, cols, rows } = g;
   const cw = (W - 2 * T - (cols - 1) * ti) / cols, ch = (H - 2 * T - (rows - 1) * ti) / rows;
   const cx = (c: number) => -W / 2 + T + c * (cw + ti) + cw / 2;
   const cy = (r: number) => U + H - T - r * (ch + ti) - ch / 2; // r from the top
   // the middle rows fill first, as in IKEA's photos
-  const order = Array.from({ length: rows }, (_, r) => r).sort((a, b) => Math.abs(a - (rows - 1) / 2) - Math.abs(b - (rows - 1) / 2) || a - b);
+  // (the unit sold "with doors" has them in the bottom row)
+  const order = bottomUp
+    ? Array.from({ length: rows }, (_, r) => rows - 1 - r)
+    : Array.from({ length: rows }, (_, r) => r).sort((a, b) => Math.abs(a - (rows - 1) / 2) - Math.abs(b - (rows - 1) / 2) || a - b);
   const cells = order.flatMap((r) => Array.from({ length: cols }, (_, c) => [c, r] as const)).slice(0, n);
   const wt = 8, dt = 16;
   const bd = D - dt - 2;
@@ -591,11 +594,157 @@ function deskRecipe(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/**
+ * The TV bench, from its own manual: two big cubes over four small ones. Built lying on its back like the frames: the
+ * bottom bolted to one side, three small dividers on dowels, the long shelf, two long dowels through it for the top
+ * divider, the top (with its wall brackets already screwed under it) and the last side. With an underframe it is
+ * turned upside down for the underframe's manual instead of getting its felt pads.
+ */
+function tvBench(s: ProductSpec): { recipe: CustomParams; grid: Grid } {
+  const U = /underframe/i.test(s.variant) ? s.size.h * 10 - 596 : 0;
+  const W = s.size.w * 10, H = s.size.h * 10 - U, D = s.size.d * 10;
+  const T = 40, ti = 16;
+  const cw = (W - 2 * T - 3 * ti) / 4; // the small cubes are square
+  const yB = U + T, yS = yB + cw + ti / 2, yT = U + H - T; // inside of the bottom, middle of the shelf, underside of the top
+  const vx = (c: number) => -W / 2 + T + c * cw + (c - 1) * ti + ti / 2;
+  const parts: CustomPart[] = [
+    { id: "B", name: "Top and bottom", size: [W, T, D], pos: [0, U + T / 2, 0] },
+    { id: "TP", name: "Top and bottom", size: [W, T, D], pos: [0, U + H - T / 2, 0] },
+    { id: "SL", name: "Side panel", size: [T, H - 2 * T, D], pos: [-W / 2 + T / 2, U + H / 2, 0] },
+    { id: "SR", name: "Side panel", size: [T, H - 2 * T, D], pos: [W / 2 - T / 2, U + H / 2, 0] },
+    ...[1, 2, 3].map((c): CustomPart => ({ id: `V${c}`, name: "Small divider", size: [ti, cw, D], pos: [vx(c), yB + cw / 2, 0] })),
+    { id: "SH", name: "Long shelf", size: [W - 2 * T, ti, D], pos: [0, yS, 0] },
+    { id: "VU", name: "Top divider", size: [ti, yT - yS - ti / 2, D], pos: [0, (yS + ti / 2 + yT) / 2, 0] },
+  ];
+  for (const p of parts) p.material = "board";
+  const zs = D / 2 - 75;
+  const pair = (x: number, y: number): Vec3[] => [[x, y, -zs], [x, y, zs]];
+  const fx = (kind: CustomFix["kind"], on: string, dir: Vec3, at: Vec3[], o: Partial<CustomFix> = {}): CustomFix => ({ kind, count: at.length, on, dir, at, ...o });
+  const bolt = { len: BOLT.len, dia: BOLT.dia };
+  const xL = -W / 2 + T / 2, xR = W / 2 - T / 2;
+  const brackets: Vec3[] = [-1, 1].map((sx) => [sx * (W / 2 - T - 60), yT, -D / 2 + 16]);
+  const steps: CustomStep[] = [
+    {
+      title: "Bolt the bottom to a side",
+      detail: "Lay both on a rug on their long edges, holes facing in. Turn the two bolts in with the Allen key, not too tight yet.",
+      add: ["B", "SL"],
+      fix: [fx("bolt", "B", [0, 1, 0], pair(xL, U), { mate: "SL", ...bolt })],
+      tools: ["allen"],
+      pose: "+z",
+      warnings: ["floor"],
+    },
+    {
+      title: "Tap dowels into the four dividers",
+      detail: "Two short dowels into one end of each. Keep the two long dowels for later.",
+      fix: [
+        ...[1, 2, 3].map((c) => fx("dowel", `V${c}`, [0, -1, 0], pair(vx(c), yB), { mate: "B" })),
+        fx("dowel", "VU", [0, 1, 0], pair(0, yT), { mate: "TP" }),
+      ],
+      wait: ["V1", "V2", "V3", "VU"],
+      tools: ["hammer"],
+    },
+    { title: "Push the three small dividers onto the bottom", detail: "Dowel ends into the holes in the bottom, evenly spaced.", add: ["V1", "V2", "V3"] },
+    {
+      title: "Tap dowels into the two outer dividers",
+      detail: "Two in the free end of each. The middle one stays plain: it gets the long dowels.",
+      fix: [1, 3].map((c) => fx("dowel", `V${c}`, [0, 1, 0], pair(vx(c), yS - ti / 2), { mate: "SH" })),
+      tools: ["hammer"],
+    },
+    {
+      title: "Tap dowels into the ends of the long shelf",
+      detail: "Two short dowels in each end.",
+      fix: [fx("dowel", "SH", [-1, 0, 0], pair(-W / 2 + T, yS), { mate: "SL" }), fx("dowel", "SH", [1, 0, 0], pair(W / 2 - T, yS), { mate: "SR" })],
+      wait: ["SH"],
+      tools: ["hammer"],
+    },
+    {
+      title: "Fit the long shelf",
+      detail: "Its end goes into the side first, then swing it down onto the dividers' dowels.",
+      add: ["SH"],
+      from: { SH: [360, 360, 0] },
+    },
+    {
+      title: "Tap the two long dowels through the shelf",
+      detail: "In the middle, over the plain divider. They go right through into its end.",
+      fix: [fx("dowel", "SH", [0, 1, 0], pair(0, yS + ti / 2), { mate: "VU", len: 60, name: "Long dowel" })],
+      tools: ["hammer"],
+    },
+    { title: "Push the top divider onto the long dowels", detail: "Plain end first, dowelled end out.", add: ["VU"] },
+    {
+      title: "Screw the wall brackets onto the top",
+      detail: "Lay the top beside the frame. One bracket at each end of the back edge, two screws in each.",
+      fix: [
+        fx("bracket", "TP", [0, 1, 0], brackets, { len: 60, dia: 40 }),
+        fx("screw", "TP", [0, 1, 0], brackets.flatMap(([x, y, z]) => [[x - 12, y, z + 10], [x + 12, y, z + 10]] as Vec3[]), { len: 14, dia: 3.5 }),
+      ],
+      wait: ["TP"],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Bolt on the top",
+      detail: "Press it onto the top divider's dowels, then two bolts into the first side.",
+      add: ["TP"],
+      fix: [fx("bolt", "TP", [0, -1, 0], pair(xL, U + H), { mate: "SL", ...bolt })],
+      tools: ["allen"],
+    },
+    {
+      title: "Bolt on the other side",
+      detail: "Onto the shelf's dowels, then four bolts through the top and the bottom. Tighten all the bolts now.",
+      add: ["SR"],
+      fix: [fx("bolt", "TP", [0, -1, 0], pair(xR, U + H), { mate: "SR", ...bolt }), fx("bolt", "B", [0, 1, 0], pair(xR, U), { mate: "SR", ...bolt })],
+      tools: ["allen"],
+      check: "square",
+    },
+  ];
+  if (!U) {
+    const pads: Vec3[] = [-D / 2 + 40, D / 2 - 40].flatMap((z) => [-W / 2 + 40, 0, W / 2 - 40].map((x) => [x, 0, z] as Vec3));
+    steps.push({ title: "Stick the felt pads under it", detail: "Turn it over and press six pads on: three along the front, three along the back.", fix: [fx("glide", "B", [0, 1, 0], pads, { len: PAD.len, dia: PAD.dia })], pose: "-y" });
+    steps.push({ title: "Stand it up together", detail: "Lift it upright between two of you, don't pull it up by one end.", pose: "+y", people: 2, warnings: ["two"] });
+  } else steps.push({ title: "Turn it upside down", detail: "On the rug, so the bottom faces up for the underframe.", pose: "-y" });
+  const grid: Grid = { W, H, D, U, T, ti, cols: 4, rows: 2, lying: true, ct: 2, rt: 4, Wt: H, Ht: W, pattern: "big" };
+  return { recipe: { parts, steps }, grid };
+}
+
+/** The TV bench's wall fixing: mark through the brackets, two screws in the wall, the wall plates hooked on, covers. */
+function benchWall(b: PlanBuilder, g: Grid, topPos: Vec3) {
+  const top = keyAt(b, topPos);
+  if (!top) return;
+  const yTop = g.U + g.H - g.T, backZ = -g.D / 2;
+  const xs = [-1, 1].map((sx) => sx * (g.W / 2 - g.T - 60));
+  b.step(
+    {
+      title: "Fix it to the wall",
+      detail: "Mark through the brackets with it in place, then two screws in the wall. Hook the plates on, adjust them and snap the covers on. Wall screws aren't included: pick ones made for your wall.",
+      tools: ["screwdriver", "drill", "pencil", "level"],
+      kind: "anchor",
+      wall: true,
+      warnings: ["wall", "tip"],
+    },
+    () => {
+      b.stagger(0.1);
+      for (const x of xs) b.fit(HW.plug, { at: [x, yTop - 30, backZ], dir: [0, 0, -1] });
+      b.then(0.05);
+      for (const x of xs) b.fit(HW.wallScrew, { at: [x, yTop - 30, backZ + 2], dir: [0, 0, -1] });
+      b.then(0.1);
+      for (const x of xs) b.fit({ kind: "clip", len: 4, dia: 30, name: "Wall plate" }, { on: top, at: [x, yTop - 30, backZ + 8], dir: [0, 0, -1], hole: false });
+      b.then(0.1);
+      for (const x of xs) b.fit(COVER, { on: top, at: [x, yTop - 30, backZ + 40], dir: [0, 0, -1], hole: false });
+    },
+  );
+}
+
 const family: Family = {
   names: ["KALLAX"],
   build(b, s) {
     if (/^kallax-desk/.test(s.slug ?? "")) {
       buildCustom(b, { ...s, custom: deskRecipe(s) });
+      return true;
+    }
+    if (/^kallax-tv-bench/.test(s.slug ?? "")) {
+      const { recipe, grid } = tvBench(s);
+      buildCustom(b, { ...s, custom: recipe });
+      if (grid.U) underframeSteps(b, grid);
+      benchWall(b, grid, recipe.parts.find((p) => p.id === "TP")!.pos);
       return true;
     }
     const g = gridOf(s);
@@ -604,8 +753,9 @@ const family: Family = {
     buildCustom(b, { ...s, custom: recipe });
     if (g.U) underframeSteps(b, g);
     wallStep(b, g, recipe.parts.find((p) => p.id === topId)!.pos);
-    const n = Math.round(s.shelf?.inserts ?? 0);
-    if (n > 0) buildCustom(b, { ...s, custom: insertRecipe(g, Math.min(n, g.cols * g.rows)) });
+    const doors = /with doors/i.test(s.variant);
+    const n = Math.round(s.shelf?.inserts ?? (doors ? 2 : 0));
+    if (n > 0) buildCustom(b, { ...s, custom: insertRecipe(g, Math.min(n, g.cols * g.rows), doors) });
     return true;
   },
 };

@@ -698,7 +698,8 @@ function guideOf(s: ProductSpec): Guide | null {
   const yb = legH || FOOT_H;
   const f: Frame = { p: "A", cx: 0, W, H: Hf, D, yb, build, cols };
   const g: Guide = { frames: [f], legH, doors: [], drawers: [], shelves: [], stops: [] };
-  const doors = /doors?/i.test(s.variant) || (s.cabinet?.doors ?? 0) > 0;
+  // the cabinet unit is the open frame with shelves and legs: its doors are sold apart
+  const doors = !/^besta-cabinet-unit/.test(slug) && (/doors?/i.test(s.variant) || (s.cabinet?.doors ?? 0) > 0);
   const drawers = /drawers/i.test(s.variant);
   const hingeOf = (c: number): -1 | 1 => (cols > 1 && c === cols - 1 ? 1 : -1);
   const inner = Hf - 2 * T;

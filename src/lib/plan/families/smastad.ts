@@ -1,5 +1,5 @@
 import type { Family } from "./family";
-import type { CustomFix, CustomParams, CustomPart, CustomStep, Pose, ProductSpec, StepKind, ToolId, Vec3, WarnId } from "../../types";
+import type { CustomFix, CustomParams, CustomPart, CustomStep, PartMaterial, Pose, ProductSpec, StepKind, ToolId, Vec3, WarnId } from "../../types";
 import { HW, type FitOpts, type HwDef, type PlanBuilder } from "../builder";
 import { buildCustom } from "../custom";
 
@@ -17,6 +17,13 @@ import { buildCustom } from "../custom";
  * table/desk is its own frame (bottom, shelf and divider, then the sides lying on its back, two backs, four feet),
  * screwed to the wall, with a rimmed tray that slides onto two brackets: high for changing, low for the desk, which
  * also gets two KONSTRUERA drawers.
+ * The loft bed follows its three manuals in turn. The storage (wardrobe and bookcase in one) is built lying on its
+ * wardrobe side and stood up by two. The bed frame is built upside down beside it: the end panel's two halves join
+ * on connectors, steel rails go on the back guard and front rail, then the guard, two cross boards and the rail are
+ * bolted on; the end guard is cam-locked on the storage and the frame is turned over onto it. A back rail, the front
+ * guard, ten bolts into the storage top and the ladder (rungs on dowels, screwed and cam-locked to the bed and the
+ * storage) finish it. The desk cabinet is built upside down, its top bolted on, then it is carried in under the bed
+ * and locked to the back rail. KONSTRUERA drawers, HJÄLPA rails and soft-closing hinges follow their own manuals.
  */
 
 const FEET = 10; // LÄTTHET adjustable feet under a PLATSA frame
@@ -70,6 +77,7 @@ function keyAt(b: PlanBuilder, pos: Vec3) {
 type StepOpts = { title: string; detail?: string; kind?: StepKind; tools?: ToolId[]; pose?: Pose; scene?: string; people?: 1 | 2; repeat?: number; warnings?: WarnId[]; wall?: boolean };
 const step = (b: PlanBuilder, o: StepOpts, body: () => void = () => {}) =>
   b.step({ kind: "general", ...o, warnings: o.warnings ?? (o.people === 2 ? ["two"] : []) }, body);
+const stepOf = step;
 
 /* ---------- what each frame guide holds ---------- */
 
@@ -916,6 +924,623 @@ function changingRecipe(s: ProductSpec, desk: boolean): CustomParams {
   return { parts, steps: [...steps, ...drawerSteps] };
 }
 
+/* ---------- the loft bed: storage, bed frame, ladder, desk, then drawers, rails and doors, each in its manual's order ---------- */
+
+// the storage, bed and desk boxes
+const L_CONBOLT: HwDef = { kind: "camScrew", len: 40, dia: 8, name: "Connector bolt" };
+const L_DOWEL: HwDef = { kind: "dowel", len: 40, dia: 8 };
+const L_DOWEL_S: HwDef = HW.dowel;
+const L_CONNECTOR: HwDef = { kind: "connector", len: 14, dia: 50, name: "Panel connector" };
+const L_CONCAP: HwDef = { kind: "cap", len: 4, dia: 52 };
+const L_RSCREW: HwDef = { kind: "screw", len: 16, dia: 4 };
+const L_BOLT: HwDef = { kind: "bolt", len: 90, dia: 6 };
+const L_BARREL: HwDef = { kind: "nut", len: 16, dia: 12, name: "Barrel nut" };
+const L_HEXNUT: HwDef = { kind: "nut", len: 5, dia: 8, name: "Hex nut" };
+const L_BOLT_S: HwDef = { kind: "bolt", len: 30, dia: 6 };
+const L_SLEEVE: HwDef = { kind: "nut", len: 18, dia: 10, name: "Sleeve nut" };
+const L_BOLT_M: HwDef = { kind: "bolt", len: 60, dia: 6 };
+const L_CAMBOLT: HwDef = { kind: "camScrew", len: 36, dia: 7 };
+const L_CAM: HwDef = { kind: "cam", len: 14, dia: 20 };
+const L_CAM_S: HwDef = { kind: "cam", len: 12, dia: 16 };
+const L_LAG: HwDef = { kind: "screw", len: 70, dia: 6 };
+const L_PAD: HwDef = { kind: "glide", len: 6, dia: 30, name: "Glide" };
+const L_GRIP_O: HwDef = { kind: "handle", len: 110, dia: 30, name: "Hand grip, outer half" };
+const L_GRIP_I: HwDef = { kind: "handle", len: 100, dia: 26, name: "Hand grip, inner half" };
+const L_STRIP: HwDef = { kind: "glide", len: 2, dia: 90, name: "Anti-slip strip" };
+const L_CAP_M: HwDef = { kind: "cap", len: 8, dia: 14 };
+const L_CAP_S: HwDef = { kind: "cap", len: 8, dia: 10 };
+const L_CAP_T: HwDef = { kind: "cap", len: 6, dia: 7, name: "Hole plug" };
+const L_GROMMET: HwDef = { kind: "cap", len: 20, dia: 70, name: "Cable outlet" };
+// HJÄLPA rails
+const L_HSCREW: HwDef = { kind: "screw", len: 13, dia: 4 };
+const L_HWASHER: HwDef = { kind: "washer", len: 1.5, dia: 14 };
+
+type Ext = [number, number, number, number, number, number]; // x0 x1 y0 y1 z0 z1
+const midOf = (e: Ext): Vec3 => [(e[0] + e[1]) / 2, (e[2] + e[3]) / 2, (e[4] + e[5]) / 2];
+const dimsOf = (e: Ext): Vec3 => [e[1] - e[0], e[3] - e[2], e[5] - e[4]];
+
+// a KONSTRUERA drawer in its frame: u across (left to right seen from the front), v up, w out of the front (0 at the frame's front)
+interface DrawerSpec {
+  id: string;
+  axis: "z" | "x"; // the way its front faces
+  c: number; // centre across the front (x for a front facing z, z for one facing x)
+  wf: number; // the frame's front plane
+  iw0: number; // room between the frame's sides
+  dd: number; // box depth
+  yb: number; // underside of the box
+  bh: number; // box height
+  fy: [number, number]; // the front's bottom and top
+  fw: number; // front width
+  sides: [string, string]; // frame parts the rails screw to, left then right seen from the front
+  runW?: number[]; // where the rail screws go along the rail (w), when the side isn't one whole panel
+}
+
+function loftBed(b: PlanBuilder, s: ProductSpec) {
+  const L = s.size.w * 10, D = s.size.d * 10, HT = s.size.h * 10;
+  const T = 18, LAD = 130, SD = 570, HS = 1420;
+  const xL = -L / 2, xR = L / 2, xs0 = xR - SD; // the storage stands under the right end, its front facing out (+x)
+  const zB = -D / 2, zF = D / 2 - LAD; // the frame's back and front; the ladder stands in front of it
+  const zW0 = zB + T, zW1 = zW0 + 600, zD1 = zW1 + T, zK = zF - T; // wardrobe, divider, bookcase
+  const zm = (zB + zF) / 2;
+  const types = new Map<string, string>();
+  const keys = new Map<string, string>();
+  const part = (id: string, name: string, e: Ext, material: PartMaterial = "board", extra?: boolean) => {
+    const size = dimsOf(e);
+    const tk = `${name}|${size.join("x")}|${material}`;
+    if (!types.has(tk)) types.set(tk, b.part(name, size, { material, extra }));
+    keys.set(id, b.place(types.get(tk)!, midOf(e)));
+  };
+  // the two L-shaped steel rails: one flange screwed to the guard, the other carries the mattress
+  const railPieces = (x0: number, x1: number) => [
+    { shape: "box" as const, size: [x1 - x0, 30, 3] as Vec3, pos: [(x0 + x1) / 2, 1450, zW0 + 1.5] as Vec3 },
+    { shape: "box" as const, size: [x1 - x0, 3, 30] as Vec3, pos: [(x0 + x1) / 2, 1436.5, zW0 + 15] as Vec3 },
+  ];
+  const railT = b.compound("Bed rail", railPieces(xL + T, xs0), { material: "metal" });
+  keys.set("MRb", b.place(railT.type, railT.mid));
+  keys.set("MRf", b.place(railT.type, [railT.mid[0], railT.mid[1], zK - (railT.mid[2] - zW0)], [0, Math.PI, 0]));
+  const k = (id: string) => keys.get(id)!;
+  const fin = (id: string) => b.partItem(k(id)).final.pos;
+  const put = (ids: string[], from?: Vec3) => ids.forEach((id) => b.add(k(id), from));
+  const show = (ids: string[], from?: Vec3, off: Vec3 = [0, 0, 0], rot?: Vec3) =>
+    ids.forEach((id) => {
+      const it = b.partItem(k(id));
+      const p = it.final.pos;
+      b.stage(k(id), [p[0] + off[0], p[1] + off[1], p[2] + off[2]], rot ?? it.final.rot, from);
+    });
+  const fit = (def: HwDef, host: string, pts: Vec3[], dir: Vec3, mate?: string, more: Partial<FitOpts> = {}) =>
+    b.fits(def, pts.map((at): FitOpts => ({ on: k(host), at, dir, ...(mate ? { mate: k(mate) } : {}), ...more })), 0.07);
+  const xsAt = (a: number, c: number, n: number) => spread(a, c, n);
+  // a pose lasts until a later step in the same scene changes it, as in the manual
+  const poses = new Map<string, Pose>();
+  const step = (bb: PlanBuilder, o: StepOpts, body: () => void = () => {}) => {
+    const sc = o.scene ?? "main";
+    const pose = o.pose ?? poses.get(sc) ?? "+y";
+    poses.set(sc, pose);
+    return stepOf(bb, { ...o, pose }, body);
+  };
+
+  /* --- parts, where they sit in the finished bed --- */
+  // storage: three full-height sides along z, the wardrobe at the back, the bookcase at the front
+  part("SBK", "Storage side", [xs0, xR, 0, HS, zB, zW0]);
+  part("SDV", "Storage divider", [xs0, xR, 0, HS, zW1, zD1]);
+  part("SBO", "Storage side", [xs0, xR, 0, HS, zK, zF]);
+  part("WT", "Wardrobe top and bottom", [xs0, xR, HS - T, HS, zW0, zW1]);
+  part("WB", "Wardrobe top and bottom", [xs0, xR, 46, 64, zW0, zW1]);
+  part("WS", "Drawer shelf", [xs0, xR, 200, 218, zW0, zW1]);
+  part("BT", "Bookcase top and bottom", [xs0, xR, HS - T, HS, zD1, zK]);
+  part("BB", "Bookcase top and bottom", [xs0, xR, 46, 64, zD1, zK]);
+  const cub = (HS - T - 64 - 3 * T) / 4;
+  const shelfY = [0, 1, 2].map((i) => 64 + (i + 1) * cub + i * T);
+  shelfY.forEach((y, i) => part(`BS${i}`, "Bookcase shelf", [xs0, xR, y, y + T, zD1, zK]));
+  part("PR0", "Plinth rail", [xs0 + 40, xs0 + 58, 0, 46, zD1, zK]);
+  part("PR1", "Plinth rail", [xR - 78, xR - 60, 0, 46, zD1, zK]);
+  // bed frame
+  part("EL1", "End panel half", [xL, xL + T, 0, HT, zB, zm]);
+  part("EL2", "End panel half", [xL, xL + T, 0, HT, zm, zF]);
+  part("BG", "Back guard rail", [xL + T, xR, HS, HT, zB, zW0]);
+  part("FR", "Front rail", [xL + T, xR, HS, HS + 120, zK, zF]);
+  part("CB1", "Cross board", [xs0, xs0 + 120, HS, HS + T, zW0, zK]);
+  part("CB2", "Cross board", [xR - T - 120, xR - T, HS, HS + T, zW0, zK]);
+  part("EG", "End guard rail", [xR - T, xR, HS, HT, zW0, zK]);
+  part("BS", "Back rail", [xL + T, xs0, 592, 712, zB, zW0]);
+  part("FG", "Front guard rail", [xL + T, xs0 + 38, HS + 120, HT, zK, zF]);
+  // ladder
+  const lx = [xs0 + 10, xs0 + 470];
+  part("LRa", "Ladder side", [lx[0], lx[0] + 28, 0, HT, zF, zF + LAD], "board");
+  part("LRb", "Ladder side", [lx[1] - 28, lx[1], 0, HT, zF, zF + LAD], "board");
+  const rungY = [240, 480, 720, 960, 1200];
+  rungY.forEach((y, i) => part(`RG${i}`, "Rung", [lx[0] + 28, lx[1] - 28, y - 12, y + 12, zF + 10, zF + LAD - 10]));
+  // desk: a cabinet against the end panel, open on its left where the end panel closes it, and a top to the storage
+  const xc0 = xL + T, xc1 = xc0 + 600, zc0 = zW0, zc1 = zB + 600;
+  part("CT", "Cabinet top and bottom", [xc0, xc1, 694, 712, zc0, zc1]);
+  part("CBt", "Cabinet top and bottom", [xc0, xc1, 8, 26, zc0, zc1]);
+  part("CR", "Cabinet side", [xc1 - T, xc1, 26, 694, zc0, zc1]);
+  part("CK", "Cabinet back", [xc0 + T, xc1 - T, 26, 694, zc0, zc0 + T]);
+  part("CS1", "Cabinet upright", [xc0, xc0 + T, 26, 694, zc1 - 80, zc1]);
+  part("CS2", "Cabinet upright", [xc0, xc0 + T, 26, 694, zc0, zc0 + 80]);
+  part("DT", "Desk top", [xL + T, xs0, 712, 730, zB, zc1]);
+  part("MAT", "Your mattress", [xL + T + 22, xL + T + 22 + 1890, 1440, 1640, zW0 + 2, zK - 2], "soft", true);
+
+  /* ===== the storage (its own manual), lying on its wardrobe side, bookcase side up ===== */
+  const xe = [xs0 + 60, xR - 60];
+  step(b, { title: "Screw the cam bolts into the storage side and divider", detail: "Lay them on a rug. Four in the side, eight in the divider: four on each face.", pose: "+z", tools: ["screwdriver"], warnings: ["floor"], kind: "bolts" }, () => {
+    put(["SBK"]);
+    show(["SDV"], undefined, [0, 0, 700]);
+    b.then(0.15);
+    fit(L_CAMBOLT, "SBK", [...xe.map((x): Vec3 => [x, HS - 9, zW0]), ...xe.map((x): Vec3 => [x, 55, zW0])], [0, 0, 1]);
+    fit(L_CAMBOLT, "SDV", [...xe.map((x): Vec3 => [x, HS - 9, zW1]), ...xe.map((x): Vec3 => [x, 55, zW1])], [0, 0, -1]);
+    fit(L_CAMBOLT, "SDV", [...xe.map((x): Vec3 => [x, HS - 9, zD1]), ...xe.map((x): Vec3 => [x, 55, zD1])], [0, 0, 1]);
+  });
+  step(b, { title: "Tap four dowels into the wardrobe top", detail: "Two into each end.", tools: ["hammer"], kind: "dowels" }, () => {
+    show(["WT"], undefined, [0, 0, 650]);
+    b.then(0.15);
+    fit(L_DOWEL_S, "WT", [xs0 + 160, xR - 160].map((x): Vec3 => [x, HS - 9, zW0]), [0, 0, -1], "SBK");
+    fit(L_DOWEL_S, "WT", [xs0 + 160, xR - 160].map((x): Vec3 => [x, HS - 9, zW1]), [0, 0, 1], "SDV");
+  });
+  step(b, { title: "Stand the top on the side", detail: "Onto its dowels and bolts, at the end of the side, the holes facing in.", kind: "join" }, () => put(["WT"]));
+  step(b, { title: "Stand the bottom on the side", detail: "At the other end, over its two bolts.", kind: "join" }, () => put(["WB"], [0, 0, 500]));
+  step(b, { title: "Lock the bottom with two small cam locks", detail: "Turn each one until it pulls the bottom tight against the side.", tools: ["screwdriver"], kind: "cams" }, () =>
+    fit(L_CAM_S, "WB", xe.map((x): Vec3 => [x, 64, zW0 + 30]), [0, -1, 0]),
+  );
+  step(b, { title: "Screw the side to the top", detail: "Two long screws through the side into the top, with the Allen key.", tools: ["allen"], kind: "screws" }, () =>
+    fit(L_LAG, "SBK", [xs0 + 280, xR - 280].map((x): Vec3 => [x, HS - 9, zB]), [0, 0, 1], "WT"),
+  );
+  step(b, { title: "Lock the top with two cam locks", detail: "Arrow towards the bolt, then turn until tight.", tools: ["screwdriver"], kind: "cams" }, () =>
+    fit(L_CAM, "WT", xe.map((x): Vec3 => [x, HS - T, zW0 + 30]), [0, 1, 0]),
+  );
+  step(b, { title: "Lay the divider on", detail: "Lower it onto the top and bottom, its bolts going into their holes.", people: 2, kind: "join" }, () => put(["SDV"]));
+  step(b, { title: "Lock the divider with four cam locks", detail: "Two in the top, two in the bottom.", tools: ["screwdriver"], kind: "cams" }, () => {
+    fit(L_CAM, "WT", xe.map((x): Vec3 => [x, HS - T, zW1 - 30]), [0, 1, 0]);
+    fit(L_CAM, "WB", xe.map((x): Vec3 => [x, 64, zW1 - 30]), [0, -1, 0]);
+  });
+  step(b, { title: "Put the bookcase top on and lock it", detail: "Onto the bolts at the divider's top end, then two small cam locks.", tools: ["screwdriver"], kind: "cams" }, () => {
+    put(["BT"], [0, 0, 400]);
+    b.then(0.1);
+    fit(L_CAM_S, "BT", xe.map((x): Vec3 => [x, HS - T, zD1 + 30]), [0, 1, 0]);
+  });
+  // the KONSTRUERA rails for the storage drawer go in now, while the compartment is open
+  const sdr: DrawerSpec = { id: "SD", axis: "x", c: (zW0 + zW1) / 2, wf: xR, iw0: zW1 - zW0, dd: SD - 60, yb: 86, bh: 100, fy: [50, 198], fw: 610, sides: ["SDV", "SBK"] };
+  drawerRails(b, sdr, keys, "Screw the drawer rails into the bottom compartment", "Read the drawer's own leaflet: one rail on each side, three screws in each, just above the bottom.", [sdr], "+z");
+  step(b, { title: "Slide in the drawer shelf", detail: "From the open front, into the slot above the rails.", kind: "join" }, () => put(["WS"], [500, 0, 0]));
+  step(b, { title: "Put the bookcase bottom on and lock it", detail: "Onto the bolts at the bottom end, then two cam locks.", tools: ["screwdriver"], kind: "cams" }, () => {
+    put(["BB"], [0, 0, 400]);
+    b.then(0.1);
+    fit(L_CAM, "BB", xe.map((x): Vec3 => [x, 64, zD1 + 30]), [0, -1, 0]);
+  });
+  step(b, { title: "Screw the side to the drawer shelf", detail: "One long screw through the side into the shelf.", tools: ["allen"], kind: "screws" }, () =>
+    fit(L_LAG, "SBK", [[(xs0 + xR) / 2, 209, zB]], [0, 0, 1], "WS"),
+  );
+  step(b, { title: "Screw six cam bolts into the divider", detail: "For the three bookcase shelves, two each.", tools: ["screwdriver"], kind: "bolts" }, () =>
+    fit(L_CAMBOLT, "SDV", shelfY.flatMap((y) => xe.map((x): Vec3 => [x, y + 9, zD1])), [0, 0, 1]),
+  );
+  step(b, { title: "Stand the three shelves on the divider", detail: "Push each one down over its two bolts.", kind: "join" }, () => put(["BS0", "BS1", "BS2"], [0, 0, 400]));
+  step(b, { title: "Lock the shelves with six cam locks", tools: ["screwdriver"], kind: "cams" }, () =>
+    shelfY.forEach((y, i) => fit(L_CAM, `BS${i}`, xe.map((x): Vec3 => [x, y + T, zD1 + 30]), [0, 1, 0])),
+  );
+  step(b, { title: "Tap dowels into the plinth rails and stand them in", detail: "Two in each end of both rails, then stand them under the bookcase bottom, one at each edge.", tools: ["hammer"], kind: "dowels" }, () => {
+    show(["PR0", "PR1"], undefined, [0, 0, 450]);
+    b.then(0.1);
+    for (const id of ["PR0", "PR1"]) {
+      const x = fin(id)[0];
+      fit(L_DOWEL_S, id, [12, 34].map((y): Vec3 => [x, y, zD1]), [0, 0, -1], "SDV");
+      fit(L_DOWEL_S, id, [12, 34].map((y): Vec3 => [x, y, zK]), [0, 0, 1], "SBO");
+    }
+  });
+  step(b, { title: "Put the plinth rails in", detail: "Their dowels into the divider.", kind: "join" }, () => put(["PR0", "PR1"]));
+  step(b, { title: "Screw ten cam bolts into the other side", detail: "Two for the top, the bottom and each shelf.", tools: ["screwdriver"], kind: "bolts" }, () => {
+    show(["SBO"], undefined, [0, 0, 700]);
+    b.then(0.1);
+    fit(L_CAMBOLT, "SBO", [HS - 9, 55, ...shelfY.map((y) => y + 9)].flatMap((y) => xe.map((x): Vec3 => [x, y, zK])), [0, 0, -1]);
+  });
+  step(b, { title: "Lay the side on", detail: "Together: lower it over all ten bolts and the plinth rails' dowels.", people: 2, kind: "join" }, () => put(["SBO"]));
+  step(b, { title: "Lock the side with ten cam locks", tools: ["screwdriver"], kind: "cams" }, () => {
+    fit(L_CAM, "BT", xe.map((x): Vec3 => [x, HS - T, zK - 30]), [0, 1, 0]);
+    fit(L_CAM, "BB", xe.map((x): Vec3 => [x, 64, zK - 30]), [0, -1, 0]);
+    shelfY.forEach((y, i) => fit(L_CAM, `BS${i}`, xe.map((x): Vec3 => [x, y + T, zK - 30]), [0, 1, 0]));
+  });
+  step(b, { title: "Tap the glides into the bottom edges", detail: "Six: two under each side.", tools: ["hammer"] }, () =>
+    (["SBK", "SDV", "SBO"] as const).forEach((id) => fit(L_PAD, id, [xs0 + 80, xR - 80].map((x): Vec3 => [x, 0, fin(id)[2]]), [0, 1, 0], undefined, { hole: false })),
+  );
+  step(b, { title: "Stand the storage up together", detail: "Lift it from the top end while the other person keeps the bottom on the floor. Stand it where the bed's right end will be.", pose: "+y", people: 2, kind: "standup" });
+
+  /* ===== the loft bed frame (its manual, ladder on the right), built in its own space, then lifted onto the storage ===== */
+  const fr = (o: StepOpts, body: () => void = () => {}) => step(b, { scene: "frame", ...o }, body);
+  const elY = [400, HT - 400];
+  fr({ title: "Screw the connector bolts into an end panel half", detail: "Lay both halves on a rug. Two bolts into the long edge of one, with the spanner.", pose: "+x", tools: ["wrench"], warnings: ["floor"], kind: "bolts" }, () => {
+    show(["EL1"]);
+    show(["EL2"], undefined, [0, 0, 700]);
+    b.then(0.15);
+    fit(L_CONBOLT, "EL1", elY.map((y): Vec3 => [xL + 9, y, zm]), [0, 0, 1]);
+  });
+  fr({ title: "Tap five dowels into the same edge", tools: ["hammer"], kind: "dowels" }, () =>
+    fit(L_DOWEL, "EL1", [300, 650, 900, 1150, 1500].map((y): Vec3 => [xL + 9, y, zm]), [0, 0, 1], "EL2"),
+  );
+  fr({ title: "Press in the connectors and join the halves", detail: "Push the two round connectors into the other half, then fold it over onto the bolts and dowels.", kind: "join" }, () => {
+    fit(L_CONNECTOR, "EL2", elY.map((y): Vec3 => [xL + T, y, zm + 40]), [-1, 0, 0], undefined, { hole: false });
+    b.then(0.1);
+    show(["EL2"]);
+  });
+  fr({ title: "Turn the connectors to pull the halves together", detail: "With the long Allen key, until the joint closes. Push the halves together while you turn.", tools: ["allen"] });
+  fr({ title: "Click on the connector covers", kind: "general" }, () => fit(L_CONCAP, "EL2", elY.map((y): Vec3 => [xL + T + 1, y, zm + 40]), [-1, 0, 0], undefined, { hole: false }));
+  const railX = xsAt(xL + T + 80, xs0 - 80, 9);
+  fr({ title: "Lay the steel rails on the back guard and the front rail", detail: "On a rug, with the flange along the bottom edge on the inside. The holes line up with the ones in the boards.", pose: "+y", warnings: ["floor"], kind: "join" }, () => {
+    show(["BG", "MRb"], undefined, [0, -1300, 900]);
+    show(["FR", "MRf"], undefined, [0, -1300, 1500]);
+  });
+  fr({ title: "Fix each rail with one screw", detail: "In the middle, by hand with the screwdriver. Don't use a drill.", tools: ["screwdriver"], kind: "screws" }, () => {
+    fit(L_RSCREW, "MRb", [[railX[4], 1450, zW0 + 3]], [0, 0, -1], "BG");
+    fit(L_RSCREW, "MRf", [[railX[4], 1450, zK - 3]], [0, 0, 1], "FR");
+  });
+  fr({ title: "Screw the rails on with sixteen screws", detail: "Eight more in each rail, by hand.", tools: ["screwdriver"], kind: "screws" }, () => {
+    const rest = railX.filter((_, i) => i !== 4).concat([(railX[0] + railX[1]) / 2, (railX[7] + railX[8]) / 2]).slice(0, 8);
+    fit(L_RSCREW, "MRb", rest.map((x): Vec3 => [x, 1450, zW0 + 3]), [0, 0, -1], "BG");
+    fit(L_RSCREW, "MRf", rest.map((x): Vec3 => [x, 1450, zK - 3]), [0, 0, 1], "FR");
+  });
+  const nutsAt = (host: string, pts: Vec3[], dir: Vec3) => {
+    fit(L_BARREL, host, pts, dir, undefined, { hole: false });
+    fit(L_HEXNUT, host, pts, dir, undefined, { hole: false });
+  };
+  const gY = [HS + 60, HT - 60];
+  fr({ title: "Bolt the back guard to the end panel", detail: "Stand the end panel upside down. A nut in each barrel nut, the barrel nuts into the guard, then two long bolts through the panel.", pose: "-y", people: 2, tools: ["allen"], kind: "bolts" }, () => {
+    show(["BG", "MRb"]);
+    b.then(0.1);
+    nutsAt("BG", gY.map((y): Vec3 => [xL + T + 50, y, zW0]), [0, 0, -1]);
+    fit(L_BOLT, "EL1", gY.map((y): Vec3 => [xL, y, zB + 9]), [1, 0, 0], "BG");
+  });
+  const cbX = ["CB1", "CB2"].map((id) => fin(id)[0]);
+  fr({ title: "Bolt the two cross boards to the back guard", detail: "A sleeve nut down into each board's end, then a short bolt through the guard into it.", tools: ["allen"], kind: "bolts" }, () => {
+    show(["CB1", "CB2"], [0, -400, 0]);
+    b.then(0.1);
+    ["CB1", "CB2"].forEach((id, i) => {
+      fit(L_SLEEVE, id, [[cbX[i], HS + T, zW0 + 22]], [0, -1, 0], undefined, { hole: false });
+      fit(L_BOLT_S, "BG", [[cbX[i], HS + 9, zB]], [0, 0, 1], id);
+    });
+  });
+  fr({ title: "Bolt the front rail to the end panel", detail: "Slide it in along the cross boards. Barrel nuts with their nuts into the rail, then two long bolts through the panel.", tools: ["allen"], kind: "bolts" }, () => {
+    show(["FR", "MRf"]);
+    b.then(0.1);
+    nutsAt("FR", [[xL + T + 50, HS + 30, zK], [xL + T + 50, HS + 90, zK]], [0, 0, 1]);
+    fit(L_BOLT, "EL2", [[xL, HS + 30, zF - 9], [xL, HS + 90, zF - 9]], [1, 0, 0], "FR");
+  });
+  fr({ title: "Bolt the cross boards to the front rail", detail: "Sleeve nuts and short bolts again, through the rail.", tools: ["allen"], kind: "bolts" }, () =>
+    ["CB1", "CB2"].forEach((id, i) => {
+      fit(L_SLEEVE, id, [[cbX[i], HS + T, zK - 22]], [0, -1, 0], undefined, { hole: false });
+      fit(L_BOLT_S, "FR", [[cbX[i], HS + 9, zF]], [0, 0, -1], id);
+    }),
+  );
+  const fgDowelX = xL + T + 300;
+  fr({ title: "Tap a dowel into the front rail", detail: "The long one, into the hole near the end panel. The front guard sits on it later.", tools: ["hammer"], kind: "dowels" }, () =>
+    fit(L_DOWEL_S, "FR", [[fgDowelX, HS + 120, zF - 9]], [0, 1, 0], "FG"),
+  );
+  fr({ title: "Tap the glides into the end panel", detail: "Four into its bottom edge, two in each half.", tools: ["hammer"] }, () => {
+    fit(L_PAD, "EL1", [zB + 60, zm - 60].map((z): Vec3 => [xL + 9, 0, z]), [0, 1, 0], undefined, { hole: false });
+    fit(L_PAD, "EL2", [zm + 60, zF - 60].map((z): Vec3 => [xL + 9, 0, z]), [0, 1, 0], undefined, { hole: false });
+  });
+  // back to the storage
+  const egX = xR - 9;
+  step(b, { title: "Screw four cam bolts into the top of the storage", detail: "Two into the side at the back, two into the tops at the front edge.", pose: "+y", tools: ["screwdriver"], kind: "bolts" }, () => {
+    fit(L_CAMBOLT, "SBK", [xs0 + 150, xR - 150].map((x): Vec3 => [x, HS, zB + 9]), [0, 1, 0], "BG");
+    fit(L_CAMBOLT, "WT", [[egX, HS, -300]], [0, 1, 0], "EG");
+    fit(L_CAMBOLT, "BT", [[egX, HS, 250]], [0, 1, 0], "EG");
+  });
+  step(b, { title: "Stand the end guard on the storage", detail: "Along the front edge of the top, over the two bolts there.", kind: "join" }, () => put(["EG"], [0, 300, 0]));
+  step(b, { title: "Lock the end guard with two cam locks", tools: ["screwdriver"], kind: "cams" }, () =>
+    fit(L_CAM, "EG", [[xR - T, HS + 34, -300], [xR - T, HS + 34, 250]], [1, 0, 0]),
+  );
+  const frameIds = ["EL1", "EL2", "BG", "MRb", "FR", "MRf", "CB1", "CB2"];
+  step(b, { title: "Turn the frame over onto the storage together", detail: "Lift it over and lower it so the back guard drops onto the storage's bolts and the cross boards rest on its top. Mind your fingers.", people: 2, warnings: ["two", "hand"], kind: "join" }, () => put(frameIds, [0, 600, 0]));
+  step(b, { title: "Lock the back guard with two small cam locks", detail: "From behind the bed.", tools: ["screwdriver"], kind: "cams" }, () =>
+    fit(L_CAM_S, "BG", [xs0 + 150, xR - 150].map((x): Vec3 => [x, HS + 30, zB]), [0, 0, 1]),
+  );
+  step(b, { title: "Bolt the guards to the end guard", detail: "Four barrel nuts with their nuts into the end guard, then two long bolts through the back guard and two through the front rail.", tools: ["allen"], kind: "bolts" }, () => {
+    nutsAt("EG", [[xR - T, HS + 200, zW0 + 50], [xR - T, HS + 320, zW0 + 50], [xR - T, HS + 30, zK - 50], [xR - T, HS + 90, zK - 50]], [1, 0, 0]);
+    fit(L_BOLT, "BG", [[egX, HS + 200, zB], [egX, HS + 320, zB]], [0, 0, 1], "EG");
+    fit(L_BOLT, "FR", [[egX, HS + 30, zF], [egX, HS + 90, zF]], [0, 0, -1], "EG");
+  });
+  const bsY = [625, 680];
+  step(b, { title: "Screw two cam bolts into the storage for the back rail", detail: "Into the back side's edge, facing the end panel.", tools: ["screwdriver"], kind: "bolts" }, () =>
+    fit(L_CAMBOLT, "SBK", bsY.map((y): Vec3 => [xs0, y, zB + 9]), [-1, 0, 0], "BS"),
+  );
+  step(b, { title: "Swing the back rail in", detail: "Low at the back, between the end panel and the storage. Fit its right end over the bolts first.", kind: "join" }, () => put(["BS"], [0, 0, -500]));
+  step(b, { title: "Screw the back rail to the end panel", detail: "Two long screws through the end panel, with the Allen key.", tools: ["allen"], kind: "screws" }, () =>
+    fit(L_LAG, "EL1", bsY.map((y): Vec3 => [xL, y, zB + 9]), [1, 0, 0], "BS"),
+  );
+  step(b, { title: "Lock the back rail with two small cam locks", tools: ["screwdriver"], kind: "cams" }, () =>
+    fit(L_CAM_S, "BS", bsY.map((y): Vec3 => [xs0 - 30, y, zW0]), [0, 0, -1]),
+  );
+  const fgBoltX = xsAt(xL + T + 200, xs0 - 200, 3);
+  step(b, { title: "Bolt the front guard onto the front rail", detail: "Stand it on the rail over the dowel, then three bolts up through the rail.", tools: ["allen"], kind: "bolts" }, () => {
+    put(["FG"], [0, 400, 0]);
+    b.then(0.1);
+    fit(L_BOLT_M, "FR", fgBoltX.map((x): Vec3 => [x, HS + 80, zF - 9]), [0, 1, 0], "FG");
+  });
+  step(b, { title: "Screw the front guard to the end panel", detail: "Two long screws through the end panel.", tools: ["allen"], kind: "screws" }, () =>
+    fit(L_LAG, "EL2", [HS + 220, HT - 80].map((y): Vec3 => [xL, y, zF - 9]), [1, 0, 0], "FG"),
+  );
+  const cbBolts = [-450, -250, -50, 150, 300].map((z) => z * (D / 1140));
+  step(b, { title: "Bolt the cross boards to the storage", detail: "Ten short bolts down through the boards, a sleeve nut up into each from inside the storage.", tools: ["allen"], kind: "bolts" }, () => {
+    ["CB1", "CB2"].forEach((id, i) => fit(L_BOLT_S, id, cbBolts.map((z): Vec3 => [cbX[i], HS + T, z]), [0, -1, 0]));
+    b.then(0.1);
+    ["CB1", "CB2"].forEach((_, i) =>
+      cbBolts.forEach((z) => fit(L_SLEEVE, z < zW1 ? "WT" : "BT", [[cbX[i], HS - T, z]], [0, 1, 0], undefined, { hole: false })),
+    );
+  });
+  // ladder, built lying on the floor
+  const ld = (o: StepOpts, body: () => void = () => {}) => step(b, { scene: "ladder", ...o }, body);
+  const ladIds = ["LRa", "LRb", ...rungY.map((_, i) => `RG${i}`)];
+  const zl = zF + LAD / 2;
+  // seven in each side: one per rung end, two for the top and bottom rungs
+  const rungDowels = (host: string, x: number, dir: Vec3) =>
+    rungY.forEach((y, i) => fit(L_DOWEL, host, (i === 0 || i === rungY.length - 1 ? [zl - 30, zl + 30] : [zl]).map((z): Vec3 => [x, y, z]), dir, `RG${i}`));
+  ld({ title: "Tap fourteen dowels into the ladder sides", detail: "Lay both sides on a rug, seven in each: one per rung end, two for the top and bottom rungs. Don't hammer them all the way.", pose: "+x", tools: ["hammer"], warnings: ["floor"], kind: "dowels" }, () => {
+    show(["LRa"]);
+    show(["LRb"], undefined, [lx[0] - (lx[1] - 28), 0, 400]);
+    b.then(0.1);
+    rungDowels("LRa", lx[0] + 28, [1, 0, 0]);
+    rungDowels("LRb", lx[1] - 28, [-1, 0, 0]);
+  });
+  ld({ title: "Stand the rungs in and put the other side on", detail: "All five rungs into one side, then turn the other side over onto them. Three long screws through it.", tools: ["allen"], kind: "join" }, () => {
+    b.stagger(0.12);
+    show(rungY.map((_, i) => `RG${i}`), [300, 0, 0]);
+    b.then(0.1);
+    show(["LRb"]);
+    b.then(0.1);
+    [0, 2, 4].forEach((i) => fit(L_LAG, "LRb", [[lx[1], rungY[i], zl]], [-1, 0, 0], `RG${i}`));
+  });
+  ld({ title: "Turn it over and screw two cam bolts into the top", detail: "Into the back edge of the left side, above the bed.", pose: "-x", tools: ["screwdriver"], kind: "bolts" }, () =>
+    fit(L_CAMBOLT, "LRa", [HS + 180, HS + 330].map((y): Vec3 => [lx[0] + 14, y, zF]), [0, 0, -1], "FG"),
+  );
+  ld({ title: "Screw the other side to the rungs", detail: "Three long screws.", tools: ["allen"], kind: "screws" }, () =>
+    [1, 2, 3].forEach((i) => fit(L_LAG, "LRa", [[lx[0], rungY[i], zl]], [1, 0, 0], `RG${i}`)),
+  );
+  ld({ title: "Tap a glide into the foot of each side", tools: ["hammer"] }, () => {
+    fit(L_PAD, "LRa", [[lx[0] + 14, 0, zl]], [0, 1, 0], undefined, { hole: false });
+    fit(L_PAD, "LRb", [[lx[1] - 14, 0, zl]], [0, 1, 0], undefined, { hole: false });
+  });
+  ld({ title: "Click the hand grips into the tops", detail: "One half from each side of the slot in each ladder side, pressed together until they click.", kind: "general" }, () => {
+    const gy = HT - 150;
+    fit(L_GRIP_O, "LRa", [[lx[0], gy, zl]], [1, 0, 0], undefined, { hole: false });
+    fit(L_GRIP_O, "LRb", [[lx[1], gy, zl]], [-1, 0, 0], undefined, { hole: false });
+    fit(L_GRIP_I, "LRa", [[lx[0] + 28, gy, zl]], [-1, 0, 0], undefined, { hole: false });
+    fit(L_GRIP_I, "LRb", [[lx[1] - 28, gy, zl]], [1, 0, 0], undefined, { hole: false });
+  });
+  step(b, { title: "Stand the ladder against the bed and screw it on", detail: "In front of the storage, against the end of the front guard. Two long screws from inside the bed through the front rail.", pose: "+y", tools: ["allen"], kind: "screws" }, () => {
+    put(ladIds, [0, 0, 500]);
+    b.then(0.1);
+    fit(L_LAG, "FR", [[lx[0] + 14, HS + 60, zK]], [0, 0, 1], "LRa");
+    fit(L_LAG, "FR", [[lx[1] - 14, HS + 60, zK]], [0, 0, 1], "LRb");
+  });
+  step(b, { title: "Lock the ladder with two cam locks", detail: "In the front guard, from inside the bed.", tools: ["screwdriver"], kind: "cams" }, () =>
+    fit(L_CAM, "FG", [HS + 180, HS + 330].map((y): Vec3 => [lx[0] + 14, y, zK]), [0, 0, 1]),
+  );
+  step(b, { title: "Screw the storage to the ladder", detail: "Four long screws from inside the bookcase, through its side into both ladder sides.", tools: ["allen"], kind: "screws" }, () =>
+    (["LRa", "LRb"] as const).forEach((id, j) => fit(L_LAG, "SBO", [300, 900].map((y): Vec3 => [j ? lx[1] - 14 : lx[0] + 14, y, zK]), [0, 0, 1], id)),
+  );
+  step(b, { title: "Stick the anti-slip strips on the rungs", detail: "Clean each rung, peel off the backing and press a strip on from the middle out.", kind: "general" }, () =>
+    rungY.forEach((y, i) => fit(L_STRIP, `RG${i}`, [[(lx[0] + lx[1]) / 2, y + 12, zl]], [0, -1, 0], undefined, { hole: false })),
+  );
+  step(b, { title: "Lay your mattress in", detail: "No thicker than the mark on the guard, so the guards stay high enough.", kind: "general" }, () => put(["MAT"], [0, 500, 0]));
+
+  /* ===== the desk (its manual: cabinet on the left, top along the back) ===== */
+  const dk = (o: StepOpts, body: () => void = () => {}) => step(b, { scene: "desk", ...o }, body);
+  const cz = [zc0 + 120, zc1 - 120];
+  const cx = [xc0 + 150, xc1 - 150];
+  dk({ title: "Screw eight cam bolts into the cabinet top and bottom", detail: "On a rug, four in each: two for the side, two for the back.", pose: "-y", tools: ["screwdriver"], warnings: ["floor"], kind: "bolts" }, () => {
+    show(["CT"]);
+    show(["CBt"], undefined, [760, 686, 0]);
+    b.then(0.1);
+    fit(L_CAMBOLT, "CT", cz.map((z): Vec3 => [xc1 - 9, 694, z]), [0, -1, 0], "CR");
+    fit(L_CAMBOLT, "CT", cx.map((x): Vec3 => [x, 694, zc0 + 9]), [0, -1, 0], "CK");
+    fit(L_CAMBOLT, "CBt", cz.map((z): Vec3 => [xc1 - 9, 26, z]), [0, 1, 0], "CR");
+    fit(L_CAMBOLT, "CBt", cx.map((x): Vec3 => [x, 26, zc0 + 9]), [0, 1, 0], "CK");
+  });
+  dk({ title: "Stand the side and the back on the top", detail: "The cabinet is built upside down. The side's row of holes faces in.", kind: "join" }, () => show(["CR", "CK"], [0, -400, 0]));
+  dk({ title: "Lock the side with two cam locks", tools: ["screwdriver"], kind: "cams" }, () => fit(L_CAM_S, "CR", cz.map((z): Vec3 => [xc1 - T, 694 - 30, z]), [1, 0, 0]));
+  dk({ title: "Tap in eight dowels and stand the uprights on", detail: "Two in each end of both uprights, then stand them at the open side, one at the front and one at the back.", tools: ["hammer"], kind: "dowels" }, () => {
+    for (const id of ["CS1", "CS2"]) {
+      const z = fin(id)[2];
+      fit(L_DOWEL_S, id, [z - 20, z + 20].map((zz): Vec3 => [xc0 + 9, 694, zz]), [0, 1, 0], "CT");
+      fit(L_DOWEL_S, id, [z - 20, z + 20].map((zz): Vec3 => [xc0 + 9, 26, zz]), [0, -1, 0], "CBt");
+    }
+    b.then(0.1);
+    show(["CS1", "CS2"], [0, -400, 0]);
+  });
+  dk({ title: "Lay the bottom on and lock the back", detail: "Over the bolts and dowels, then two cam locks in the back.", tools: ["screwdriver"], kind: "cams" }, () => {
+    show(["CBt"]);
+    b.then(0.1);
+    fit(L_CAM_S, "CK", cx.map((x): Vec3 => [x, 694 - 30, zc0 + T]), [0, 0, -1]);
+  });
+  dk({ title: "Turn it on its back and lock the bottom", detail: "Four cam locks: two in the side, two in the back.", pose: "+z", tools: ["screwdriver"], kind: "cams" }, () => {
+    fit(L_CAM_S, "CR", cz.map((z): Vec3 => [xc1 - T, 26 + 30, z]), [1, 0, 0]);
+    fit(L_CAM_S, "CK", cx.map((x): Vec3 => [x, 26 + 30, zc0 + T]), [0, 0, -1]);
+  });
+  dk({ title: "Tap the glides into the bottom, then stand it up", detail: "Four, near the corners.", tools: ["hammer"] }, () =>
+    fit(L_PAD, "CBt", [xc0 + 60, xc1 - 60].flatMap((x) => [zc0 + 60, zc1 - 60].map((z): Vec3 => [x, 8, z])), [0, 1, 0], undefined, { hole: false }),
+  );
+  const dtB: Vec3[] = [...cx.flatMap((x) => [zc0 + 120, zc1 - 120].map((z): Vec3 => [x, 712, z]))];
+  const dtS: Vec3[] = [xs0 - 500, xs0 - 120].map((x): Vec3 => [x, 712, zB + 9]);
+  dk({ title: "Screw six cam bolts into the desk top", detail: "Lay it face down on a rug: four for the cabinet, two for the back rail.", pose: "+y", tools: ["screwdriver"], warnings: ["floor"], kind: "bolts" }, () => {
+    show(["DT"], undefined, [0, -712, 900], [Math.PI, 0, 0]);
+    b.then(0.1);
+    fit(L_CAMBOLT, "DT", dtB, [0, -1, 0], "CT");
+    fit(L_CAMBOLT, "DT", dtS, [0, -1, 0]);
+  });
+  dk({ title: "Lay the desk top on the cabinet", detail: "Turn it over, rest its edge on the cabinet and fold it down onto the bolts, flush with the cabinet at the left.", kind: "join" }, () => show(["DT"]));
+  dk({ title: "Lock the desk top with four cam locks", detail: "In the cabinet's top, at the front and back edges.", tools: ["screwdriver"], kind: "cams" }, () => {
+    fit(L_CAM_S, "CT", cx.map((x): Vec3 => [x, 703, zc1]), [0, 0, -1]);
+    fit(L_CAM_S, "CT", cx.map((x): Vec3 => [x, 703, zc0]), [0, 0, 1]);
+  });
+  dk({ title: "Press in the cable outlet", detail: "Into the round hole at the back of the top.", kind: "general" }, () => fit(L_GROMMET, "DT", [[xs0 - 300, 730, zB + 120]], [0, -1, 0], undefined, { hole: false }));
+  const deskIds = ["CT", "CBt", "CR", "CK", "CS1", "CS2", "DT"];
+  step(b, { title: "Carry the desk in under the bed together", detail: "Cabinet against the end panel. Lower the top's back edge onto the back rail so its two bolts drop into the holes. Mind your fingers.", people: 2, warnings: ["two", "hand"], kind: "join" }, () => put(deskIds, [0, 120, 0]));
+  step(b, { title: "Lock the desk top to the back rail", detail: "Two small cam locks in the rail.", tools: ["screwdriver"], kind: "cams" }, () => fit(L_CAM_S, "BS", dtS.map((p): Vec3 => [p[0], 712 - 30, zW0]), [0, 0, -1]));
+  step(b, { title: "Screw the desk top to the storage", detail: "Two long screws from inside the wardrobe through the side into the end of the top.", tools: ["allen"], kind: "screws" }, () =>
+    fit(L_LAG, "SBK", [[xs0 + 30, 721, zB + 5], [xs0 + 30, 721, zB + 13]], [-1, 0, 0], "DT"),
+  );
+  step(b, { title: "Cap the holes in the back guard", detail: "Six caps into the holes you didn't use.", kind: "general" }, () =>
+    fit(L_CAP_M, "BG", xsAt(xL + 300, xs0 - 200, 6).map((x): Vec3 => [x, HS + 250, zW0]), [0, 0, -1], undefined, { hole: false }),
+  );
+  step(b, { title: "Cap the holes in the end panel and the cabinet", detail: "Ten caps into the empty holes on this side of the bed.", kind: "general" }, () => {
+    fit(L_CAP_S, "EL1", [700, 1000, 1300].map((y): Vec3 => [xL + T, y, zB + 200]), [-1, 0, 0], undefined, { hole: false });
+    fit(L_CAP_S, "EL2", [700, 1000, 1300].map((y): Vec3 => [xL + T, y, zF - 200]), [-1, 0, 0], undefined, { hole: false });
+    fit(L_CAP_S, "CR", [[xc1, 200, zc0 + 100], [xc1, 450, zc0 + 100], [xc1, 200, zc1 - 100], [xc1, 450, zc1 - 100]], [-1, 0, 0], undefined, { hole: false });
+  });
+  step(b, { title: "Plug the small holes in the storage", detail: "Six small plugs and two caps in the holes the desk didn't use.", kind: "general" }, () => {
+    fit(L_CAP_T, "SBK", [300, 500, 900, 1100, 1250, 1350].map((y): Vec3 => [xs0 + 40, y, zW0]), [0, 0, -1], undefined, { hole: false });
+    fit(L_CAP_S, "SBK", [[xs0 + 40, 820, zB], [xs0 + 40, 1000, zB]], [0, 0, 1], undefined, { hole: false });
+  });
+
+  /* ===== KONSTRUERA drawers: two in the desk cabinet, one under the wardrobe ===== */
+  const ddr = (i: number, fy: [number, number], yb: number): DrawerSpec => ({
+    id: `DD${i}`, axis: "z", c: (xc0 + xc1) / 2, wf: zc1, iw0: xc1 - xc0 - 2 * T, dd: 520, yb, bh: 230, fy, fw: 596, sides: ["CS1", "CR"], runW: [-30, -62, -520],
+  });
+  const desk = [ddr(0, [96, 393], 60), ddr(1, [396, 693], 420)];
+  drawerRails(b, desk[0], keys, "Screw the drawer rails into the desk cabinet", "Two rails for each drawer, three screws in each, in the holes the drawer leaflet points to.", desk);
+  drawerSet(b, desk, "ddrawer", "-z");
+  drawerSet(b, [sdr], "sdrawer", "-x");
+
+  /* ===== HJÄLPA rails in the wardrobe ===== */
+  const zr = (zW0 + zW1) / 2;
+  part("SRa", "Rail bracket", [xs0 + 50, xs0 + 74, HS - T - 70, HS - T, zr - 15, zr + 15], "metal");
+  part("SRb", "Rail bracket", [xR - 74, xR - 50, HS - T - 70, HS - T, zr - 15, zr + 15], "metal");
+  const rod = (id: string, name: string, len: number, pos: Vec3, rot: Vec3) => keys.set(id, b.place(b.part(name, [25, len, 25], { shape: "cyl", material: "metal" }), pos, rot));
+  rod("SRr", "Suspension rail", SD - 60, [(xs0 + xR) / 2, HS - T - 58, zr], [0, 0, Math.PI / 2]);
+  rod("ARr", "Adjustable clothes rail", zW1 - zW0, [(xs0 + xR) / 2, 832, zr], [Math.PI / 2, 0, 0]);
+  step(b, { title: "Screw the rail brackets under the wardrobe top", detail: "Two screws through washers into each, front to back in the middle of the wardrobe.", tools: ["screwdriver"], kind: "screws" }, () => {
+    put(["SRa", "SRb"], [0, -200, 0]);
+    b.then(0.1);
+    for (const id of ["SRa", "SRb"]) {
+      const x = fin(id)[0];
+      fit(L_HWASHER, id, [-8, 8].map((dz): Vec3 => [x, HS - T - 2, zr + dz]), [0, 1, 0], undefined, { hole: false });
+      fit(L_HSCREW, id, [-8, 8].map((dz): Vec3 => [x, HS - T - 4, zr + dz]), [0, 1, 0], "WT");
+    }
+  });
+  step(b, { title: "Hang the suspension rail in the brackets", detail: "Lift it in and let both ends drop into the hooks.", kind: "join" }, () => put(["SRr"], [0, -150, 0]));
+  step(b, { title: "Fit the adjustable clothes rail", detail: "Pull it out until both ends touch the sides at the height you want, then one screw through each end.", tools: ["screwdriver"], kind: "screws" }, () => {
+    put(["ARr"], [300, 0, 0]);
+    b.then(0.1);
+    fit(L_HSCREW, "ARr", [[(xs0 + xR) / 2, 832, zW0 + 8]], [0, 0, -1]);
+    fit(L_HSCREW, "ARr", [[(xs0 + xR) / 2, 832, zW1 - 8]], [0, 0, 1]);
+  });
+
+  /* ===== doors on HJÄLPA soft-closing hinges ===== */
+  const doorZ: [number, number][] = [[zB + 2, zB + 306], [zB + 308, zB + 612]];
+  doorZ.forEach(([a, c], i) => part(`DR${i}`, "Door", [xR + 1, xR + 19, 219, 1419, a, c]));
+  const hingeAt = (i: number) => [330, 1300].map((y): Vec3 => [xR + 1, y, i ? doorZ[1][1] - 25 : doorZ[0][0] + 25]);
+  step(b, { title: "Screw the hinges into the doors", detail: "Lay the doors face down on a rug. Press each hinge into its cup and tighten its two screws.", scene: "doors", tools: ["screwdriver"], warnings: ["floor"], kind: "hinges" }, () => {
+    doorZ.forEach((_, i) => show([`DR${i}`], undefined, [-(xR + 10), -810, i ? 60 : -60], [0, 0, -Math.PI / 2]));
+    b.then(0.15);
+    doorZ.forEach((_, i) => fit(HW.hinge, `DR${i}`, hingeAt(i), [1, 0, 0], undefined, { twist: i ? -Math.PI / 2 : Math.PI / 2 }));
+  });
+  step(b, { title: "Hang the doors", detail: "Hold each door to the storage, hook its hinges onto the plates on the side and the divider and tighten the screws.", tools: ["screwdriver"], kind: "doors" }, () => {
+    b.stagger(0.3);
+    put(["DR0", "DR1"], [400, 0, 0]);
+  });
+  step(b, { title: "Adjust the doors", detail: "Turn the hinge screws until the gap between the doors is even and both close flush.", tools: ["screwdriver"] });
+}
+
+/** The rails a KONSTRUERA drawer runs on, screwed into its frame: one step for every drawer given. */
+function drawerRails(b: PlanBuilder, d0: DrawerSpec, keys: Map<string, string>, title: string, detail: string, list: DrawerSpec[] = [d0], pose: Pose = "+y") {
+  step(b, { title, detail, tools: ["screwdriver"], kind: "runners", pose }, () => {
+    for (const d of list) {
+      const g = drawerGeo(d);
+      const len = Math.round((d.dd - 10) / 10) * 10;
+      const runW = d.runW ?? spread(g.wBack + 40, g.wFront - 40, 3);
+      [-1, 1].forEach((sx, j) => {
+        b.fit({ kind: "runner", len, dia: 20 }, { on: keys.get(d.sides[j])!, at: g.P(sx * (d.iw0 / 2), d.yb - 2, g.wm), dir: g.Dn(sx, 0, 0), hole: false, twist: d.axis === "x" ? Math.PI / 2 : undefined });
+        b.fits(D_SCREW, runW.map((w): FitOpts => ({ on: keys.get(d.sides[j])!, at: g.P(sx * (d.iw0 / 2 - 6), d.yb - 2, w), dir: g.Dn(sx, 0, 0) })), 0.04);
+      });
+    }
+  });
+}
+
+function drawerGeo(d: DrawerSpec) {
+  const P = (u: number, v: number, w: number): Vec3 => (d.axis === "z" ? [d.c + u, v, d.wf + w] : [d.wf + w, v, d.c - u]);
+  const Dn = (du: number, dv: number, dw: number): Vec3 => (d.axis === "z" ? [du, dv, dw] : [dw, dv, -du]);
+  const E = (u0: number, u1: number, v0: number, v1: number, w0: number, w1: number): Ext =>
+    d.axis === "z" ? [d.c + u0, d.c + u1, v0, v1, d.wf + w0, d.wf + w1] : [d.wf + w0, d.wf + w1, v0, v1, d.c - u1, d.c - u0];
+  const bw = d.iw0 - 26, iw = bw - 24, wFront = -6, wBack = wFront - d.dd, wm = (wFront + wBack) / 2;
+  return { P, Dn, E, bw, iw, wFront, wBack, wm };
+}
+
+/** KONSTRUERA drawers of one size: each box built standing on its front panel, runners on upside down, slid in, front clicked on. */
+function drawerSet(b: PlanBuilder, list: DrawerSpec[], scene: string, pose: Pose) {
+  const types = new Map<string, string>();
+  const made = list.map((d) => {
+    const g = drawerGeo(d);
+    const mk = (name: string, e: Ext, material: PartMaterial = "board") => {
+      const size = dimsOf(e);
+      const tk = `${name}|${size.join("x")}`;
+      if (!types.has(tk)) types.set(tk, b.part(name, size, { material }));
+      return b.place(types.get(tk)!, midOf(e));
+    };
+    const { iw, bw, wFront, wBack } = g;
+    const y0 = d.yb, y1 = d.yb + d.bh;
+    const k = {
+      IF: mk("Drawer front panel", g.E(-iw / 2, iw / 2, y0, y1, wFront - 16, wFront)),
+      SL: mk("Drawer side", g.E(-bw / 2, -bw / 2 + 12, y0, y1, wBack, wFront)),
+      SR: mk("Drawer side", g.E(bw / 2 - 12, bw / 2, y0, y1, wBack, wFront)),
+      BT: mk("Drawer bottom", g.E(-(iw + 10) / 2, (iw + 10) / 2, y0 + 8.5, y0 + 11.5, wBack + 16, wFront - 16), "fiber"),
+      BK: mk("Drawer back", g.E(-iw / 2, iw / 2, y0 + 14, y1, wBack, wBack + 16)),
+      FR: mk("Drawer front", g.E(-d.fw / 2, d.fw / 2, d.fy[0] + 2, d.fy[1] - 2, 1, 21)),
+    };
+    return { d, g, k };
+  });
+  const rep = list.length > 1 ? list.length : undefined;
+  const ds = (o: StepOpts, body: () => void) => step(b, { kind: "drawer", scene, pose, repeat: rep, ...o }, body);
+  const at = (key: string) => b.partItem(key).final.pos;
+  const st = (key: string, from?: Vec3) => b.stage(key, at(key), b.partItem(key).final.rot, from);
+  ds({ title: "Press the stops into the drawer front panel", detail: "Lay it on a rug, inside face up. Push each stop into its hole and slide it along until it locks.", warnings: ["floor"] }, () => {
+    for (const { g, k } of made) st(k.IF, g.Dn(0, 0, 200));
+    b.then(0.15);
+    for (const { d, g, k } of made) b.fits(D_STOP, [-1, 1].map((sx): FitOpts => ({ on: k.IF, at: g.P(sx * (g.iw / 2 - 60), d.yb + 6, g.wFront - 16), dir: g.Dn(0, 0, 1), hole: false })), 0.1);
+  });
+  ds({ title: "Push the sides onto the front panel", detail: "Grooves facing in and down. Press each side onto the fittings until it clicks.", kind: "join" }, () => {
+    b.stagger(0.2);
+    for (const { g, k } of made) {
+      st(k.SL, g.Dn(0, 0, -300));
+      st(k.SR, g.Dn(0, 0, -300));
+    }
+  });
+  ds({ title: "Slide in the drawer bottom", detail: "Along the grooves in both sides, all the way down to the front panel." }, () => {
+    for (const { g, k } of made) st(k.BT, g.Dn(0, 0, -420));
+  });
+  ds({ title: "Lay the back on and lock it", detail: "Two pins through each side into the back, then turn the cam locks in the back until they pull tight.", tools: ["screwdriver"], kind: "cams" }, () => {
+    for (const { g, k } of made) st(k.BK, g.Dn(0, 0, -260));
+    b.then(0.15);
+    for (const { d, g, k } of made)
+      b.fits(D_PIN, [-1, 1].flatMap((sx) => [0.3, 0.75].map((f): FitOpts => ({ on: sx < 0 ? k.SL : k.SR, at: g.P(sx * (g.bw / 2 - 12), d.yb + d.bh * f, g.wBack + 8), dir: g.Dn(-sx, 0, 0), mate: k.BK }))), 0.08);
+    b.then(0.05);
+    for (const { d, g, k } of made)
+      b.fits(D_CAM, [-1, 1].flatMap((sx) => [0.3, 0.75].map((f): FitOpts => ({ on: k.BK, at: g.P(sx * (g.iw / 2 - 28), d.yb + d.bh * f, g.wBack), dir: g.Dn(0, 0, 1) }))), 0.1);
+  });
+  ds({ title: "Screw the bottom to the back", detail: "Two small screws through the bottom into the back.", tools: ["screwdriver"], kind: "screws" }, () => {
+    for (const { d, g, k } of made) b.fits(D_SMALL, [-1, 1].map((sx): FitOpts => ({ on: k.BT, at: g.P(sx * (g.iw / 4), d.yb + 8.5, g.wBack + 8), dir: g.Dn(0, 1, 0), mate: k.BK })), 0.15);
+  });
+  ds({ title: "Screw the runners onto the drawer", detail: "Turn it upside down. Each runner clicks onto the bottom edge of its side, then three screws.", tools: ["screwdriver"], kind: "runners", pose: "-y" }, () => {
+    for (const { d, g, k } of made) {
+      const len = Math.round((d.dd - 30) / 10) * 10;
+      b.fits({ kind: "runner", len, dia: 16 }, [-1, 1].map((sx): FitOpts => ({ on: sx < 0 ? k.SL : k.SR, at: g.P(sx * (g.bw / 2 - 6), d.yb, g.wm), dir: g.Dn(0, 1, 0), hole: false, twist: d.axis === "x" ? Math.PI / 2 : undefined })), 0.25);
+    }
+    b.then(0.1);
+    for (const { d, g, k } of made) {
+      const runW = spread(g.wBack + 40, g.wFront - 40, 3);
+      b.fits(D_SCREW, [-1, 1].flatMap((sx) => runW.map((w): FitOpts => ({ on: sx < 0 ? k.SL : k.SR, at: g.P(sx * (g.bw / 2 - 6), d.yb - 4, w), dir: g.Dn(0, 1, 0) }))), 0.06);
+    }
+  });
+  step(b, { title: list.length > 1 ? `Slide in all ${list.length} drawers` : "Slide the drawer in", detail: "Rest its runners on the rails in the frame and push it in until it closes softly.", kind: "drawer" }, () => {
+    for (const { g, k } of made) {
+      b.stagger(0);
+      for (const key of [k.IF, k.SL, k.SR, k.BT, k.BK]) b.add(key, g.Dn(0, 0, 520));
+      b.wait(0.2);
+    }
+  });
+  step(b, { title: many(list.length, "Click on the drawer front", "Click on the drawer fronts"), detail: "Hold it against the drawer and press it on until it clicks, then line up the gaps.", kind: "join" }, () => {
+    b.stagger(0.25);
+    for (const { g, k } of made) b.add(k.FR, g.Dn(0, 0, 300));
+  });
+}
+
 const family: Family = {
   names: ["SMÅSTAD"],
   build(b, s) {
@@ -930,6 +1555,10 @@ const family: Family = {
     }
     if (slug === "smastad-changing-table-desk-90-x-79-x-100" || slug === "smastad-desk-90-x-79-x-100") {
       buildCustom(b, { ...s, custom: changingRecipe(s, slug === "smastad-desk-90-x-79-x-100") });
+      return true;
+    }
+    if (slug === "smastad-loft-bed-twin-97-x-191") {
+      loftBed(b, s);
       return true;
     }
     const u = unitOf(s);

@@ -677,9 +677,106 @@ function table(b: PlanBuilder, s: ProductSpec, o: TableOpt): boolean {
   return true;
 }
 
+/* ---------- the bar stool: four legs under a cross plate, a foot ring, the swivel seat ---------- */
+
+/** A round tube from a to b, any direction. */
+function tube(a: Vec3, b: Vec3, dia: number): PartPiece {
+  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len = Math.hypot(...d);
+  const u = d.map((v) => v / len);
+  return cyl(dia, len, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], [Math.atan2(u[2], u[1]), 0, Math.asin(-u[0])]);
+}
+
+function barStool(b: PlanBuilder, s: ProductSpec): boolean {
+  // IKEA's page: 53 cm across the feet, 82 cm to the top of the back rim, seat 74 cm high
+  const FOOT = 250, TOPR = 70, BEND = 560, LEGD = 25;
+  const PLATE = 666; // underside of the cross plate, on the leg tops
+  const SEATY = 740;
+  const RINGY = 300;
+  const at = (y: number) => (y >= BEND ? TOPR : TOPR + ((FOOT - TOPR) * (BEND - y)) / BEND); // leg offset from the middle
+  const corners: [number, number][] = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  const legT = b.compound("Leg", [
+    tube([0, PLATE, 0], [0, BEND, 0], LEGD),
+    tube([0, BEND, 0], [FOOT - TOPR, 0, FOOT - TOPR], LEGD),
+    cyl(28, 14, [FOOT - TOPR, 7, FOOT - TOPR], undefined, "fiber"),
+  ], { material: "metal" });
+  // each leg is the same tube turned to its corner
+  const legs = corners.map(([sx, sz]) => {
+    const yaw = Math.atan2(sx, sz) - Math.PI / 4;
+    const mid = ry(legT.mid, yaw);
+    return b.place(legT.type, plus(mid, [sx * TOPR, 0, sz * TOPR]), [0, yaw, 0]);
+  });
+  const diag = (r: number) => corners.map(([sx, sz]): [number, number] => [(sx * r) / Math.SQRT2, (sz * r) / Math.SQRT2]);
+  const arm = 2 * 165;
+  const plateT = b.compound("Cross plate", [
+    box([arm, 4, 34], [0, PLATE + 2, 0], "metal", [0, Math.PI / 4, 0]),
+    box([arm, 4, 34], [0, PLATE + 2, 0], "metal", [0, -Math.PI / 4, 0]),
+  ], { material: "metal" });
+  const plate = b.place(plateT.type, plateT.mid);
+  // the foot ring sits inside the legs, held off them by the spacer bolts
+  const legR = at(RINGY) * Math.SQRT2;
+  const ringR = legR - LEGD / 2 - 14 - 11;
+  const segs = 40;
+  const ringT = b.compound("Foot ring", Array.from({ length: segs }, (_, i) => {
+    // each short tube runs a little past its neighbours so the ring reads as one
+    const a0 = ((i - 0.06) / segs) * 2 * Math.PI, a1 = ((i + 1.06) / segs) * 2 * Math.PI;
+    return tube([ringR * Math.cos(a0), RINGY, ringR * Math.sin(a0)], [ringR * Math.cos(a1), RINGY, ringR * Math.sin(a1)], 22);
+  }), { material: "metal" });
+  const ring = b.place(ringT.type, ringT.mid);
+  // the swivel under the woven seat, the seat pan and its rim, high at the back
+  const rim: PartPiece[] = [];
+  for (let i = 0; i < 40; i++) {
+    const a = (i / 40) * 2 * Math.PI;
+    const back = Math.max(0, -Math.cos(a)); // 1 at the back (-z), 0 at the sides and front
+    const h = 25 + 75 * back * back;
+    rim.push(box([34, h, 26], [195 * Math.sin(a), SEATY - 10 + h / 2, 195 * Math.cos(a)], "fiber", [0, a, 0]));
+  }
+  const seatT = b.compound("Seat", [
+    cyl(150, 8, [0, PLATE + 8, 0], undefined, "metal"),
+    cyl(270, 26, [0, PLATE + 25, 0], undefined, "metal"),
+    cyl(380, 22, [0, SEATY - 11, 0], undefined, "fiber"),
+    ...rim,
+  ], { material: "fiber" });
+  const seat = b.place(seatT.type, seatT.mid);
+
+  const BOLT: HwDef = { kind: "bolt", len: 16, dia: 6 };
+  const SPACER: HwDef = { kind: "bolt", len: 30, dia: 8, name: "Spacer bolt" };
+  const W: HwDef = { kind: "washer", len: 1.5, dia: 16 };
+  const step = stepper(b);
+  step({ title: "Stand the legs on a rug and lay the cross plate on top", detail: "Put a bolt with a spring washer and a washer through each hole into a leg. Only turn them in part way for now.", kind: "bolts", tools: ["allen"], warnings: ["floor"] }, () => {
+    legs.forEach((k, i) => {
+      if (i) b.then(0.08);
+      b.add(k, [corners[i][0] * 120, 0, corners[i][1] * 120]);
+    });
+    b.then(0.2);
+    b.add(plate, [0, 200, 0]);
+    b.then(0.2);
+    bolted(b, BOLT, [SPRING, W], diag(TOPR * Math.SQRT2).map(([x, z], i): FitOpts => ({ on: plate, at: [x, PLATE + 4, z], dir: [0, -1, 0], mate: legs[i] })));
+  });
+  step({ title: "Lift the foot ring up between the legs", detail: "From below, up to the holes in the legs. Screw a spacer bolt through each leg into the ring, with the Allen key.", kind: "bolts", tools: ["allen"] }, () => {
+    b.add(ring, [0, -RINGY + 20, 0]);
+    b.then(0.2);
+    const r = at(RINGY) * Math.SQRT2 + LEGD / 2;
+    b.fits(SPACER, corners.map(([sx, sz], i): FitOpts => {
+      const u: Vec3 = [sx / Math.SQRT2, 0, sz / Math.SQRT2];
+      return { on: legs[i], at: [u[0] * r, RINGY, u[2] * r], dir: [-u[0], 0, -u[2]], mate: ring };
+    }), 0.08);
+  });
+  step({ title: "Tighten the four bolts in the plate", detail: "Now that the ring holds the legs square, turn them until the spring washers are flat.", kind: "general", tools: ["allen"] });
+  step({ title: "Turn the legs over onto the seat", detail: "Lay the seat upside down on the rug and set the plate on the swivel, the holes lined up. A bolt with a spring washer and a washer in each corner.", pose: "-y", kind: "bolts", tools: ["allen"], warnings: ["floor"] }, () => {
+    b.add(seat, [0, 0, 600]);
+    b.then(0.2);
+    bolted(b, BOLT, [SPRING, W], diag(160).map(([x, z]): FitOpts => ({ on: plate, at: [x, PLATE, z], dir: [0, 1, 0], mate: seat })));
+  });
+  step({ title: "Stand the stool up", detail: "Turn the seat to check it swivels freely.", pose: "+y", kind: "standup" });
+  void s;
+  return true;
+}
+
 function build(b: PlanBuilder, s: ProductSpec): boolean {
   const slug = s.slug ?? "";
   if (/chair-armrests/.test(slug)) return chair(b, s);
+  if (/bar-stool/.test(slug)) return barStool(b, s);
   if (/sun-lounger/.test(slug)) return lounger(b, s);
   if (/coffee-table/.test(slug)) return table(b, s, { railH: 50, stripsX: 1, stripsC: 1, seq: [{ lay: 1, clips: "both" }, { lay: 1, clips: "both" }, { lay: 3, clips: "both" }, { lay: 2 }, { lay: 1 }, { clips: "last" }] });
   if (/segeron-table-outdoor/.test(slug))

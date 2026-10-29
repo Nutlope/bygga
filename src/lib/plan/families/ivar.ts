@@ -1,7 +1,8 @@
 import type { Family } from "./family";
-import type { CustomFix, CustomPart, CustomStep, HwKind, PartPiece, ProductSpec, Vec3 } from "../../types";
+import type { CustomFix, CustomPart, CustomStep, HwKind, PartItem, PartPiece, ProductSpec, Vec3 } from "../../types";
 import { HW, type HwDef, type PlanBuilder } from "../builder";
 import { buildCustom } from "../custom";
+import { rotate } from "../math";
 
 /**
  * IVAR, read from its manuals.
@@ -973,6 +974,357 @@ function boxUnit(s: ProductSpec): Recipe & { back: Vec3[] } {
   };
 }
 
+/* ---------------- parts built beside the shelving ---------------- */
+
+/**
+ * A recipe draws every part where it ends up. Parts the manual builds on the floor first (a frame laid flat, a
+ * cabinet on its back) are moved there afterwards: from the step titled `at`, each segment shows the group turned
+ * by `rot` about `pivot` and set down with the pivot at `to`; a segment without `to` brings it home.
+ */
+type Seg = { at: string; rot?: Vec3; pivot?: Vec3; to?: Vec3 };
+type Move = { ids: string[]; segs: Seg[] };
+
+function restage(b: PlanBuilder, parts: CustomPart[], moves: Move[]) {
+  const items = b.items.filter((i): i is PartItem => i.kind === "part");
+  const stepOf = (t: string) => b.steps.findIndex((x) => x.title === t);
+  for (const m of moves) {
+    const marks = m.segs.map((g) => ({ ...g, n: stepOf(g.at) })).filter((g) => g.n >= 0).sort((a, c) => a.n - c.n);
+    for (const id of m.ids) {
+      const it = items[parts.findIndex((p) => p.id === id)];
+      if (!it) continue;
+      marks.forEach((g, k) => {
+        const end = marks[k + 1]?.n ?? Infinity;
+        const f = it.final;
+        let pos = f.pos, rot = f.rot;
+        if (g.to) {
+          const r = g.rot ?? [0, 0, 0], c = g.pivot ?? [0, 0, 0];
+          const q = rotate([f.pos[0] - c[0], f.pos[1] - c[1], f.pos[2] - c[2]], r);
+          pos = [q[0] + g.to[0], q[1] + g.to[1], q[2] + g.to[2]];
+          // only one turn is ever about y or z, and those parts aren't turned themselves, so the angles just add
+          rot = [f.rot[0] + r[0], f.rot[1] + r[1], f.rot[2] + r[2]];
+        }
+        const inSeg = it.states.filter((x) => x.step >= g.n && x.step < end);
+        for (const x of inSeg) Object.assign(x, { pos, rot });
+        const before = it.states.filter((x) => x.step < g.n);
+        if (!inSeg.some((x) => x.step === g.n) && before.length) {
+          it.states.push({ ...before[before.length - 1], step: g.n, pos, rot, from: undefined, delay: 0.15 });
+          it.states.sort((a, c) => a.step - c.step);
+        }
+      });
+    }
+  }
+}
+
+/* ---------------- folding table, hung on a side unit ---------------- */
+
+const FT = 18; // the table's panels
+const FTOP = 750; // table height
+
+/**
+ * The folding table on a section between two ladders `W` wide (outside), centred on `cx`. Its leg frame is two posts
+ * and two rails on dowels and bolts, hinged to the front upright on the `sx` side; the top is hinged to a back strip
+ * that lies on four brackets in the uprights. `up` names the section's uprights: [left back, left front, right back, right front].
+ */
+function foldingTable(W: number, D: number, cx: number, sx: 1 | -1, up: [string, string, string, string], pre = "f") {
+  const id = (k: string) => pre + k;
+  const xi = W / 2 - UX; // the uprights' inner faces
+  const zu = D / 2 - UZ / 2;
+  const fx0 = cx + sx * (xi - 20); // the leg frame, just inside the upright
+  const z0 = D / 2, zt = D / 2 + 630; // the top, from the front of the uprights
+  const fw = 30, fd = 44; // frame sections
+  const zr = z0 + fd / 2, zf = zt - 30; // back post, front leg
+  const yT = FTOP - FT; // underside of the top
+  const railL = zf - zr - fd, railZ = (zr + zf) / 2;
+  const yTop = yT - fd / 2, yBot = 82;
+  const parts: CustomPart[] = [
+    box(id("T"), "Table top", [800, FT, 630], [cx, FTOP - FT / 2, (z0 + zt) / 2], { material: "wood" }),
+    box(id("K"), "Back strip", [2 * xi, FT, D], [cx, FTOP - FT / 2, 0], { material: "wood" }),
+    box(id("LT"), "Frame rail", [fw, fd, railL], [fx0, yTop, railZ], { material: "wood" }),
+    box(id("LB"), "Frame rail", [fw, fd, railL], [fx0, yBot, railZ], { material: "wood" }),
+    box(id("LR"), "Back post", [fw, yT - 40, fd], [fx0, 40 + (yT - 40) / 2, zr], { material: "wood" }),
+    box(id("LF"), "Leg", [fw, yT - 15, fd], [fx0, 15 + (yT - 15) / 2, zf], { material: "wood" }),
+  ];
+  const ends = (rail: string, y: number) => [
+    { post: id("LR"), z: zr + fd / 2, dir: [0, 0, 1] as Vec3, rail, y },
+    { post: id("LF"), z: zf - fd / 2, dir: [0, 0, -1] as Vec3, rail, y },
+  ];
+  const joints = [...ends(id("LT"), yTop), ...ends(id("LB"), yBot)];
+  const hy = [yT - 90, 160]; // hinge brackets on the back post
+  const ux = cx + sx * xi;
+  const front = sx > 0 ? up[3] : up[1];
+  const SCR = { len: 16, dia: 4 };
+  const BIG = { name: "Frame bolt", len: 110, dia: 6 };
+  const hingeAt = [-1, 1].map((k) => cx + k * 280);
+  const steps: CustomStep[] = [
+    {
+      title: "Lay out the two frame rails",
+      detail: "On a rug, next to the shelving. The table's leg frame is built flat.",
+      add: [id("LT"), id("LB")],
+      warnings: ["floor"],
+    },
+    {
+      title: "Tap in the dowels and push the posts on",
+      detail: "Two dowels into each end of both rails, then press the back post and the leg onto them.",
+      fix: joints.map((j) => fx("dowel", [-14, 14].map((dy) => [fx0, j.y + dy, j.z] as Vec3), j.dir.map((v) => -v) as Vec3, j.rail, { mate: j.post, len: 30, dia: 8 })),
+      add: [id("LR"), id("LF")],
+      tools: ["hammer"],
+    },
+    {
+      title: "Bolt the frame together",
+      detail: "A barrel nut into each rail end, slot towards the bolt, then a long bolt through the post into it.",
+      fix: [
+        ...joints.map((j) => fx("nut", [[fx0 - sx * (fw / 2), j.y, j.z + j.dir[2] * 40]], [sx, 0, 0], j.rail, { name: "Barrel nut", len: 14, dia: 10 })),
+        ...joints.map((j) => fx("bolt", [[fx0, j.y, j.z - j.dir[2] * fd]], j.dir, j.post, { ...BIG, mate: j.rail })),
+      ],
+      tools: ["flathead", "allen"],
+    },
+    {
+      title: "Screw the levelling foot into the leg",
+      detail: "Into the bottom of the leg, by hand. You can level the table with it later.",
+      fix: [fx("foot", [[fx0, 15, zf]], [0, 1, 0], id("LF"), { name: "Levelling foot", len: 15, dia: 30 })],
+    },
+    {
+      title: "Screw the stop pin into the top rail",
+      detail: "Into the hole in the inside face, near the leg.",
+      fix: [fx("stud", [[fx0 - sx * (fw / 2), yTop, zf - 90]], [sx, 0, 0], id("LT"), { name: "Stop pin", len: 30, dia: 8 })],
+      tools: ["allen"],
+    },
+    {
+      title: "Screw the hinge brackets onto the back post",
+      detail: "On its outer face, one near each end, two screws each.",
+      fix: [
+        fx("hinge", hy.map((y) => [fx0 + sx * (fw / 2), y, zr] as Vec3), [-sx, 0, 0], id("LR"), { name: "Hinge bracket", len: 40, dia: 30 }),
+        fx("screw", hy.flatMap((y) => [y - 22, y + 22].map((yy) => [fx0 + sx * (fw / 2), yy, zr] as Vec3)), [-sx, 0, 0], id("LR"), SCR),
+      ],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Screw the hinges to the back strip",
+      detail: "Lay the top and the back strip face down, edge to edge. Two hinges, four screws each into the strip.",
+      add: [id("K"), id("T")],
+      fix: [
+        fx("hinge", hingeAt.map((x) => [x, yT, z0] as Vec3), [0, 1, 0], id("K"), { name: "Table hinge", len: 60, dia: 40 }),
+        fx("screw", hingeAt.flatMap((x) => [-18, 18].flatMap((dx) => [z0 - 12, z0 - 30].map((z) => [x + dx, yT, z] as Vec3))), [0, 1, 0], id("K"), SCR),
+      ],
+      tools: ["screwdriver"],
+      warnings: ["floor"],
+    },
+    {
+      title: "Screw the stop block under the top",
+      detail: "Two screws. It sits against the stop pin when the leg frame is swung out.",
+      fix: [
+        fx("clip", [[fx0 - sx * 45, yT, zf - 90]], [0, 1, 0], id("T"), { name: "Stop block", len: 25, dia: 40 }),
+        fx("screw", [-1, 1].map((k) => [fx0 - sx * 45, yT - 25, zf - 90 + k * 10] as Vec3), [0, 1, 0], id("T"), { len: 40, dia: 4 }),
+      ],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Screw the hinges to the top",
+      detail: "Four screws through each hinge into the top.",
+      fix: [fx("screw", hingeAt.flatMap((x) => [-18, 18].flatMap((dx) => [z0 + 12, z0 + 30].map((z) => [x + dx, yT, z] as Vec3))), [0, 1, 0], id("T"), SCR)],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Clear the shelf at table height",
+      detail: "If a shelf sits where the table goes, take it out and pull its pins; put it lower, under the table, on its own pins.",
+    },
+    {
+      title: "Hang the leg frame on the front upright",
+      detail: "Hold the frame against the inside of the upright, between holes 2 and 6 from the top of the table, and screw both hinge brackets on.",
+      fix: [fx("screw", hy.flatMap((y) => [y - 22, y + 22].map((yy) => [ux, yy, zr - fd / 2 - 8] as Vec3)), [sx, 0, 0], front, SCR)],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Hook the support brackets into the uprights",
+      detail: "One on the inside of each upright, at the height of the strip, and a screw in each.",
+      fix: [
+        ...up.map((u, i) => {
+          const x = cx + (i < 2 ? -1 : 1) * xi, z = (i % 2 ? 1 : -1) * zu;
+          return fx("angle", [[x, yT, z]], [i < 2 ? -1 : 1, 0, 0], u, { name: "Support bracket", len: 40, dia: 30 });
+        }),
+        ...up.map((u, i) => fx("screw", [[cx + (i < 2 ? -1 : 1) * xi, yT - 30, (i % 2 ? 1 : -1) * zu]], [i < 2 ? -1 : 1, 0, 0], u, SCR)),
+      ],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Lay the table on together",
+      detail: "One of you lowers the strip onto the brackets, the other guides the top down onto the leg frame, stop block behind the pin.",
+      people: 2,
+    },
+    {
+      title: "Screw the strip to the brackets",
+      detail: "A sleeve up into each bracket from below and a screw down through the strip into it.",
+      fix: [
+        fx("nut", [-1, 1].flatMap((k) => [-1, 1].map((z) => [cx + k * (xi - 15), yT - 12, z * zu] as Vec3)), [0, 1, 0], id("K"), { name: "Sleeve", len: 12, dia: 8 }),
+        fx("screw", [-1, 1].flatMap((k) => [-1, 1].map((z) => [cx + k * (xi - 15), FTOP, z * zu] as Vec3)), [0, -1, 0], id("K"), SCR),
+      ],
+      tools: ["screwdriver"],
+    },
+  ];
+  const frame = [id("LT"), id("LB"), id("LR"), id("LF")];
+  const fc: Vec3 = [fx0, (15 + yT) / 2, railZ];
+  const moves: Move[] = [
+    { ids: frame, segs: [{ at: steps[0].title, rot: [0, 0, sx * Math.PI / 2], pivot: fc, to: [cx, fw / 2, D / 2 + 1500] }, { at: "Hang the leg frame on the front upright" }] },
+    { ids: [id("K"), id("T")], segs: [{ at: "Screw the hinges to the back strip", rot: [Math.PI, 0, 0], pivot: [cx, FTOP - FT / 2, z0], to: [cx, FT / 2, D / 2 + 800] }, { at: "Lay the table on together" }] },
+  ];
+  return { parts, steps, moves };
+}
+
+/** A side unit 89 x 30 x 179 for a folding table: a bottom shelf, one above the table's height and one at the top. */
+function tableUnit(s: ProductSpec, ys: number[], brace: [number, number]) {
+  const spec = { ...s, size: { w: 89, h: 179, d: 30 } };
+  return sideUnit(spec, { ys, brace });
+}
+
+/** Folding table alone: it hangs on a side unit you already have, drawn here but not in the box. */
+function foldingAlone(s: ProductSpec): Recipe & { moves: Move[] } {
+  const u = tableUnit(s, [110, 1120, 1720], [160, 680]);
+  const t = foldingTable(u.W, u.D, 0, 1, ["U00", "U01", "U10", "U11"]);
+  const parts = [...u.parts.map((p) => ({ ...p, extra: true })), ...t.parts];
+  const steps: CustomStep[] = [
+    { title: "Start from your IVAR side unit", detail: "The table hangs on a side unit 89 cm wide and 30 deep, built and strapped to the wall. It isn't in this box.", add: u.parts.map((p) => p.id) },
+    ...t.steps,
+  ];
+  return { parts, steps, moves: t.moves };
+}
+
+/** Side unit, then the pine cabinet with doors hung in its top half, then the folding table under it. */
+function unitWithTable(s: ProductSpec): Recipe & { moves: Move[]; back: Vec3[] } {
+  const u = tableUnit(s, [110], [160, 680]);
+  const y0 = u.H - 60 - 830;
+  const cab = pineCabinet({ ...s, size: { ...s.size, d: 30 } }, y0, false, "c");
+  const t = foldingTable(u.W, u.D, 0, 1, ["U00", "U01", "U10", "U11"]);
+  const xi = u.W / 2 - UX, zu = u.zUp(1);
+  const SCR = { len: 16, dia: 4 };
+  const ups = ["U00", "U01", "U10", "U11"];
+  const upAt = (i: number) => ({ x: (i < 2 ? -1 : 1) * xi, z: (i % 2 ? 1 : -1) * zu, dir: [i < 2 ? -1 : 1, 0, 0] as Vec3 });
+  const cabSteps = cab.steps.map((st) => (st.pose === "+z" ? { ...st, pose: undefined, detail: "Lay them on a rug in front of the shelving. " + (st.detail ?? "") } : st));
+  const plates = cabSteps.findIndex((st) => st.title.startsWith("Screw the hinge plates"));
+  const mount: CustomStep[] = [
+    {
+      title: "Screw the cabinet brackets to the uprights",
+      detail: "One on the inside of each upright, level with the bottom of the cabinet, a screw in each.",
+      fix: [
+        ...ups.map((id, i) => fx("angle", [[upAt(i).x, y0, upAt(i).z]], upAt(i).dir, id, { name: "Cabinet bracket", len: 30, dia: 30 })),
+        ...ups.map((id, i) => fx("screw", [[upAt(i).x, y0 - 25, upAt(i).z]], upAt(i).dir, id, SCR)),
+      ],
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Lift the cabinet in onto the brackets",
+      detail: "Together, from the front. Then a screw up through each front bracket into the cabinet.",
+      fix: [-1, 1].map((sx) => fx("screw", [[sx * (400 - 9), y0 - 4, zu]], [0, 1, 0], sx < 0 ? "cS0" : "cS1", SCR)),
+      people: 2,
+      tools: ["screwdriver"],
+    },
+    {
+      title: "Fix the top of the cabinet to the back uprights",
+      detail: "A bracket on each back upright at the cabinet's top, screwed to the upright and down into the cabinet.",
+      fix: [
+        ...[0, 2].map((i) => fx("angle", [[upAt(i).x, y0 + 830, upAt(i).z]], upAt(i).dir, ups[i], { name: "Cabinet bracket", len: 30, dia: 30 })),
+        ...[0, 2].map((i) => fx("screw", [[upAt(i).x, y0 + 830 - 25, upAt(i).z]], upAt(i).dir, ups[i], SCR)),
+        ...[-1, 1].map((sx) => fx("screw", [[sx * (400 - 9), y0 + 834, -zu]], [0, -1, 0], sx < 0 ? "cS0" : "cS1", SCR)),
+      ],
+      tools: ["screwdriver"],
+    },
+  ];
+  const steps: CustomStep[] = [...u.steps, ...cabSteps.slice(0, plates + 1), ...mount, ...cabSteps.slice(plates + 1), ...t.steps];
+  const carcass = ["cT", "cB", "cS0", "cS1", "cK"];
+  const cc: Vec3 = [0, y0 + 415, 0];
+  const moves: Move[] = [
+    ...t.moves,
+    {
+      ids: carcass,
+      segs: [
+        { at: cabSteps[0].title, rot: [-Math.PI / 2, 0, 0], pivot: cc, to: [0, 150, u.D / 2 + 600] },
+        { at: cabSteps[plates].title, pivot: cc, to: [0, 415, u.D / 2 + 600] },
+        { at: "Lift the cabinet in onto the brackets" },
+      ],
+    },
+    {
+      ids: ["cD0", "cD1"],
+      segs: [{ at: "Screw the hinges onto the doors", rot: [Math.PI / 2, 0, 0], pivot: [0, y0 + 415, u.D / 2 + FT / 2], to: [0, FT / 2, u.D / 2 + 600] }, { at: "Click the doors onto the hinge plates" }],
+    },
+  ];
+  return { parts: [...u.parts, ...cab.parts, ...t.parts], steps, moves, back: u.back };
+}
+
+/** Two sections on three ladders, 42 and 83 cm shelves, with the folding table in the wide one. */
+function twoSectionsWithTable(s: ProductSpec): Recipe & { moves: Move[]; back: Vec3[] } {
+  const H = 1790, D = 300, W = 1340;
+  const bays = [420, 830];
+  const lx = [-W / 2 + UX / 2, -W / 2 + UX * 1.5 + bays[0], W / 2 - UX / 2]; // ladder centres
+  const ys = rungYs(H);
+  const zUp = (sz: number) => sz * (D / 2 - UZ / 2);
+  const parts: CustomPart[] = [];
+  lx.forEach((x, l) => {
+    [-1, 1].forEach((sz, u) => parts.push(box(`U${l}${u}`, "Upright", [UX, H, UZ], [x, H / 2, zUp(sz)], { material: "wood" })));
+    ys.forEach((y, k) => parts.push(box(`R${l}${k}`, "Rung", [RUNG, 45, D - 2 * UZ], [x, y, 0], { material: "wood" })));
+  });
+  const shelfYs = [[110, 500, 900, 1300, 1720], [110, 1250, 1720]];
+  const shelves: { id: string; bay: number; y: number }[] = [];
+  shelfYs.forEach((list, bay) => list.forEach((y, i) => {
+    const id = `S${bay}${i}`;
+    shelves.push({ id, bay, y });
+    parts.push(box(id, "Shelf", [bays[bay], ST, D], [(lx[bay] + lx[bay + 1]) / 2, y, 0], { material: "wood" }));
+  }));
+  const braceY: [number, number][] = [[940, 1260], [160, 680]];
+  braceY.forEach(([ya, yb], bay) => {
+    const span = lx[bay + 1] - lx[bay], rise = yb - ya, len = Math.hypot(span, rise), ang = Math.atan2(rise, span);
+    const rods: PartPiece[] = [-1, 1].map((k) => ({ shape: "box", size: [len, 4, 4], pos: [0, 0, 0], rot: [0, 0, k * ang] }));
+    parts.push(box(`X${bay}`, "Cross brace", [span, rise, 4], [(lx[bay] + lx[bay + 1]) / 2, (ya + yb) / 2, -D / 2 - 2], { pieces: rods, material: "metal" }));
+  });
+  const out = [-1, -1, 1]; // the face the pegs go in from
+  const pegs = (l: number, u: number) => fx("dowel", ys.map((y) => [lx[l] + out[l] * (UX / 2), y, zUp(u ? 1 : -1)] as Vec3), [-out[l], 0, 0], `U${l}${u}`, { len: PEG.len, dia: PEG.dia });
+  const rungs = (l: number) => ys.map((_, k) => `R${l}${k}`);
+  // one fix per upright face: the custom builder keeps at most 24 fixes a step
+  const pins = [0, 1].flatMap((bay) =>
+    [0, 1].flatMap((side) => [0, 1].map((u) => {
+      const l = bay + side, sx = side ? 1 : -1;
+      const at = shelves.filter((sh) => sh.bay === bay).map((sh) => [lx[l] - sx * (UX / 2), sh.y - ST / 2 - 3, zUp(u ? 1 : -1)] as Vec3);
+      return fx("pin", at, [sx, 0, 0], `U${l}${u}`, { dia: 6 });
+    })),
+  );
+  const ladder = (l: number) => [`U${l}0`, `U${l}1`, ...rungs(l)];
+  const t = foldingTable(bays[1] + 2 * UX, D, (lx[1] + lx[2]) / 2, 1, ["U10", "U11", "U20", "U21"]);
+  const steps: CustomStep[] = [
+    {
+      title: "Knock the rungs into an upright",
+      detail: "Lay the upright on a rug, holes up. Tap each rung's tongue into its slot, with a scrap of wood under the hammer.",
+      add: ["U00", ...rungs(0)],
+      tools: ["hammer"],
+      pose: "+x",
+      warnings: ["floor"],
+    },
+    { title: "Knock the pegs in", detail: "Pointed end first, through the upright and the rung's tongue, until they sit flush.", fix: [pegs(0, 0)], tools: ["hammer"] },
+    { title: "Knock the second upright onto the rungs", detail: "Turn the ladder over first so the pegged upright lies on the rug.", add: ["U01"], tools: ["hammer"] },
+    { title: "Peg the second upright", detail: "The same as the first, one peg at each rung.", fix: [pegs(0, 1)], tools: ["hammer"] },
+    { title: "Build the middle side unit the same way", detail: "Rungs into one upright, pegs, then the second upright and its pegs.", add: ladder(1), fix: [pegs(1, 0), pegs(1, 1)], tools: ["hammer"] },
+    { title: "Build the third side unit the same way", detail: "The last ladder, built the same way.", add: ladder(2), fix: [pegs(2, 0), pegs(2, 1)], tools: ["hammer"], pose: "-x" },
+    {
+      title: "Stand the three side units up and put the shelves in",
+      detail: "Narrow shelves on the left, wide ones on the right. Four pins level for each shelf, then press it down onto them until it clicks.",
+      add: shelves.map((x) => x.id),
+      fix: pins,
+      people: 2,
+      pose: "+y",
+      warnings: ["two"],
+    },
+    {
+      title: "Screw on the cross braces",
+      detail: "One across the back of each section, a screw into the back upright at each of its four ends.",
+      add: ["X0", "X1"],
+      fix: braceY.map(([ya, yb], bay) => fx("screw", [bay, bay + 1].flatMap((l) => [ya, yb].map((y) => [lx[l], y, -D / 2 - 3] as Vec3)), [0, 0, 1], `X${bay}`, { len: 16, dia: 4 })),
+      tools: ["screwdriver"],
+      people: 2,
+      check: "square",
+    },
+    ...t.steps,
+  ];
+  const moves: Move[] = [...t.moves, { ids: ladder(1), segs: [{ at: "Build the middle side unit the same way", to: [lx[0] - lx[1], 0, 700] }, { at: "Stand the three side units up and put the shelves in" }] }];
+  return { parts: [...parts, ...t.parts], steps, moves, back: [0, 1, 2].map((l) => parts.find((p) => p.id === `U${l}0`)!.pos) };
+}
+
 /* ---------------- which guide is which ---------------- */
 
 const MESH = /ivar-cabinet-doors-(80-x-83|160-x-30-x-83)/;
@@ -985,8 +1337,9 @@ const SLIDING = /ivar-cabinet-sliding-doors-/;
 const BOX_SHELF = /ivar-box-shelf-divider-/;
 const BOX_UNIT = /ivar-shelving-unit-storage-box-/;
 
-function run(b: PlanBuilder, s: ProductSpec, r: Recipe & { back?: Vec3[] }) {
+function run(b: PlanBuilder, s: ProductSpec, r: Recipe & { back?: Vec3[]; moves?: Move[] }) {
   buildCustom(b, { ...s, custom: { parts: r.parts, steps: r.steps } });
+  if (r.moves) restage(b, r.parts, r.moves);
   if (r.back) strapStep(b, s, r.back);
   return true;
 }
@@ -1004,6 +1357,9 @@ const family: Family = {
     if (SLIDING.test(slug)) return run(b, s, slidingCabinet(s));
     if (BOX_SHELF.test(slug)) return run(b, s, boxShelf(s));
     if (BOX_UNIT.test(slug)) return run(b, s, boxUnit(s));
+    if (slug === "ivar-folding-table-80-x-30-91") return run(b, s, foldingAlone(s));
+    if (slug === "ivar-1-sec-storage-unit-w-foldable-table-89-x-30") return run(b, s, unitWithTable(s));
+    if (slug === "ivar-2-sec-storage-unit-w-foldable-table-134-x-9") return run(b, s, twoSectionsWithTable(s));
     if (s.archetype !== "shelf" || s.shelf?.style !== "bookcase") return false;
     const u = sideUnit(s);
     return run(b, s, { parts: u.parts, steps: u.steps, back: u.back });

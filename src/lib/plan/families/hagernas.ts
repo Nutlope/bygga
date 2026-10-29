@@ -100,11 +100,133 @@ function recipe(s: ProductSpec): CustomParams {
   };
 }
 
+/*
+ * HÄGERNÄS chair, read from its manual. Two side frames (back leg, front leg, seat rail and low stretcher, glued at
+ * the factory) and four cross pieces: the top back rail, the middle back slat and the front and back seat rails.
+ * Seat brackets screw into the seat rails by hand, sixteen dowels go into the ends of the cross pieces, which stand
+ * in one side frame lying on the rug; the other frame goes on top and three long bolts go through each frame.
+ * Upside down on a table the middle stretcher drops in between the low stretchers on two more bolts, then the frame
+ * is lowered onto the seat and the four brackets are screwed to it.
+ * IKEA's sizes: seat 40 x 41 cm, 45 high, the chair 87 high.
+ */
+function chairRecipe(s: ProductSpec): CustomParams {
+  const W = Math.round(s.size.w * 10) || 460, D = Math.round(s.size.d * 10) || 530, H = Math.round(s.size.h * 10) || 870;
+  const L = 38, rt = 20, rh = 70, T = 20;
+  const seatW = W - 30, frameW = seatW - 30;
+  const xl = frameW / 2 - L / 2; // side frame centres
+  const inner = frameW - 2 * L; // between the frames
+  const yS = 450 - T; // underside of the seat, top of the front legs and seat rails
+  const zF = D / 2 - 15 - L / 2; // front legs, the seat overhangs them a little
+  const zB = -D / 2 + 110; // back legs at the seat
+  const zFoot = -D / 2 + L / 2; // back legs splay back to the floor
+  const lean = 40; // the back leans back a little above the seat
+  const thLo = Math.atan2(zB - zFoot, yS), lenLo = Math.hypot(zB - zFoot, yS);
+  const thUp = Math.atan2(lean, H - yS), lenUp = Math.hypot(lean, H - yS);
+  const zAt = (y: number) => (y <= yS ? zFoot + ((zB - zFoot) * y) / yS : zB - (lean * (y - yS)) / (H - yS));
+  const yR = yS - rh / 2, yLow = 150;
+  const fc: Vec3 = [0, H / 2, 0];
+  const rel = (p: PartPiece): PartPiece => ({ ...p, pos: [p.pos[0] - fc[0], p.pos[1] - fc[1], p.pos[2] - fc[2]] });
+  const frame: PartPiece[] = [
+    { shape: "box", size: [L, lenLo, L], pos: [0, yS / 2, (zFoot + zB) / 2], rot: [thLo, 0, 0] },
+    { shape: "box", size: [L, lenUp, L], pos: [0, (yS + H) / 2, zB - lean / 2], rot: [-thUp, 0, 0] },
+    { shape: "box", size: [L, yS, L], pos: [0, yS / 2, zF] },
+    { shape: "box", size: [rt, rh, zF - zB - L], pos: [0, yR, (zF + zB) / 2] },
+    { shape: "box", size: [rt, 40, zF - zAt(yLow) - L], pos: [0, yLow, (zF + zAt(yLow)) / 2] },
+  ].map((p) => rel(p as PartPiece));
+  const yTR = H - 70, yMS = 640;
+  const zFR = zF - L / 2 + rt / 2 + 4, zBR = zB;
+  const zMX = (zF + zAt(yLow)) / 2;
+  const parts: CustomPart[] = [
+    ...[-1, 1].map((sx, i): CustomPart => ({ id: `F${i}`, name: "Side frame", size: [L, H, D], pos: [sx * xl, fc[1], fc[2]], pieces: frame, material: "wood" })),
+    { id: "TR", name: "Top back rail", size: [inner, 100, 22], pos: [0, yTR, zAt(yTR)], rot: [-thUp, 0, 0], material: "wood" },
+    { id: "MS", name: "Back slat", size: [inner, 70, 20], pos: [0, yMS, zAt(yMS)], rot: [-thUp, 0, 0], material: "wood" },
+    { id: "BR", name: "Back seat rail", size: [inner, rh, rt], pos: [0, yR, zBR], material: "wood" },
+    { id: "FR", name: "Front seat rail", size: [inner, rh, rt], pos: [0, yR, zFR], material: "wood" },
+    { id: "MX", name: "Middle stretcher", size: [frameW - rt, 40, rt], pos: [0, yLow, zMX], material: "wood" },
+    { id: "S", name: "Seat", size: [seatW, T, D / 2 - (zB + L / 2)], pos: [0, yS + T / 2, (D / 2 + zB + L / 2) / 2], material: "wood" },
+  ];
+  const bx = [-90, 90];
+  const brackets = [
+    fix("stud", bx.map((x): Vec3 => [x, yS - 12, zFR - rt / 2]), [0, 0, 1], { on: "FR", len: 20, dia: 20, name: "Seat bracket" }),
+    fix("stud", bx.map((x): Vec3 => [x, yS - 12, zBR + rt / 2]), [0, 0, -1], { on: "BR", len: 20, dia: 20, name: "Seat bracket" }),
+  ];
+  const ends: [string, number, number][] = [["TR", yTR, 30], ["MS", yMS, 18], ["BR", yR, 20], ["FR", yR, 20]];
+  const dowels = ends.flatMap(([id, y, k]) =>
+    [-1, 1].map((sx) => fix("dowel", [-k, k].map((dy): Vec3 => [sx * (inner / 2), y + dy, zAt(y + dy) + (id === "FR" ? zFR - zAt(y) : id === "BR" ? zBR - zAt(y) : 0)]), [-sx, 0, 0], { on: id })),
+  );
+  const side = (sx: number, i: number) =>
+    fix("bolt", ([[yTR, zAt(yTR)], [yR, zBR], [yR, zFR]] as const).map(([y, z]): Vec3 => [sx * (frameW / 2), y, z]), [-sx, 0, 0], { on: `F${i}`, len: 70, dia: 6 });
+  const screws: Vec3[] = [
+    ...bx.map((x): Vec3 => [x, yS, zFR - rt / 2 - 14]),
+    ...bx.map((x): Vec3 => [x, yS, zBR + rt / 2 + 14]),
+  ];
+  return {
+    parts,
+    steps: [
+      {
+        title: "Screw the seat brackets into the seat rails",
+        detail: "Lay the two seat rails on a rug. Two brackets in each, turned in by hand until they sit tight.",
+        fix: brackets,
+        wait: ["FR", "BR"],
+        warnings: ["floor"],
+      },
+      {
+        title: "Stand the back and seat rails in one side frame",
+        detail: "Lay a side frame on the rug, holes up. Two dowels in each end of the four rails, then push them into the frame, the brackets facing in.",
+        add: ["F0", "TR", "MS", "BR", "FR"],
+        fix: dowels,
+        from: { TR: [300, 0, 0], MS: [300, 0, 0], BR: [300, 0, 0], FR: [300, 0, 0] },
+        pose: "+x",
+        tools: ["hammer"],
+      },
+      {
+        title: "Lay the other side frame on and bolt it",
+        detail: "Onto the dowels. Three long bolts through the frame into the rails, tightened with the Allen key.",
+        add: ["F1"],
+        fix: [side(1, 1)],
+        from: { F1: [320, 0, 0] },
+        tools: ["allen"],
+      },
+      {
+        title: "Turn the chair over and bolt the first side",
+        detail: "Three more long bolts, the same way.",
+        fix: [side(-1, 0)],
+        pose: "-x",
+        tools: ["allen"],
+      },
+      {
+        title: "Bolt in the middle stretcher",
+        detail: "Turn the chair upside down on a table with a cloth on it. Press the stretcher down between the low side rails and put a long bolt in from each side.",
+        add: ["MX"],
+        fix: [-1, 1].map((sx, i) => fix("bolt", [[sx * (xl + rt / 2), yLow, zMX]], [-sx, 0, 0], { on: `F${i}`, mate: "MX", len: 70, dia: 6 })),
+        from: { MX: [0, -250, 0] },
+        pose: "-y",
+        tools: ["allen"],
+      },
+      {
+        title: "Lower the frame onto the seat",
+        detail: "Lay the seat face down on the cloth and turn the frame onto it. Check it overhangs the same on both sides.",
+        add: ["S"],
+        from: { S: [0, 250, 0] },
+      },
+      {
+        title: "Screw the brackets to the seat",
+        detail: "One screw through each of the four brackets into the seat.",
+        fix: [fix("screw", screws, [0, 1, 0], { len: 16, dia: 4, mate: "S" })],
+        tools: ["screwdriver"],
+      },
+      { title: "Stand it up", detail: "Tighten the bolts again after a couple of weeks.", pose: "+y" },
+    ],
+  };
+}
+
 const family: Family = {
   names: ["HÄGERNÄS", "HAGERNAS"],
   recipe(s) {
-    if (!/stool/i.test(`${s.slug ?? ""} ${s.variant}`)) return null;
-    return recipe(s);
+    const t = `${s.slug ?? ""} ${s.variant}`;
+    if (/stool/i.test(t)) return recipe(s);
+    if (/chair/i.test(t)) return chairRecipe(s);
+    return null;
   },
 };
 export default family;

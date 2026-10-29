@@ -597,6 +597,145 @@ function chair(b: PlanBuilder, s: ProductSpec) {
   return true;
 }
 
+/*
+ * The stool: two aprons take their dowels and a seat clip each on a rug, the two ready-made side frames (two legs and
+ * a rail) take two clips each. Upside down, the aprons go into one side frame, the other side frame goes on and four
+ * bolts pull it together. Upright, four dowels go into the leg tops; then it is lowered upside down onto the seat
+ * lying face down, and the six clips are screwed to the seat.
+ */
+function stool(b: PlanBuilder, s: ProductSpec) {
+  // IKEA: 32 x 32, 45 high
+  const W = 320, D = 320, H = s.size.h * 10 || 450;
+  const st = 20, SY = H - st; // seat underside
+  const lw = 38, xl = W / 2 - lw / 2; // legs
+  const rt = 18, rh = 80, ry = SY - rh / 2, xr = W / 2 - 5 - rt / 2; // rails and aprons, a little in from the legs' faces
+  const inner = W / 2 - lw; // the aprons run between the legs
+  const side = (sx: number): Part => ({
+    id: sx < 0 ? "F0" : "F1",
+    name: "Side frame",
+    mat: "wood",
+    size: [lw, SY, D],
+    pos: [sx * xl, SY / 2, 0],
+    pieces: [
+      ...[-1, 1].map((sz): PartPiece => ({ shape: "box", size: [lw, SY, lw], pos: [0, 0, sz * xl] })),
+      { shape: "box", size: [rt, rh, 2 * inner], pos: [sx * (xr - xl), ry - SY / 2, 0] },
+    ],
+  });
+  // the seat has a hand slot near the back
+  const slot = { x: 60, z0: -95, z1: -70 };
+  const seat: Part = {
+    id: "SEAT",
+    name: "Seat",
+    mat: "wood",
+    size: [W, st, D],
+    pos: [0, SY + st / 2, 0],
+    pieces: [
+      { shape: "box", size: [W, st, D / 2 - slot.z1], pos: [0, 0, (slot.z1 + D / 2) / 2] },
+      { shape: "box", size: [W, st, slot.z0 + D / 2], pos: [0, 0, (-D / 2 + slot.z0) / 2] },
+      ...[-1, 1].map((sx): PartPiece => ({ shape: "box", size: [W / 2 - slot.x, st, slot.z1 - slot.z0], pos: [sx * (W / 2 + slot.x) / 2, 0, (slot.z0 + slot.z1) / 2] })),
+    ],
+  };
+  const parts: Part[] = [
+    side(-1),
+    side(1),
+    { id: "A0", name: "Apron", mat: "wood", size: [2 * inner, rh, rt], pos: [0, ry, -xr] },
+    { id: "A1", name: "Apron", mat: "wood", size: [2 * inner, rh, rt], pos: [0, ry, xr] },
+    seat,
+  ];
+  const byId = new Map(parts.map((p) => [p.id, p]));
+  const aprons = ["A0", "A1"], frames = ["F0", "F1"];
+  const fi = (x: number) => (x < 0 ? "F0" : "F1");
+  const dowels: Fx = {
+    def: CHAIR_DOWEL,
+    at: aprons.flatMap((id) => [-1, 1].flatMap((sx) => [ry - 22, ry + 22].map((y): Vec3 => [sx * inner, y, byId.get(id)!.pos[2]]))),
+    dir: (p) => [-Math.sign(p[0]), 0, 0],
+    on: (p) => (p[2] < 0 ? "A0" : "A1"),
+    mate: (p) => fi(p[0]),
+  };
+  const fi2 = xr - rt / 2; // inner faces of the aprons and rails
+  const apronClips: Fx = { def: SEAT_CLIP, at: [-1, 1].map((sz): Vec3 => [0, SY, sz * fi2]), dir: [0, 1, 0], on: (p) => (p[2] < 0 ? "A0" : "A1"), hole: false, twist: (p) => (p[2] < 0 ? 0 : Math.PI) };
+  const frameClips: Fx = {
+    def: SEAT_CLIP,
+    at: [-1, 1].flatMap((sx) => [-60, 60].map((z): Vec3 => [sx * fi2, SY, z])),
+    dir: [0, 1, 0],
+    on: (p) => fi(p[0]),
+    hole: false,
+    twist: (p) => (p[0] < 0 ? Math.PI / 2 : -Math.PI / 2),
+  };
+  const clipScrews: Fx = {
+    def: CLIP_SCREW,
+    at: [...apronClips.at.map((p): Vec3 => [p[0] + 8, SY - 2, p[2] - Math.sign(p[2]) * 12]), ...frameClips.at.map((p): Vec3 => [p[0] - Math.sign(p[0]) * 12, SY - 2, p[2] + 8])],
+    dir: [0, 1, 0],
+    on: (p) => (Math.abs(p[2]) > Math.abs(p[0]) ? (p[2] < 0 ? "A0" : "A1") : fi(p[0])),
+    mate: "SEAT",
+  };
+  // upside down the floor is level with the seat top: parts laid out flat lie just under it
+  const flat = (id: string, at: Vec3, rot: Vec3): Op => ({ stage: [id], pivot: byId.get(id)!.pos, at, rot, from: [0, -160, 0] });
+  const free = (ids: string[], off: Vec3): Op => ({ stage: ids, pivot: [0, 0, 0], at: off, from: [0, 0, 0] });
+  run(b, parts, [
+    {
+      title: "Tap the dowels into the two aprons",
+      detail: "Lay them flat on a rug. Two dowels into each end.",
+      pose: "-y",
+      tools: ["hammer"],
+      warnings: ["floor"],
+      ops: [flat("A0", [0, H - rt / 2, -110], [Math.PI / 2, 0, 0]), flat("A1", [0, H - rt / 2, 110], [Math.PI / 2, 0, 0]), { fit: dowels }],
+    },
+    {
+      title: "Push a seat clip into each apron",
+      detail: "Into the hole in the middle of the top edge, the tab pointing inwards.",
+      pose: "-y",
+      ops: [{ fit: apronClips }],
+    },
+    {
+      title: "Push two seat clips into each side frame",
+      detail: "Into the holes along the top edge of the rail, tabs pointing inwards.",
+      pose: "-y",
+      repeat: 2,
+      ops: [flat("F0", [-420, H - lw / 2, 0], [0, 0, Math.PI / 2]), flat("F1", [420, H - lw / 2, 0], [0, 0, -Math.PI / 2]), { fit: frameClips }],
+    },
+    {
+      title: "Push the aprons into a side frame",
+      detail: "Stand a side frame upside down on the rug and press both aprons onto its dowels.",
+      pose: "-y",
+      ops: [{ add: ["F0"] }, free(aprons, [220, 0, 0]), { add: aprons }],
+    },
+    {
+      title: "Put the other side frame on and bolt it",
+      detail: "Press it onto the free dowels, then two bolts through each frame into the aprons.",
+      pose: "-y",
+      tools: ["allen"],
+      ops: [
+        free(["F1"], [260, 0, 0]),
+        { add: ["F1"] },
+        { fit: { def: CHAIR_BOLT, at: [-1, 1].flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * (W / 2), ry, sz * xr])), dir: (p) => [-Math.sign(p[0]), 0, 0], on: (p) => fi(p[0]), mate: (p) => (p[2] < 0 ? "A0" : "A1") } },
+      ],
+    },
+    {
+      title: "Turn it over and tap a dowel into each leg",
+      detail: "Into the hole in the top of each leg.",
+      tools: ["hammer"],
+      ops: [{ fit: { def: CHAIR_DOWEL, at: [-1, 1].flatMap((sx) => [-1, 1].map((sz): Vec3 => [sx * xl, SY, sz * xl])), dir: [0, -1, 0], on: (p) => fi(p[0]), mate: "SEAT" } }],
+    },
+    {
+      title: "Lower the frame onto the seat",
+      detail: "Lay the seat face down on the rug, turn the frame upside down and lower it so the four dowels go into the seat.",
+      pose: "-y",
+      warnings: ["face"],
+      // the frame is held up while the seat is laid down under it, then the seat is added where it lies
+      ops: [free([...frames, ...aprons], [0, -320, 0]), { stage: ["SEAT"], pivot: [0, 0, 0], at: [0, 1, 0], from: [0, 0, 380] }, free([...frames, ...aprons], [0, 0, 0]), { add: ["SEAT"] }],
+    },
+    {
+      title: "Screw the clips to the seat",
+      detail: "One screw up through each of the six clips. Then tighten the four bolts once more.",
+      pose: "-y",
+      tools: ["screwdriver", "allen"],
+      ops: [{ fit: clipScrews }],
+    },
+  ]);
+  return true;
+}
+
 /* ---------- the click-together cases ---------- */
 
 /*
@@ -1955,6 +2094,7 @@ function build(b: PlanBuilder, s: ProductSpec) {
   const slug = s.slug ?? "";
   if (/^hauga-table-/.test(slug)) return table(b, s);
   if (slug === "hauga-chair") return chair(b, s);
+  if (slug === "hauga-stool") return stool(b, s);
   if (/^hauga-drop-leaf-table/.test(slug)) return dropLeaf(b, s);
   if (slug === "hauga-chest-3-drawers") return chest3(b, s);
   if (slug === "hauga-chest-6-drawers") return chest6(b, s);
