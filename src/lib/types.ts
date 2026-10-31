@@ -187,6 +187,7 @@ export interface CustomFix {
   to?: string[]; // parts it goes into, when the manual says
   name?: string; // its own name when the kind's general one doesn't fit
   included?: boolean; // wall plugs and screws that come in the box (they're marked not included otherwise)
+  notIncluded?: boolean; // screws the box doesn't contain, such as ceiling fixings
   // exactly where each one goes, when the joint finder would guess wrong: points in the finished product (mm),
   // the way each one goes in, the part it sits in and the part its other end goes into
   at?: Vec3[];

@@ -207,7 +207,7 @@ function defFor(f: CustomFix, thick?: number): HwDef {
   })();
   const len = f.len && f.len > 2 && f.len < 400 ? Math.round(f.len) : base.kind === "screw" && thick ? Math.round(Math.min(70, Math.max(14, thick + 16)) / 2) * 2 : base.len;
   const dia = f.dia && f.dia > 0.8 && f.dia < 60 ? Math.round(f.dia * 10) / 10 : base.dia;
-  return { ...base, len, dia, ...(f.name ? { name: f.name } : {}), ...(f.included ? { notIncluded: false } : {}) };
+  return { ...base, len, dia, ...(f.name ? { name: f.name } : {}), ...(f.included ? { notIncluded: false } : {}), ...(f.notIncluded ? { notIncluded: true } : {}) };
 }
 
 function inferMaterial(p: CustomPart): PartMaterial {

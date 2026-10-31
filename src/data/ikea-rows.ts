@@ -277,6 +277,8 @@ EKTORP|chaise|3-seat sofa with chaise longue|252|88|163|seats=3,arms=wide,seatH=
 EKTORP|corner|Corner sofa, 4-seat|243|88|243|seats=4,arms=wide,seatH=45,corner=left,sd=88,aw=24,sdp=49
 EKTORP|sofa|2-seat sofa|179|88|88|seats=2,seatH=45,aw=24,sdp=49
 ELDBERGET / MALSKÄR|office|Swivel chair|67|90|67|arms=none,seatH=54
+ELVARLI|open|Wardrobe combination, 92 × 51 × 222 cm|92|222|51|cat=Wardrobe combination
+ELVARLI|open|Wardrobe combination, 135 × 51 × 222 cm|135|222|51|cat=Wardrobe combination
 EMMISLÖV|pouffe|Pouf|42|43|42|round=1,us=1
 ENHET|appliance|High cabinet for fridge/freezer, 60 × 60 × 210 cm|60|210|60|use=fridge,z=g+o@40
 ENHET|cabinet|High cb w 4 shelves, 30 × 30 × 180 cm|30|180|30|doors=0,shelves=4
