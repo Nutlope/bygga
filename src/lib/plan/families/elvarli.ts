@@ -140,6 +140,151 @@ function holeCovers(post: string, x: number, postY: number, z: number, used: Rec
   });
 }
 
+const BRACKET_DETAIL = "Push a nut into the keyhole on each post at this height and slide it down. Hook a bracket over it with a plate between, open side up, and tighten the screw with the allen key.";
+const SHELF_DETAIL = "Lower the shelf onto the brackets, then from underneath push a threaded insert into each of the four holes and screw a pin into it.";
+
+/** A post in a run, from left to right. `faces` are the sides it has a bay on; `gap` is how far it stands from the post before it. */
+interface RunPost {
+  tag: string;
+  x: number;
+  name: string;
+  faces: number[];
+  gap?: { mm: number; why: string };
+}
+
+/**
+ * The post manual (AA-1807976-13): the first post goes up and is tightened in place. Each post after it goes up beside
+ * the one before, the first shelf of the bay between them goes in, and then that post is levelled against the shelf and locked.
+ * `firstShelf(i)` gives the bracket and shelf steps for the bay to the left of post i.
+ */
+function postRun(o: { H: number; postY: number; postH: number; pz: number; posts: RunPost[]; firstShelf: (i: number) => CustomStep[] }): CustomStep[] {
+  const { H, postY, postH, pz } = o;
+  const prep = (p: RunPost): CustomFix[] => [
+    fx("screw", [[p.x, 16, pz]], [0, 1, 0], `P${p.tag}`, { len: 80, dia: 8, name: "Adjusting screw" }),
+    fx("nut", [[p.x, 28, pz]], [0, 1, 0], `P${p.tag}`, { name: "Adjusting nut" }),
+    fx("nut", p.faces.map((f) => [p.x + f * (POST_W / 2 - 7), postY + postH / 2 - 30, pz] as Vec3), [0, -1, 0], `P${p.tag}`, { name: "Square nut" }),
+    fx("screw", [[p.x, H - 14, pz]], [0, -1, 0], `C${p.tag}`, { len: 16, dia: 4, name: "Plate screw" }),
+  ];
+  const ceilingFix = (p: RunPost): CustomFix[] => {
+    const at: Vec3[] = [-22, 22].map((dx) => [p.x + dx, H - 2, pz]);
+    return [
+      fx("plug", at.map(([a, b, c]) => [a, b + 8, c] as Vec3), [0, 1, 0], `C${p.tag}`, { name: "Ceiling plug" }),
+      fx("screw", at, [0, 1, 0], `C${p.tag}`, { len: 50, dia: 5, name: "Ceiling screw", notIncluded: true }),
+    ];
+  };
+  const nuts = (p: RunPost) =>
+    p.faces.length > 1 ? "two square nuts at the top, one in each channel, since this post has shelves on both sides" : "a square nut at the top, in the channel facing the shelves";
+  const ceiling = (p: RunPost, first: boolean): CustomStep => ({
+    title: first ? "Screw the post to the ceiling" : `Screw the ${p.name} to the ceiling`,
+    detail: "Two screws through the plate, the post upright. Ceiling screws and plugs are not in the box: use ones made for your ceiling. Until this is done the post can fall.",
+    fix: ceilingFix(p),
+    tools: ["drill", "level", "screwdriver"],
+  });
+  const lockTop: CustomStep = {
+    title: "Lock it with the plate flat on the ceiling",
+    detail: "The plate has to meet the ceiling all the way round. Then tighten both locking screws with the allen key.",
+    tools: ["allen"],
+  };
+
+  const [first, ...rest] = o.posts;
+  const steps: CustomStep[] = [
+    {
+      title: "Fit the adjusting screw in the first post",
+      detail: "Screw the nut onto the long screw, then screw it into the bottom of the post until 5 mm of thread shows between the nut and the post.",
+      add: [`P${first.tag}`],
+      fix: prep(first).slice(0, 2),
+    },
+    {
+      title: first.faces.length > 1 ? "Drop two square nuts into the top of the post" : "Drop a square nut into the top of the post",
+      detail: `Put ${nuts(first)}.`,
+      fix: prep(first).slice(2, 3),
+    },
+    {
+      title: "Stand the post on its floor plate",
+      detail: "Clip the plate onto the round pad, then lower the post so the ball on the screw sits in the pad.",
+      add: [`F${first.tag}`],
+      from: { [`F${first.tag}`]: [0, -120, 0] },
+    },
+    {
+      title: "Screw on the ceiling plate",
+      detail: "One screw down through the plate into the top of the post, then press the cover on until it sits flat, with no gap under it.",
+      add: [`C${first.tag}`],
+      fix: prep(first).slice(3),
+      tools: ["screwdriver"],
+      from: { [`C${first.tag}`]: [0, 160, 0] },
+    },
+    {
+      title: "Extend the post to the ceiling",
+      detail: "Undo the two locking screws with the allen key and slide the inner tube up until the plate meets the ceiling. Turn the keyholes toward where the shelves will go.",
+      tools: ["allen"],
+    },
+    lockTop,
+    {
+      title: "Stand it out from the wall",
+      detail: "The shelves are 51 cm deep and centred on the post. Leave at least 235 mm between the post and the wall.",
+      tools: ["tape"],
+    },
+    ceiling(first, true),
+    {
+      title: "Level the floor plate",
+      detail: "Move the pad until it sits flat on the floor.",
+    },
+    {
+      title: "Tighten the post between floor and ceiling",
+      detail: "Two turns at a time with the spanner, until the post is firm. No more than 40 mm of thread should show under the post. Stop if the ceiling starts to crack.",
+      tools: ["wrench"],
+    },
+    {
+      title: "Lock the nut by hand",
+      detail: "Turn the nut on the adjusting screw up against the bottom of the post.",
+    },
+  ];
+
+  rest.forEach((p, k) => {
+    const prev = o.posts[k];
+    steps.push(
+      {
+        title: `Put up the ${p.name} the same way`,
+        detail: `Adjusting screw with 5 mm showing, ${nuts(p)}, floor plate on, ceiling plate screwed on and its cover pressed flat. Then undo the locking screws and slide the inner tube up to the ceiling.`,
+        add: [`P${p.tag}`, `F${p.tag}`, `C${p.tag}`],
+        fix: prep(p),
+        tools: ["screwdriver", "allen"],
+        from: { [`P${p.tag}`]: [240, 0, 0], [`F${p.tag}`]: [240, 0, 0], [`C${p.tag}`]: [240, 80, 0] },
+      },
+      lockTop,
+      {
+        title: `Set it ${p.gap?.mm ?? SPAN} mm from the ${prev.name}`,
+        detail: `Centre to centre, the same distance from the wall, and the keyholes facing the ${prev.name}. ${p.gap?.why ?? ""}`.trim(),
+        tools: ["tape"],
+      },
+      ceiling(p, false),
+      { title: "Level its floor plate", detail: "Move the pad until it sits flat on the floor." },
+      ...o.firstShelf(k + 1),
+      {
+        title: `Unlock the ${p.name}`,
+        detail: "Undo the locking screw on its inner tube with the allen key.",
+        tools: ["allen"],
+      },
+      {
+        title: "Level the shelf",
+        detail: `Turn the nut under the ${p.name} with the spanner to raise or lower it, until the shelf is level and the post upright.`,
+        tools: ["wrench", "level"],
+      },
+      {
+        title: `Lock the ${p.name} to the ceiling`,
+        detail: "Slide the inner tube up until the plate is flat on the ceiling, then tighten the locking screw.",
+        tools: ["allen"],
+      },
+      {
+        title: `Tighten the ${p.name}`,
+        detail: "Two turns at a time with the spanner until the post is firm, with no more than 40 mm of thread showing. Then turn the nut by hand up against the post.",
+        tools: ["wrench"],
+      },
+    );
+  });
+  return steps;
+}
+
 function section(s: ProductSpec): CustomParams {
   const H = Math.round(s.size.h * 10) || 2220;
   const px = SPAN / 2;
@@ -166,132 +311,38 @@ function section(s: ProductSpec): CustomParams {
   add("HR", "Rail holder", [36, 28, 40], [px - POST_W / 2 - 18, RAIL_Y, pz], undefined, "metal");
   parts.push({ id: "RL", name: "Clothes rail", size: [22, SPAN - 80, 22], pos: [0, RAIL_Y, pz], shape: "cyl", rot: [0, 0, Math.PI / 2], material: "metal" });
 
-  const foot = (sx: number): Vec3 => [sx * px, 16, pz];
-  const ceil = (sx: number): Vec3[] => [-22, 22].map((dx) => [sx * px + dx, H - 2, pz]);
-
-  const prep = (tag: string, sx: number): CustomFix[] => [
-    fx("screw", [foot(sx)], [0, 1, 0], `P${tag}`, { len: 80, dia: 8, name: "Adjusting screw" }),
-    fx("nut", [[sx * px, 28, pz]], [0, 1, 0], `P${tag}`, { name: "Adjusting nut" }),
-    fx("nut", [[sx * px, postY + postH / 2 - 30, pz], [sx * px, postY - 80, pz]], [0, -1, 0], `P${tag}`, { name: "Square nut" }),
-    fx("screw", [[sx * px, H - 14, pz]], [0, -1, 0], `C${tag}`, { len: 16, dia: 4, name: "Plate screw" }),
-  ];
-  const ceilingFix = (tag: string, sx: number): CustomFix[] => [
-    fx("plug", ceil(sx).map(([x, y, z]) => [x, y + 8, z] as Vec3), [0, 1, 0], `C${tag}`, { name: "Ceiling plug" }),
-    fx("screw", ceil(sx), [0, 1, 0], `C${tag}`, { len: 50, dia: 5, name: "Ceiling screw", notIncluded: true }),
-  ];
-
-  const steps: CustomParams["steps"] = [
-    {
-      title: "Fit the adjusting screw in the first post",
-      detail: "Thread the nut onto the long screw and push it into the bottom of the post until 5 mm of thread still shows.",
-      add: ["PL"],
-      fix: prep("L", -1).slice(0, 2),
-      tools: ["wrench"],
-    },
-    {
-      title: "Drop a square nut into each tube",
-      detail: "One in the top of the outer tube and one in the top of the inner tube, sitting in the slot.",
-      fix: prep("L", -1).slice(2, 3),
-    },
-    {
-      title: "Lower the post onto its floor plate",
-      detail: "The round pad goes on the floor, the plate on top of it, and the post slides down onto the screw.",
-      add: ["FL"],
-      from: { FL: [0, -120, 0] },
-    },
-    {
-      title: "Screw on the ceiling plate",
-      detail: "One screw up through the plate into the top of the post, then press the cover on until it sits flat. Don't leave a gap under the cover.",
-      add: ["CL"],
-      fix: prep("L", -1).slice(3),
-      tools: ["screwdriver"],
-      from: { CL: [0, 160, 0] },
-    },
-    {
-      title: "Extend the post to the ceiling and lock it",
-      detail: "Two people. Stand it up with the keyholes turned toward the other post, before it is tightened to the ceiling. Slide the inner tube up until the plate meets the ceiling, and lock it with the allen key. The floor plate has to sit flat, not tipped.",
-      people: 2,
-      tools: ["allen"],
-    },
-    {
-      title: "Bring the plate up flat against the ceiling",
-      detail: "Raise it a little more if you can see a gap, then lock both screws. The plate has to meet the ceiling all the way round.",
-      people: 2,
-      tools: ["allen"],
-    },
-    {
-      title: "Stand it out from the wall",
-      detail: "These shelves are 51 cm deep and centred on the post, so the back of the shelf is about half that depth behind the post. Leave at least 254 mm between the post and the wall, or the shelf will hit the wall.",
-      tools: ["tape"],
-    },
-    {
-      title: "Screw the post to the ceiling",
-      detail: "Two screws through the plate, the post plumb. Ceiling screws and plugs are not in the box: use ones made for your ceiling, and not into a ceiling rose. Until this is done the post can fall.",
-      fix: ceilingFix("L", -1),
-      people: 2,
-      tools: ["drill", "level", "screwdriver"],
-    },
-    {
-      title: "Level the floor plate",
-      detail: "Turn the plate until it sits flat on the floor, with no rock.",
-      tools: ["level"],
-    },
-    {
-      title: "Tighten the post between floor and ceiling",
-      detail: "Hold the post and turn the nut with the spanner until it is firm. No more than 40 mm of thread should show under the post.",
-      tools: ["wrench"],
-    },
-    {
-      title: "Prepare the second post the same way",
-      detail: "Adjusting screw with 5 mm showing, a square nut in each tube, floor plate on, ceiling plate screwed on and its cover pressed flat.",
-      add: ["PR", "FR", "CR"],
-      fix: prep("R", 1),
-      tools: ["wrench", "screwdriver"],
-      from: { PR: [220, 0, 0], FR: [220, 0, 0], CR: [220, 80, 0] },
-    },
-    {
-      title: "Extend the second post and lock it",
-      detail: "Two people. Slide the inner tube up and lock it with the allen key. Its floor plate has to sit flat too.",
-      people: 2,
-      tools: ["allen"],
-    },
-    {
-      title: "Line it up with the first post",
-      detail: "The same distance out from the wall, both ceiling plates turned the same way, and the keyholes turned toward the other post, the same as the first. Do that before it is tightened to the ceiling.",
-      tools: ["tape"],
-    },
-    {
-      title: "Set the posts 860 mm apart",
-      detail: "Centre to centre. That is the spacing for these 80 cm shelves. Don't push the second post into a corner where the shelf cannot pass.",
-      tools: ["tape"],
-    },
-    {
-      title: "Screw the second post to the ceiling",
-      detail: "Two screws, the post plumb, same as the first. Plugs and screws are not in the box.",
-      fix: ceilingFix("R", 1),
-      people: 2,
-      tools: ["drill", "level", "screwdriver"],
-    },
-    {
-      title: "Level its floor plate and tighten it",
-      detail: "Flat on the floor, then the spanner on the nut until the post is firm, with no more than 40 mm of thread showing. Lock the inner tube again once it is tight.",
-      tools: ["level", "wrench", "allen"],
-    },
-  ];
-
-  SHELVES.forEach((y, i) => {
-    const where = ["lowest", "next", "upper", "top"][i];
-    steps.push({
-      title: i === 0 ? "Fit the lowest pair of brackets" : `Fit the ${where} pair of brackets`,
-      detail: "Push a nut into the keyhole on each post at this height and slide it down. Hook a bracket over it with a plate between, open side up, and tighten the screw with the allen key. On the thin upper tube, clip a shoe from the post's bag into the slot first.",
-      add: [`B${i}L`, `B${i}R`],
-      fix: [-1, 1].flatMap((sx) => postMount(sx < 0 ? "PL" : "PR", sx * px, -sx, y - 20, pz, "Bracket")),
-      tools: ["allen"],
-      from: { [`B${i}L`]: [-80, 0, 80], [`B${i}R`]: [80, 0, 80] },
-    });
+  const where = ["lowest", "next", "upper", "top"];
+  const bracketPair = (i: number): CustomStep => ({
+    title: `Fit the ${where[i]} pair of brackets`,
+    detail: `${BRACKET_DETAIL} On the thin upper tube, clip a shoe from the post's bag into the slot first.`,
+    add: [`B${i}L`, `B${i}R`],
+    fix: [-1, 1].flatMap((sx) => postMount(sx < 0 ? "PL" : "PR", sx * px, -sx, SHELVES[i] - 20, pz, "Bracket")),
+    tools: ["allen"],
+    from: { [`B${i}L`]: [-80, 0, 80], [`B${i}R`]: [80, 0, 80] },
   });
+  const shelf = (i: number): CustomStep => ({
+    title: `Put on the ${where[i]} shelf`,
+    detail: i === 0 ? SHELF_DETAIL : `${SHELF_DETAIL} Shelves go on from the bottom up.`,
+    add: [`S${i}`],
+    fix: shelfPins(`S${i}`, [-(SHELF_W / 2 - 20), SHELF_W / 2 - 20], SHELVES[i], pz),
+    kind: "shelves",
+    from: { [`S${i}`]: [0, 160, 40] },
+  });
+  const rest = SHELVES.map((_, i) => i).slice(1);
 
-  steps.push(
+  const steps: CustomStep[] = [
+    ...postRun({
+      H,
+      postY,
+      postH,
+      pz,
+      posts: [
+        { tag: "L", x: -px, name: "first post", faces: [1] },
+        { tag: "R", x: px, name: "second post", faces: [-1], gap: { mm: SPAN, why: "That is the spacing for these 80 cm shelves." } },
+      ],
+      firstShelf: () => [bracketPair(0), shelf(0)],
+    }),
+    ...rest.map(bracketPair),
     {
       title: "Drop a nut in for the clothes rail",
       detail: "One in each post, at the height you want the rail. This combination leaves a gap here so shirts can hang.",
@@ -312,19 +363,8 @@ function section(s: ProductSpec): CustomParams {
       tools: ["screwdriver"],
       from: { RL: [0, -200, 0] },
     },
-  );
-
-  const shelfTitle = ["Pin the lowest shelf and lower it on", "Pin the second shelf and lower it on", "Pin the third shelf and lower it on", "Pin the top shelf and lower it on"];
-  SHELVES.forEach((y, i) => {
-    steps.push({
-      title: shelfTitle[i],
-      detail: "Press a threaded insert into each of the four holes underneath, screw in a pin, and lower the shelf onto the brackets. Shelves go on from the bottom up. Don't lean anything against the posts while you do this.",
-      add: [`S${i}`],
-      fix: shelfPins(`S${i}`, [-(SHELF_W / 2 - 20), SHELF_W / 2 - 20], y, pz),
-      kind: "shelves",
-      from: { [`S${i}`]: [0, 160, 40] },
-    });
-  });
+    ...rest.map(shelf),
+  ];
 
   steps.push({
     title: "Cover the spare holes",
@@ -589,192 +629,82 @@ function wide(s: ProductSpec): CustomParams {
   add("HR", "Rail holder", [36, 28, 40], [xR - POST_W / 2 - 18, RAIL_Y, pz], undefined, "metal");
   parts.push({ id: "RL", name: "Clothes rail", size: [22, 780, 22], pos: [wx, RAIL_Y, pz], shape: "cyl", rot: [0, 0, Math.PI / 2], material: "metal" });
 
-  const ceil = (x: number): Vec3[] => [-22, 22].map((dx) => [x + dx, H - 2, pz]);
-  const prep = (tag: string, x: number): CustomFix[] => [
-    fx("screw", [[x, 16, pz]], [0, 1, 0], `P${tag}`, { len: 80, dia: 8, name: "Adjusting screw" }),
-    fx("nut", [[x, 28, pz]], [0, 1, 0], `P${tag}`, { name: "Adjusting nut" }),
-    fx("nut", [[x, postY + postH / 2 - 30, pz], [x, postY - 80, pz]], [0, -1, 0], `P${tag}`, { name: "Square nut" }),
-    fx("screw", [[x, H - 14, pz]], [0, -1, 0], `C${tag}`, { len: 16, dia: 4, name: "Plate screw" }),
-  ];
-  const ceilingFix = (tag: string, x: number): CustomFix[] => [
-    fx("plug", ceil(x).map(([a, b, c]) => [a, b + 8, c] as Vec3), [0, 1, 0], `C${tag}`, { name: "Ceiling plug" }),
-    fx("screw", ceil(x), [0, 1, 0], `C${tag}`, { len: 50, dia: 5, name: "Ceiling screw", notIncluded: true }),
-  ];
   const bracketScrews = (y: number, mounts: [number, number, string][]): CustomFix[] =>
     mounts.flatMap(([x, face, tag]) => postMount(`P${tag}`, x, face, y, pz, "Bracket"));
 
-  const steps: CustomParams["steps"] = [
-    {
-      title: "Fit the adjusting screw in the first post",
-      detail: "Thread the nut onto the long screw and push it into the bottom of the post until 5 mm of thread still shows.",
-      add: ["PL"],
-      fix: prep("L", xL).slice(0, 2),
-      tools: ["wrench"],
-    },
-    {
-      title: "Drop a square nut into each tube",
-      detail: "One in the top of the outer tube and one in the top of the inner tube, sitting in the slot.",
-      fix: prep("L", xL).slice(2, 3),
-    },
-    {
-      title: "Lower the post onto its floor plate",
-      detail: "The round pad goes on the floor, the plate on top of it, and the post slides down onto the screw.",
-      add: ["FL"],
-      from: { FL: [0, -120, 0] },
-    },
-    {
-      title: "Screw on the ceiling plate",
-      detail: "One screw up through the plate into the top of the post, then press the cover on until it sits flat. Don't leave a gap under the cover.",
-      add: ["CL"],
-      fix: prep("L", xL).slice(3),
-      tools: ["screwdriver"],
-      from: { CL: [0, 160, 0] },
-    },
-    {
-      title: "Extend the post to the ceiling and lock it",
-      detail: "Two people. Stand it up with the keyholes turned toward the middle of the wardrobe, before it is tightened to the ceiling. Slide the inner tube up until the plate meets the ceiling, and lock it with the allen key. The floor plate has to sit flat, not tipped.",
-      people: 2,
-      tools: ["allen"],
-    },
-    {
-      title: "Bring the plate up flat against the ceiling",
-      detail: "Raise it a little more if you can see a gap, then lock both screws. The plate has to meet the ceiling all the way round.",
-      people: 2,
-      tools: ["allen"],
-    },
-    {
-      title: "Stand it out from the wall",
-      detail: "These shelves are 51 cm deep and centred on the post, so the back of the shelf is about half that depth behind the post. Leave at least 254 mm between the post and the wall, or the shelf will hit the wall.",
-      tools: ["tape"],
-    },
-    {
-      title: "Screw the post to the ceiling",
-      detail: "Two screws through the plate, the post plumb. Ceiling screws and plugs are not in the box: use ones made for your ceiling, and not into a ceiling rose. Until this is done the post can fall.",
-      fix: ceilingFix("L", xL),
-      people: 2,
-      tools: ["drill", "level", "screwdriver"],
-    },
-    {
-      title: "Level the floor plate",
-      detail: "Turn the plate until it sits flat on the floor, with no rock.",
-      tools: ["level"],
-    },
-    {
-      title: "Tighten the post between floor and ceiling",
-      detail: "Hold the post and turn the nut with the spanner until it is firm. No more than 40 mm of thread should show under the post.",
-      tools: ["wrench"],
-    },
-    {
-      title: "Prepare the middle post the same way",
-      detail: "Adjusting screw with 5 mm showing, a square nut in each tube, floor plate on, ceiling plate screwed on and its cover pressed flat.",
-      add: ["PM", "FM", "CM"],
-      fix: prep("M", xM),
-      tools: ["wrench", "screwdriver"],
-      from: { PM: [240, 0, 0], FM: [240, 0, 0], CM: [240, 80, 0] },
-    },
-    {
-      title: "Extend the middle post and lock it",
-      detail: "Two people. Slide the inner tube up and lock it with the allen key. Its floor plate has to sit flat too.",
-      people: 2,
-      tools: ["allen"],
-    },
-    {
-      title: "Line the middle post up",
-      detail: "The same distance out from the wall, and its ceiling plate turned the same way as the first. Brackets go on both faces of this post, so a row of keyholes has to face each bay. Turn it that way before it is tightened to the ceiling.",
-      tools: ["tape"],
-    },
-    {
-      title: "Set the middle post 460 mm from the first",
-      detail: "Centre to centre. That gap takes the five 40 cm shelves. They are on the left in this guide. Swap this gap with the next one if you want the narrow bay on the right.",
-      tools: ["tape"],
-    },
-    {
-      title: "Screw the middle post to the ceiling",
-      detail: "Two screws, the post plumb, same as the first. Plugs and screws are not in the box.",
-      fix: ceilingFix("M", xM),
-      people: 2,
-      tools: ["drill", "level", "screwdriver"],
-    },
-    {
-      title: "Level its floor plate and tighten it",
-      detail: "Flat on the floor, then the spanner on the nut until the post is firm, with no more than 40 mm of thread showing. Lock the inner tube again once it is tight.",
-      tools: ["level", "wrench", "allen"],
-    },
-    {
-      title: "Prepare the third post the same way",
-      detail: "Adjusting screw with 5 mm showing, a square nut in each tube, floor plate on, ceiling plate screwed on and its cover pressed flat.",
-      add: ["PR", "FR", "CR"],
-      fix: prep("R", xR),
-      tools: ["wrench", "screwdriver"],
-      from: { PR: [240, 0, 0], FR: [240, 0, 0], CR: [240, 80, 0] },
-    },
-    {
-      title: "Extend the third post and lock it",
-      detail: "Two people. Slide the inner tube up and lock it with the allen key. Its floor plate has to sit flat too.",
-      people: 2,
-      tools: ["allen"],
-    },
-    {
-      title: "Line the third post up",
-      detail: "The same distance out from the wall, ceiling plate turned the same way, and the keyholes turned toward the middle post, before it is tightened to the ceiling.",
-      tools: ["tape"],
-    },
-    {
-      title: "Set the third post 860 mm from the middle one",
-      detail: "Centre to centre. That gap takes the two drawers, the clothes rail and the two 80 cm shelves. Don't push this post into a corner where the shelf cannot pass.",
-      tools: ["tape"],
-    },
-    {
-      title: "Screw the third post to the ceiling",
-      detail: "Two screws, the post plumb, same as the first. Plugs and screws are not in the box.",
-      fix: ceilingFix("R", xR),
-      people: 2,
-      tools: ["drill", "level", "screwdriver"],
-    },
-    {
-      title: "Level its floor plate and tighten it",
-      detail: "Flat on the floor, then the spanner on the nut until the post is firm, with no more than 40 mm of thread showing. Lock the inner tube again once it is tight.",
-      tools: ["level", "wrench", "allen"],
-    },
-  ];
-
   const narrowWhere = ["lowest", "next", "middle", "upper", "top"];
-  NARROW.forEach((y, i) => {
-    steps.push({
-      title: i === 0 ? "Fit the lowest pair of brackets in the narrow bay" : `Fit the ${narrowWhere[i]} pair of brackets in the narrow bay`,
-      detail: "Drop a nut into the slot on the left post and the middle post at this height, hook a bracket over each and tighten the screw. The open side of the bracket faces up. On the thin upper tube, clip a shoe from the post's bag into the slot first.",
+  const narrowPair = (i: number): CustomStep[] => [
+    {
+      title: `Fit the ${narrowWhere[i]} pair of brackets in the narrow bay`,
+      detail: `${BRACKET_DETAIL} On the thin upper tube, clip a shoe from the post's bag into the slot first.`,
       add: [`B${i}L`, `B${i}M`],
-      fix: bracketScrews(y - 20, [[xL, 1, "L"], [xM, -1, "M"]]),
+      fix: bracketScrews(NARROW[i] - 20, [[xL, 1, "L"], [xM, -1, "M"]]),
       tools: ["allen"],
       from: { [`B${i}L`]: [-80, 0, 80], [`B${i}M`]: [80, 0, 80] },
-    });
-    steps.push({
-      title: `Pin the ${narrowWhere[i]} 40 cm shelf and lower it on`,
-      detail: "Press a threaded insert into each of the four holes underneath, screw in a pin, and lower the shelf onto the brackets. Shelves go on from the bottom up. Don't lean anything against the posts while you do this.",
+    },
+    {
+      title: `Put on the ${narrowWhere[i]} 40 cm shelf`,
+      detail: i === 0 ? SHELF_DETAIL : `${SHELF_DETAIL} Shelves go on from the bottom up.`,
       add: [`N${i}`],
-      fix: shelfPins(`N${i}`, [nx - (NARROW_W / 2 - 20), nx + (NARROW_W / 2 - 20)], y, pz),
+      fix: shelfPins(`N${i}`, [nx - (NARROW_W / 2 - 20), nx + (NARROW_W / 2 - 20)], NARROW[i], pz),
       kind: "shelves",
       from: { [`N${i}`]: [0, 160, 40] },
-    });
-  });
+    },
+  ];
+  const wideWhere = ["lower", "top"];
+  const widePair = (i: number): CustomStep[] => [
+    {
+      title: `Fit the brackets for the ${wideWhere[i]} 80 cm shelf`,
+      detail: BRACKET_DETAIL,
+      add: [`E${i}M`, `E${i}R`],
+      fix: bracketScrews(WIDE_SHELVES[i] - 20, [[xM, 1, "M"], [xR, -1, "R"]]),
+      tools: ["allen"],
+      from: { [`E${i}M`]: [-80, 0, 80], [`E${i}R`]: [80, 0, 80] },
+    },
+    {
+      title: `Put on the ${wideWhere[i]} 80 cm shelf`,
+      detail: SHELF_DETAIL,
+      add: [`W${i}`],
+      fix: shelfPins(`W${i}`, [wx - (SHELF_W / 2 - 20), wx + (SHELF_W / 2 - 20)], WIDE_SHELVES[i], pz),
+      kind: "shelves",
+      from: { [`W${i}`]: [0, 160, 40] },
+    },
+  ];
+  const drawer = (i: number, which: string): CustomStep[] => [
+    {
+      title: `Fit the brackets for the ${which} drawer`,
+      detail: BRACKET_DETAIL,
+      add: [`G${i}M`, `G${i}R`],
+      fix: bracketScrews(DRAWERS[i] - 8, [[xM, 1, "M"], [xR, -1, "R"]]),
+      tools: ["allen"],
+      from: { [`G${i}M`]: [-80, 0, 80], [`G${i}R`]: [80, 0, 80] },
+    },
+    ...drawerSteps(i, DRAWERS[i], bay, which),
+  ];
 
-  const drawer = (i: number, yb: number, which: string) => {
-    steps.push(
-      {
-        title: `Fit the brackets for the ${which} drawer`,
-        detail: "Push a nut into the keyhole on each post at this height and slide it down. Hook a bracket over it with a plate between, open side up, and tighten the screw with the allen key.",
-        add: [`G${i}M`, `G${i}R`],
-        fix: bracketScrews(yb - 8, [[xM, 1, "M"], [xR, -1, "R"]]),
-        tools: ["allen"],
-        from: { [`G${i}M`]: [-80, 0, 80], [`G${i}R`]: [80, 0, 80] },
-      },
-      ...drawerSteps(i, yb, bay, which),
-    );
-  };
-  drawer(0, DRAWERS[0], "first");
-  drawer(1, DRAWERS[1], "second");
-
-  steps.push(
+  const steps: CustomStep[] = [
+    // the narrow bay is levelled on its lowest 40 cm shelf, the wide bay on its lower 80 cm shelf
+    ...postRun({
+      H,
+      postY,
+      postH,
+      pz,
+      posts: [
+        { tag: "L", x: xL, name: "first post", faces: [1] },
+        {
+          tag: "M",
+          x: xM,
+          name: "middle post",
+          faces: [-1, 1],
+          gap: { mm: xM - xL, why: "That gap takes the five 40 cm shelves. They are on the left in this guide. Swap this gap with the next one if you want the narrow bay on the right." },
+        },
+        { tag: "R", x: xR, name: "third post", faces: [-1], gap: { mm: xR - xM, why: "That gap takes the two drawers, the clothes rail and the two 80 cm shelves." } },
+      ],
+      firstShelf: (i) => (i === 1 ? narrowPair(0) : widePair(0)),
+    }),
+    ...NARROW.slice(1).flatMap((_, k) => narrowPair(k + 1)),
+    ...drawer(0, "first"),
+    ...drawer(1, "second"),
     {
       title: "Drop a nut in for the clothes rail",
       detail: "One in the middle post and one in the right post, in the gap above the drawers, so shirts can hang.",
@@ -784,10 +714,7 @@ function wide(s: ProductSpec): CustomParams {
       title: "Screw a holder to each post of the wide bay",
       detail: "The holder hooks into the nut. Tighten it with the allen key.",
       add: ["HM", "HR"],
-      fix: [
-        postMount("PM", xM, 1, RAIL_Y, pz, "Holder")[1],
-        postMount("PR", xR, -1, RAIL_Y, pz, "Holder")[1],
-      ],
+      fix: [postMount("PM", xM, 1, RAIL_Y, pz, "Holder")[1], postMount("PR", xR, -1, RAIL_Y, pz, "Holder")[1]],
       tools: ["allen"],
     },
     {
@@ -798,27 +725,8 @@ function wide(s: ProductSpec): CustomParams {
       tools: ["screwdriver"],
       from: { RL: [0, -200, 0] },
     },
-  );
-
-  const wideWhere = ["lower", "top"];
-  WIDE_SHELVES.forEach((y, i) => {
-    steps.push({
-      title: `Fit the brackets for the ${wideWhere[i]} 80 cm shelf`,
-      detail: "Drop a nut into the slot on the middle post and the right post, hook a bracket over each and tighten the screw. The open side faces up.",
-      add: [`E${i}M`, `E${i}R`],
-      fix: bracketScrews(y - 20, [[xM, 1, "M"], [xR, -1, "R"]]),
-      tools: ["allen"],
-      from: { [`E${i}M`]: [-80, 0, 80], [`E${i}R`]: [80, 0, 80] },
-    });
-    steps.push({
-      title: `Pin the ${wideWhere[i]} 80 cm shelf and lower it on`,
-      detail: "Press a threaded insert into each of the four holes underneath, screw in a pin, and lower the shelf onto the brackets.",
-      add: [`W${i}`],
-      fix: shelfPins(`W${i}`, [wx - (SHELF_W / 2 - 20), wx + (SHELF_W / 2 - 20)], y, pz),
-      kind: "shelves",
-      from: { [`W${i}`]: [0, 160, 40] },
-    });
-  });
+    ...widePair(1),
+  ];
 
   steps.push({
     title: "Cover the spare holes",
