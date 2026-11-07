@@ -1,5 +1,5 @@
 import type { Family } from "./family";
-import type { CustomFix, CustomParams, CustomPart, PartPiece, ProductSpec, Vec3 } from "../../types";
+import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, ProductSpec, Vec3 } from "../../types";
 
 /**
  * ELVARLI wardrobe combinations, read from the post, bracket, clothes rail, shelf and drawer manuals.
@@ -297,6 +297,211 @@ function section(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/**
+ * The drawer, read from its own manual (AA-2133991-5): an open box built on two brackets between two posts, then the
+ * drawer built face down on the floor and slid onto runners in the box. The same in a wardrobe combination and bought alone.
+ */
+const DW = 780; // the box, outside
+const DD = 470;
+const DH = 200;
+const DT = 16;
+const RUN_X = DW / 2 - DT - 6; // runner, against the inside of each box side
+const RUN_DY = DT + 20;
+const DSX = DW / 2 - DT - 12 - DT / 2; // drawer side, just inside the runner
+const DSH = DH - 70;
+const DSL = DD - 40 - DT;
+const DRAWER_DY = DT + 26; // the drawer rides this far above the box bottom
+
+/** The two posts a drawer hangs between: their x, the depth they stand at, and their part ids. */
+interface Bay {
+  xl: number;
+  xr: number;
+  pz: number;
+  pl: string;
+  pr: string;
+}
+
+/** Box and drawer parts for drawer `i`, its box bottom at height `yb`. The brackets belong to whoever puts them up. */
+function drawerParts(i: number, yb: number, bay: Bay): CustomPart[] {
+  const t = DT;
+  const wx = (bay.xl + bay.xr) / 2;
+  const { pz } = bay;
+  const frontZ = pz + DD / 2;
+  const y = yb + DH / 2;
+  const dy = yb + DRAWER_DY + DSH / 2;
+  const part = (id: string, name: string, size: Vec3, pos: Vec3, material: CustomPart["material"]): CustomPart => ({ id: `D${i}${id}`, name, size, pos, material });
+  return [
+    // the open box the drawer runs in, built on the brackets
+    part("B", "Box bottom", [DW - 2 * t, t, DD - 2 * t], [wx, yb + t / 2, pz], "board"),
+    part("L", "Box side", [t, DH, DD], [wx - DW / 2 + t / 2, y, pz], "board"),
+    part("R", "Box side", [t, DH, DD], [wx + DW / 2 - t / 2, y, pz], "board"),
+    part("K", "Box back", [DW - 2 * t, DH - 24, t], [wx, y, pz - DD / 2 + t / 2], "board"),
+    part("U", "Drawer runner", [12, 30, DD - 40], [wx - RUN_X, yb + RUN_DY, pz], "metal"),
+    part("V", "Drawer runner", [12, 30, DD - 40], [wx + RUN_X, yb + RUN_DY, pz], "metal"),
+    // the drawer itself, built on the floor
+    part("F", "Drawer front", [DW - 6, DH - 10, t], [wx, y, frontZ + t / 2], "board"),
+    part("X", "Drawer side", [t, DSH, DSL], [wx - DSX, dy, frontZ - DSL / 2], "board"),
+    part("Y", "Drawer side", [t, DSH, DSL], [wx + DSX, dy, frontZ - DSL / 2], "board"),
+    part("O", "Drawer bottom", [2 * DSX - t + 12, 6, DSL], [wx, yb + DRAWER_DY + 12, frontZ - DSL / 2], "board"),
+    part("H", "Drawer back", [2 * DSX + t, DSH, t], [wx, dy, frontZ - DSL - t / 2], "board"),
+  ];
+}
+
+/** The drawer manual's steps, once its brackets are up. `which` names the drawer when there is more than one. */
+function drawerSteps(i: number, yb: number, bay: Bay, which?: string): CustomStep[] {
+  const t = DT;
+  const wx = (bay.xl + bay.xr) / 2;
+  const { pz } = bay;
+  const FRONT_Z = pz + DD / 2; // where the drawer front meets the front edge of the box sides
+  const the = which ? `the ${which} drawer` : "the drawer";
+  const id = (s: string) => `D${i}${s}`;
+  const halfX = (DW - 2 * t) / 2;
+  const halfZ = (DD - 2 * t) / 2;
+  const side = (sx: number) => (sx < 0 ? id("L") : id("R"));
+  const dside = (sx: number) => (sx < 0 ? id("X") : id("Y"));
+  const both = (fn: (sx: number) => CustomFix): CustomFix[] => [-1, 1].map(fn);
+  // the box: corner screws on top of the bottom, the pins under it, cams near the bottom of each side
+  const screws = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [wx + sx * (halfX - 22), yb + t, pz + sz * (halfZ - 22)] as Vec3));
+  const under = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [wx + sx * (halfX - 30), yb, pz + sz * (halfZ - 60)] as Vec3));
+  const sideX = (sx: number) => wx + sx * (DW / 2 - t / 2);
+  const outer = (sx: number, spots: [number, number][]): Vec3[] => spots.map(([dy, z]) => [sideX(sx) + sx * (t / 2 - 2), yb + dy, z]);
+  const inner = (sx: number, spots: [number, number][]): Vec3[] => spots.map(([dy, z]) => [wx + sx * (DW / 2 - t), yb + dy, z]);
+  const camSpots: [number, number][] = [[36, pz - (DD / 2 - 28)], [36, pz + (DD / 2 - 28)]];
+  const postAt = (sx: number) => (sx < 0 ? bay.xl : bay.xr);
+  const post = (sx: number) => (sx < 0 ? bay.pl : bay.pr);
+  const FIX_DY = DH - 60;
+  // the drawer: built face down on the floor, then slid in
+  const yd = yb + DRAWER_DY;
+  const backZ = FRONT_Z - DSL - t;
+  const dowelYs = [yd + 20, yd + DSH - 20];
+  const boltYs = [yd + 45, yd + DSH - 45];
+  const onDSide = (sx: number, ys: number[], z: number, face: number): Vec3[] => ys.map((y) => [wx + sx * (DSX + face * (t / 2 - 2)), y, z]);
+  const floor = { id: `drawer${i}`, at: [wx, yd + DSH / 2, FRONT_Z - DSL / 2] as Vec3 };
+  return [
+    {
+      title: `Fit four screws in the ${which ? `${which} drawer ` : ""}box bottom`,
+      detail: "One near each corner, on the top face. Drive each one in straight, and stop while some thread still shows. A crooked screw, or one driven all the way in, will not seat.",
+      add: [id("B")],
+      fix: [fx("screw", screws, [0, 1, 0], id("B"), { len: 30, dia: 6, name: "Corner screw" })],
+      tools: ["screwdriver"],
+      scene: { id: `box${i}`, at: [wx, yb, pz] },
+      from: { [id("B")]: [0, 0, 300] },
+    },
+    {
+      title: `Lower the box bottom onto the brackets`,
+      detail: "Screws facing up. Let it rest on both brackets, flush at the front.",
+      bring: [id("B")],
+      from: { [id("B")]: [0, 300, 0] },
+      kind: "join",
+    },
+    {
+      title: `Pin the box bottom to the brackets`,
+      detail: "From underneath, press a threaded insert into each of the four holes, then screw a pin into each one. The pins keep the box from sliding off the brackets.",
+      fix: [
+        fx("dowel", under, [0, 1, 0], id("B"), { len: 12, dia: 8, name: "Threaded insert" }),
+        fx("pin", under.map(([a, b, c]) => [a, b - 2, c] as Vec3), [0, 1, 0], id("B"), { name: "Pin" }),
+      ],
+      kind: "shelves",
+    },
+    {
+      title: `Hook on the box sides and lock them`,
+      detail: "Hook a side onto the screws at each end and fold it up. Lock each corner with a cam, arrow toward the edge.",
+      add: [id("L"), id("R")],
+      fix: both((sx) => fx("cam", outer(sx, camSpots), [sx, 0, 0], side(sx), { name: "Cam lock" })),
+      tools: ["screwdriver"],
+      from: { [id("L")]: [-80, 40, 0], [id("R")]: [80, 40, 0] },
+    },
+    {
+      title: `Fix the box sides to the posts`,
+      detail: "Push a nut into the keyhole on each post, level with the hole near the top of the side, and slide it down to lock. Set a plate over each nut, then screw through the side into the plate with the allen key.",
+      fix: [
+        ...both((sx) => fx("nut", [[postAt(sx) - sx * (POST_W / 2), yb + FIX_DY, pz]], [-sx, 0, 0], post(sx), { name: "Keyhole nut" })),
+        ...both((sx) => fx("plate", [[postAt(sx) - sx * (POST_W / 2 + 4), yb + FIX_DY, pz]], [-sx, 0, 0], post(sx), { len: 40, dia: 24, name: "Fixing plate" })),
+        ...both((sx) => fx("screw", inner(sx, [[FIX_DY, pz]]), [-sx, 0, 0], side(sx), { len: 16, dia: 6, name: "Fixing screw", mate: post(sx) })),
+      ],
+      tools: ["allen"],
+      kind: "screws",
+    },
+    {
+      title: `Fit the box back`,
+      detail: "Hook a wire holder into the hole near the top back corner of each side, then lower the back panel in behind them.",
+      add: [id("K")],
+      fix: both((sx) => fx("clip", inner(sx, [[DH - 20, pz - DD / 2 + 30]]), [sx, 0, 0], side(sx), { len: 110, dia: 3, name: "Wire holder" })),
+      from: { [id("K")]: [0, 260, 0] },
+    },
+    {
+      title: `Build ${the}: sides onto the front`,
+      detail: "On a rug, front face down. Tap two dowels into the front end of each side and screw four cam bolts into the front, then push the sides onto them.",
+      add: [id("F"), id("X"), id("Y")],
+      fix: [
+        ...both((sx) => fx("dowel", onDSide(sx, dowelYs, FRONT_Z, 0), [0, 0, 1], dside(sx), { name: "Dowel", mate: id("F") })),
+        ...both((sx) => fx("camScrew", onDSide(sx, boltYs, FRONT_Z + 2, 0), [0, 0, -1], id("F"), { name: "Cam bolt", mate: dside(sx) })),
+      ],
+      tools: ["screwdriver", "hammer"],
+      scene: floor,
+      pose: "-z",
+      from: { [id("F")]: [0, 0, 240], [id("X")]: [0, 0, -260], [id("Y")]: [0, 0, -260] },
+    },
+    {
+      title: `Lock the drawer cams`,
+      detail: "Four, two in each side, arrow toward the front.",
+      fix: both((sx) => fx("cam", onDSide(sx, boltYs, FRONT_Z - 30, -1), [sx, 0, 0], dside(sx), { name: "Cam lock" })),
+      tools: ["screwdriver"],
+      scene: floor,
+    },
+    {
+      title: `Slide in the drawer bottom and lay on the back`,
+      detail: "Slide the bottom down the grooves in the sides until it reaches the front. Then set the back on the ends of the sides, its lip over the edge of the bottom.",
+      add: [id("O"), id("H")],
+      scene: floor,
+      from: { [id("O")]: [0, 0, -380], [id("H")]: [0, 0, -240] },
+    },
+    {
+      title: `Nail the drawer back on`,
+      detail: "Two nails at each end, into the sides.",
+      fix: both((sx) => fx("nail", onDSide(sx, [yd + 25, yd + DSH - 25], backZ, 0), [0, 0, 1], id("H"), { name: "Nail", mate: dside(sx) })),
+      tools: ["hammer"],
+      scene: floor,
+    },
+    {
+      title: `Fit the ring pull`,
+      detail: "Push the backing ring into the hole in the front from inside, then press the pull in from the outside until it clicks.",
+      fix: [
+        fx("plug", [[wx, yb + DH / 2, FRONT_Z]], [0, 0, 1], id("F"), { len: 10, dia: 30, name: "Pull backing", included: true }),
+        fx("plug", [[wx, yb + DH / 2, FRONT_Z + t + 2]], [0, 0, -1], id("F"), { len: 6, dia: 34, name: "Ring pull", included: true }),
+      ],
+      scene: floor,
+      kind: "general",
+    },
+    {
+      title: `Cap the spare holes`,
+      detail: "A cap in each of the four holes near the back of the sides.",
+      fix: both((sx) => fx("cap", onDSide(sx, [yd + DSH / 2 - 25, yd + DSH / 2 + 25], backZ + 40, -1), [sx, 0, 0], dside(sx), { name: "Hole cap" })),
+      scene: floor,
+      kind: "general",
+    },
+    {
+      title: `Screw the runners into the box`,
+      detail: "One along the bottom of each side, inside, the clip end at the front. Two screws each.",
+      add: [id("U"), id("V")],
+      fix: both((sx) => fx("screw", inner(sx, [[RUN_DY, pz - 140], [RUN_DY, pz + 140]]), [sx, 0, 0], side(sx), { len: 12, dia: 4, name: "Runner screw" })),
+      tools: ["screwdriver"],
+      pose: "+y",
+      from: { [id("U")]: [0, 0, 300], [id("V")]: [0, 0, 300] },
+    },
+    {
+      title: `Slide in ${the}`,
+      detail: "Pull the runners out, set the drawer on them and hook the back on. Under the front, press a locking plate onto each runner and turn its lever until it catches. Turn the wheel on the lock to level the front.",
+      bring: ["F", "X", "Y", "O", "H"].map(id),
+      fix: both((sx) => fx("plate", [[wx + sx * (DSX - 30), yd, FRONT_Z - 40]], [0, 1, 0], id("O"), { len: 60, dia: 14, name: "Locking plate" })).concat(
+        both((sx) => fx("clip", [[wx + sx * (DSX - 30), yd - 4, FRONT_Z - 40]], [0, 1, 0], id("O"), { name: "Locking lever" })),
+      ),
+      from: { [id("F")]: [0, 0, 460] },
+      kind: "drawer",
+    },
+  ];
+}
+
 /** 891.581.53: three posts. The 40 cm shelves fill the left bay. Drawers, the rail and the 80 cm shelves fill the right. */
 function wide(s: ProductSpec): CustomParams {
   const H = Math.round(s.size.h * 10) || 2220;
@@ -313,17 +518,7 @@ function wide(s: ProductSpec): CustomParams {
   const DRAWERS = [200, 480];
   const RAIL_Y = 1500;
   const NARROW_W = 400;
-  const DW = 780;
-  const DD = 470;
-  const DH = 200;
-  const t = 16;
-  const RUN_X = DW / 2 - t - 6; // runner, against the inside of each box side
-  const RUN_DY = t + 20;
-  const DSX = DW / 2 - t - 12 - t / 2; // drawer side, just inside the runner
-  const DSH = DH - 70;
-  const DSL = DD - 40 - t;
-  const DRAWER_DY = t + 26; // the drawer rides this far above the box bottom
-  const FRONT_Z = pz + DD / 2; // where the drawer front meets the front edge of the box sides
+  const bay: Bay = { xl: xM, xr: xR, pz, pl: "PM", pr: "PR" };
 
   const parts: CustomPart[] = [];
   const add = (id: string, name: string, size: Vec3, pos: Vec3, shape?: "cyl", material?: CustomPart["material"]) => {
@@ -344,23 +539,9 @@ function wide(s: ProductSpec): CustomParams {
     add(`N${i}`, "40 cm shelf", [NARROW_W, SHELF_T, SHELF_D], [nx, y, pz], undefined, "board");
   });
   DRAWERS.forEach((yb, i) => {
-    const y = yb + DH / 2;
     add(`G${i}M`, "Bracket", [70, 16, 460], [xM + 28, yb - 8, pz], undefined, "metal");
     add(`G${i}R`, "Bracket", [70, 16, 460], [xR - 28, yb - 8, pz], undefined, "metal");
-    // the open box the drawer runs in, built on the brackets
-    add(`D${i}B`, "Box bottom", [DW - 2 * t, t, DD - 2 * t], [wx, yb + t / 2, pz], undefined, "board");
-    add(`D${i}L`, "Box side", [t, DH, DD], [wx - DW / 2 + t / 2, y, pz], undefined, "board");
-    add(`D${i}R`, "Box side", [t, DH, DD], [wx + DW / 2 - t / 2, y, pz], undefined, "board");
-    add(`D${i}K`, "Box back", [DW - 2 * t, DH - 24, t], [wx, y, pz - DD / 2 + t / 2], undefined, "board");
-    add(`D${i}U`, "Drawer runner", [12, 30, DD - 40], [wx - RUN_X, yb + RUN_DY, pz], undefined, "metal");
-    add(`D${i}V`, "Drawer runner", [12, 30, DD - 40], [wx + RUN_X, yb + RUN_DY, pz], undefined, "metal");
-    // the drawer itself, built on the floor
-    const dy = yb + DRAWER_DY + DSH / 2;
-    add(`D${i}F`, "Drawer front", [DW - 6, DH - 10, t], [wx, y, FRONT_Z + t / 2], undefined, "board");
-    add(`D${i}X`, "Drawer side", [t, DSH, DSL], [wx - DSX, dy, FRONT_Z - DSL / 2], undefined, "board");
-    add(`D${i}Y`, "Drawer side", [t, DSH, DSL], [wx + DSX, dy, FRONT_Z - DSL / 2], undefined, "board");
-    add(`D${i}O`, "Drawer bottom", [2 * DSX - t + 12, 6, DSL], [wx, yb + DRAWER_DY + 12, FRONT_Z - DSL / 2], undefined, "board");
-    add(`D${i}H`, "Drawer back", [2 * DSX + t, DSH, t], [wx, dy, FRONT_Z - DSL - t / 2], undefined, "board");
+    parts.push(...drawerParts(i, yb, bay));
   });
   WIDE_SHELVES.forEach((y, i) => {
     add(`E${i}M`, "Bracket", [70, 16, 460], [xM + 28, y - 20, pz], undefined, "metal");
@@ -541,30 +722,6 @@ function wide(s: ProductSpec): CustomParams {
   });
 
   const drawer = (i: number, yb: number, which: string) => {
-    const id = (s: string) => `D${i}${s}`;
-    const halfX = (DW - 2 * t) / 2;
-    const halfZ = (DD - 2 * t) / 2;
-    const side = (sx: number) => (sx < 0 ? id("L") : id("R"));
-    const dside = (sx: number) => (sx < 0 ? id("X") : id("Y"));
-    const both = (fn: (sx: number) => CustomFix): CustomFix[] => [-1, 1].map(fn);
-    // the box: corner screws on top of the bottom, the pins under it, cams near the bottom of each side
-    const screws = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [wx + sx * (halfX - 22), yb + t, pz + sz * (halfZ - 22)] as Vec3));
-    const under = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [wx + sx * (halfX - 30), yb, pz + sz * (halfZ - 60)] as Vec3));
-    const sideX = (sx: number) => wx + sx * (DW / 2 - t / 2);
-    const outer = (sx: number, spots: [number, number][]): Vec3[] => spots.map(([dy, z]) => [sideX(sx) + sx * (t / 2 - 2), yb + dy, z]);
-    const inner = (sx: number, spots: [number, number][]): Vec3[] => spots.map(([dy, z]) => [wx + sx * (DW / 2 - t), yb + dy, z]);
-    const camSpots: [number, number][] = [[36, pz - (DD / 2 - 28)], [36, pz + (DD / 2 - 28)]];
-    const postAt = (sx: number) => (sx < 0 ? xM : xR);
-    const post = (sx: number) => (sx < 0 ? "PM" : "PR");
-    const FIX_DY = DH - 60;
-    // the drawer: built face down on the floor, then slid in
-    const yd = yb + DRAWER_DY;
-    const backZ = FRONT_Z - DSL - t;
-    const dowelYs = [yd + 20, yd + DSH - 20];
-    const boltYs = [yd + 45, yd + DSH - 45];
-    const onDSide = (sx: number, ys: number[], z: number, face: number): Vec3[] => ys.map((y) => [wx + sx * (DSX + face * (t / 2 - 2)), y, z]);
-    const drawerParts = [id("F"), id("X"), id("Y"), id("O"), id("H")];
-    const floor = { id: `drawer${i}`, at: [wx, yd + DSH / 2, FRONT_Z - DSL / 2] as Vec3 };
     steps.push(
       {
         title: `Fit the brackets for the ${which} drawer`,
@@ -574,127 +731,7 @@ function wide(s: ProductSpec): CustomParams {
         tools: ["allen"],
         from: { [`G${i}M`]: [-80, 0, 80], [`G${i}R`]: [80, 0, 80] },
       },
-      {
-        title: `Fit four screws in the ${which} drawer box bottom`,
-        detail: "One near each corner, on the top face. Drive each one in straight, and stop while some thread still shows. A crooked screw, or one driven all the way in, will not seat.",
-        add: [id("B")],
-        fix: [fx("screw", screws, [0, 1, 0], id("B"), { len: 30, dia: 6, name: "Corner screw" })],
-        tools: ["screwdriver"],
-        scene: { id: `box${i}`, at: [wx, yb, pz] },
-        from: { [id("B")]: [0, 0, 300] },
-      },
-      {
-        title: `Lower the box bottom onto the brackets`,
-        detail: "Screws facing up. Let it rest on both brackets, flush at the front.",
-        bring: [id("B")],
-        from: { [id("B")]: [0, 300, 0] },
-        kind: "join",
-      },
-      {
-        title: `Pin the box bottom to the brackets`,
-        detail: "From underneath, press a threaded insert into each of the four holes, then screw a pin into each one. The pins keep the box from sliding off the brackets.",
-        fix: [
-          fx("dowel", under, [0, 1, 0], id("B"), { len: 12, dia: 8, name: "Threaded insert" }),
-          fx("pin", under.map(([a, b, c]) => [a, b - 2, c] as Vec3), [0, 1, 0], id("B"), { name: "Pin" }),
-        ],
-        kind: "shelves",
-      },
-      {
-        title: `Hook on the box sides and lock them`,
-        detail: "Hook a side onto the screws at each end and fold it up. Lock each corner with a cam, arrow toward the edge.",
-        add: [id("L"), id("R")],
-        fix: both((sx) => fx("cam", outer(sx, camSpots), [sx, 0, 0], side(sx), { name: "Cam lock" })),
-        tools: ["screwdriver"],
-        from: { [id("L")]: [-80, 40, 0], [id("R")]: [80, 40, 0] },
-      },
-      {
-        title: `Fix the box sides to the posts`,
-        detail: "Push a nut into the keyhole on each post, level with the hole near the top of the side, and slide it down to lock. Set a plate over each nut, then screw through the side into the plate with the allen key.",
-        fix: [
-          ...both((sx) => fx("nut", [[postAt(sx) - sx * (POST_W / 2), yb + FIX_DY, pz]], [-sx, 0, 0], post(sx), { name: "Keyhole nut" })),
-          ...both((sx) => fx("plate", [[postAt(sx) - sx * (POST_W / 2 + 4), yb + FIX_DY, pz]], [-sx, 0, 0], post(sx), { len: 40, dia: 24, name: "Fixing plate" })),
-          ...both((sx) => fx("screw", inner(sx, [[FIX_DY, pz]]), [-sx, 0, 0], side(sx), { len: 16, dia: 6, name: "Fixing screw", mate: post(sx) })),
-        ],
-        tools: ["allen"],
-        kind: "screws",
-      },
-      {
-        title: `Fit the box back`,
-        detail: "Hook a wire holder into the hole near the top back corner of each side, then lower the back panel in behind them.",
-        add: [id("K")],
-        fix: both((sx) => fx("clip", inner(sx, [[DH - 20, pz - DD / 2 + 30]]), [sx, 0, 0], side(sx), { len: 110, dia: 3, name: "Wire holder" })),
-        from: { [id("K")]: [0, 260, 0] },
-      },
-      {
-        title: `Build the ${which} drawer: sides onto the front`,
-        detail: "On a rug, front face down. Tap two dowels into the front end of each side and screw four cam bolts into the front, then push the sides onto them.",
-        add: [id("F"), id("X"), id("Y")],
-        fix: [
-          ...both((sx) => fx("dowel", onDSide(sx, dowelYs, FRONT_Z, 0), [0, 0, 1], dside(sx), { name: "Dowel", mate: id("F") })),
-          ...both((sx) => fx("camScrew", onDSide(sx, boltYs, FRONT_Z + 2, 0), [0, 0, -1], id("F"), { name: "Cam bolt", mate: dside(sx) })),
-        ],
-        tools: ["screwdriver", "hammer"],
-        scene: floor,
-        pose: "-z",
-        from: { [id("F")]: [0, 0, 240], [id("X")]: [0, 0, -260], [id("Y")]: [0, 0, -260] },
-      },
-      {
-        title: `Lock the drawer cams`,
-        detail: "Four, two in each side, arrow toward the front.",
-        fix: both((sx) => fx("cam", onDSide(sx, boltYs, FRONT_Z - 30, -1), [sx, 0, 0], dside(sx), { name: "Cam lock" })),
-        tools: ["screwdriver"],
-        scene: floor,
-      },
-      {
-        title: `Slide in the drawer bottom and lay on the back`,
-        detail: "Slide the bottom down the grooves in the sides until it reaches the front. Then set the back on the ends of the sides, its lip over the edge of the bottom.",
-        add: [id("O"), id("H")],
-        scene: floor,
-        from: { [id("O")]: [0, 0, -380], [id("H")]: [0, 0, -240] },
-      },
-      {
-        title: `Nail the drawer back on`,
-        detail: "Two nails at each end, into the sides.",
-        fix: both((sx) => fx("nail", onDSide(sx, [yd + 25, yd + DSH - 25], backZ, 0), [0, 0, 1], id("H"), { name: "Nail", mate: dside(sx) })),
-        tools: ["hammer"],
-        scene: floor,
-      },
-      {
-        title: `Fit the ring pull`,
-        detail: "Push the backing ring into the hole in the front from inside, then press the pull in from the outside until it clicks.",
-        fix: [
-          fx("plug", [[wx, yb + DH / 2, FRONT_Z]], [0, 0, 1], id("F"), { len: 10, dia: 30, name: "Pull backing", included: true }),
-          fx("plug", [[wx, yb + DH / 2, FRONT_Z + t + 2]], [0, 0, -1], id("F"), { len: 6, dia: 34, name: "Ring pull", included: true }),
-        ],
-        scene: floor,
-        kind: "general",
-      },
-      {
-        title: `Cap the spare holes`,
-        detail: "A cap in each of the four holes near the back of the sides.",
-        fix: both((sx) => fx("cap", onDSide(sx, [yd + DSH / 2 - 25, yd + DSH / 2 + 25], backZ + 40, -1), [sx, 0, 0], dside(sx), { name: "Hole cap" })),
-        scene: floor,
-        kind: "general",
-      },
-      {
-        title: `Screw the runners into the ${which} drawer box`,
-        detail: "One along the bottom of each side, inside, the clip end at the front. Two screws each.",
-        add: [id("U"), id("V")],
-        fix: both((sx) => fx("screw", inner(sx, [[RUN_DY, pz - 140], [RUN_DY, pz + 140]]), [sx, 0, 0], side(sx), { len: 12, dia: 4, name: "Runner screw" })),
-        tools: ["screwdriver"],
-        pose: "+y",
-        from: { [id("U")]: [0, 0, 300], [id("V")]: [0, 0, 300] },
-      },
-      {
-        title: `Slide in the ${which} drawer`,
-        detail: "Pull the runners out, set the drawer on them and hook the back on. Under the front, press a locking plate onto each runner and turn its lever until it catches. Turn the wheel on the lock to level the front.",
-        bring: drawerParts,
-        fix: both((sx) => fx("plate", [[wx + sx * (DSX - 30), yd, FRONT_Z - 40]], [0, 1, 0], id("O"), { len: 60, dia: 14, name: "Locking plate" })).concat(
-          both((sx) => fx("clip", [[wx + sx * (DSX - 30), yd - 4, FRONT_Z - 40]], [0, 1, 0], id("O"), { name: "Locking lever" })),
-        ),
-        from: { [id("F")]: [0, 0, 460] },
-        kind: "drawer",
-      },
+      ...drawerSteps(i, yb, bay, which),
     );
   };
   drawer(0, DRAWERS[0], "first");
@@ -754,7 +791,34 @@ function wide(s: ProductSpec): CustomParams {
   return { parts, steps };
 }
 
+/** 504.339.68: the drawer bought alone, on posts and brackets that come in their own boxes. */
+function drawerAlone(): CustomParams {
+  const H = 2220;
+  const postH = H - 40;
+  const postY = 24 + postH / 2;
+  const bay: Bay = { xl: -SPAN / 2, xr: SPAN / 2, pz: 0, pl: "PM", pr: "PR" };
+  const yb = 400;
+  const parts: CustomPart[] = [
+    { id: "PM", name: "Post", size: [POST_W, postH, POST_D], pos: [bay.xl, postY, 0], material: "metal", pieces: postPieces(postH), extra: true },
+    { id: "PR", name: "Post", size: [POST_W, postH, POST_D], pos: [bay.xr, postY, 0], material: "metal", pieces: postPieces(postH), extra: true },
+    { id: "G0M", name: "Bracket", size: [70, 16, 460], pos: [bay.xl + 28, yb - 8, 0], material: "metal", extra: true },
+    { id: "G0R", name: "Bracket", size: [70, 16, 460], pos: [bay.xr - 28, yb - 8, 0], material: "metal", extra: true },
+    ...drawerParts(0, yb, bay),
+  ];
+  const steps: CustomStep[] = [
+    {
+      title: "Put up the posts and the brackets",
+      detail: "They come in their own boxes, with their own instructions. Two posts 86 cm apart, centre to centre, and a bracket on each at the height you want the drawer, open side up.",
+      add: ["PM", "PR", "G0M", "G0R"],
+      kind: "general",
+    },
+    ...drawerSteps(0, yb, bay),
+  ];
+  return { parts, steps };
+}
+
 function recipe(s: ProductSpec): CustomParams | null {
+  if (/^drawer/i.test(s.variant)) return drawerAlone();
   if (!/wardrobe/i.test(s.variant)) return null;
   return s.size.w >= 120 ? wide(s) : section(s);
 }

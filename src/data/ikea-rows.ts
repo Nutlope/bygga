@@ -277,6 +277,7 @@ EKTORP|chaise|3-seat sofa with chaise longue|252|88|163|seats=3,arms=wide,seatH=
 EKTORP|corner|Corner sofa, 4-seat|243|88|243|seats=4,arms=wide,seatH=45,corner=left,sd=88,aw=24,sdp=49
 EKTORP|sofa|2-seat sofa|179|88|88|seats=2,seatH=45,aw=24,sdp=49
 ELDBERGET / MALSKÄR|office|Swivel chair|67|90|67|arms=none,seatH=54
+ELVARLI|chest|Drawer, 80 × 51 cm|80|20|51|cat=Drawer
 ELVARLI|open|Wardrobe combination, 92 × 51 × 222 cm|92|222|51|cat=Wardrobe combination
 ELVARLI|open|Wardrobe combination, 135 × 51 × 222 cm|135|222|51|cat=Wardrobe combination
 EMMISLÖV|pouffe|Pouf|42|43|42|round=1,us=1
