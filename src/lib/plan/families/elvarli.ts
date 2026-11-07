@@ -103,6 +103,43 @@ function postPieces(h: number): PartPiece[] {
   return pieces;
 }
 
+/**
+ * A bracket or rail holder on a post, from the bracket and rail manuals: a nut pushed into the keyhole and slid down,
+ * then a screw through the bracket into it, with a plate between for a bracket. `face` is the side of the post the bay is on.
+ */
+function postMount(post: string, x: number, face: number, y: number, z: number, what: "Bracket" | "Holder"): CustomFix[] {
+  const surf = x + face * (POST_W / 2);
+  const into: Vec3 = [-face, 0, 0];
+  return [
+    fx("nut", [[surf, y, z]], into, post, { name: "Keyhole nut" }),
+    ...(what === "Bracket" ? [fx("plate", [[surf + face * 4, y, z]], into, post, { len: 40, dia: 24, name: "Bracket plate" })] : []),
+    fx("screw", [[surf + face * 12, y, z]], into, post, { len: 16, dia: 6, name: `${what} screw`, mate: post }),
+  ];
+}
+
+/** From the shelf manual: under each corner a threaded insert pushed up into the shelf, then a pin screwed into it. */
+function shelfPins(shelf: string, xs: number[], y: number, z: number): CustomFix[] {
+  const at = xs.flatMap((x) => [-1, 1].map((sz) => [x, y - SHELF_T / 2, z + sz * (SHELF_D / 2 - 40)] as Vec3));
+  return [
+    fx("dowel", at, [0, 1, 0], shelf, { len: 12, dia: 8, name: "Threaded insert" }),
+    fx("pin", at.map(([a, b, c]) => [a, b - 2, c] as Vec3), [0, 1, 0], shelf, { name: "Shelf pin" }),
+  ];
+}
+
+/**
+ * From the post manual: a cover pushed into each keyhole the post isn't using, then slid down. Ten keyholes on each
+ * broad face; `used` lists, for each face, the heights of the nuts in it.
+ */
+function holeCovers(post: string, x: number, postY: number, z: number, used: Record<number, number[]>): CustomFix[] {
+  const holes = Array.from({ length: KEYS }, (_, i) => postY + (i - (KEYS - 1) / 2) * KEY_PITCH);
+  const nearest = (y: number) => holes.reduce((b, h) => (Math.abs(h - y) < Math.abs(b - y) ? h : b));
+  return [-1, 1].flatMap((face) => {
+    const taken = new Set((used[face] ?? []).map(nearest));
+    const at = holes.filter((h) => !taken.has(h)).map((h) => [x + face * (POST_W / 2), h, z] as Vec3);
+    return at.length ? [fx("cap", at, [-face, 0, 0], post, { name: "Hole cover" })] : [];
+  });
+}
+
 function section(s: ProductSpec): CustomParams {
   const H = Math.round(s.size.h * 10) || 2220;
   const px = SPAN / 2;
@@ -125,18 +162,18 @@ function section(s: ProductSpec): CustomParams {
     }
     add(`S${i}`, "Shelf", [SHELF_W, SHELF_T, SHELF_D], [0, y, pz], undefined, "board");
   });
-  add("HL", "Rail holder", [36, 28, 40], [-px + 28, RAIL_Y, pz + 30], undefined, "metal");
-  add("HR", "Rail holder", [36, 28, 40], [px - 28, RAIL_Y, pz + 30], undefined, "metal");
-  parts.push({ id: "RL", name: "Clothes rail", size: [22, SPAN - 80, 22], pos: [0, RAIL_Y, pz + 30], shape: "cyl", rot: [0, 0, Math.PI / 2], material: "metal" });
+  add("HL", "Rail holder", [36, 28, 40], [-px + POST_W / 2 + 18, RAIL_Y, pz], undefined, "metal");
+  add("HR", "Rail holder", [36, 28, 40], [px - POST_W / 2 - 18, RAIL_Y, pz], undefined, "metal");
+  parts.push({ id: "RL", name: "Clothes rail", size: [22, SPAN - 80, 22], pos: [0, RAIL_Y, pz], shape: "cyl", rot: [0, 0, Math.PI / 2], material: "metal" });
 
   const foot = (sx: number): Vec3 => [sx * px, 16, pz];
   const ceil = (sx: number): Vec3[] => [-22, 22].map((dx) => [sx * px + dx, H - 2, pz]);
 
   const prep = (tag: string, sx: number): CustomFix[] => [
-    fx("screw", [foot(sx)], [0, -1, 0], `P${tag}`, { len: 80, dia: 8, name: "Adjusting screw" }),
-    fx("nut", [[sx * px, 28, pz]], [0, -1, 0], `P${tag}`, { name: "Adjusting nut" }),
+    fx("screw", [foot(sx)], [0, 1, 0], `P${tag}`, { len: 80, dia: 8, name: "Adjusting screw" }),
+    fx("nut", [[sx * px, 28, pz]], [0, 1, 0], `P${tag}`, { name: "Adjusting nut" }),
     fx("nut", [[sx * px, postY + postH / 2 - 30, pz], [sx * px, postY - 80, pz]], [0, -1, 0], `P${tag}`, { name: "Square nut" }),
-    fx("screw", [[sx * px, H - 14, pz]], [0, 1, 0], `C${tag}`, { len: 16, dia: 4, name: "Plate screw" }),
+    fx("screw", [[sx * px, H - 14, pz]], [0, -1, 0], `C${tag}`, { len: 16, dia: 4, name: "Plate screw" }),
   ];
   const ceilingFix = (tag: string, sx: number): CustomFix[] => [
     fx("plug", ceil(sx).map(([x, y, z]) => [x, y + 8, z] as Vec3), [0, 1, 0], `C${tag}`, { name: "Ceiling plug" }),
@@ -246,9 +283,9 @@ function section(s: ProductSpec): CustomParams {
     const where = ["lowest", "next", "upper", "top"][i];
     steps.push({
       title: i === 0 ? "Fit the lowest pair of brackets" : `Fit the ${where} pair of brackets`,
-      detail: "Drop a nut into the slot on each post at this height, hook a bracket over it and tighten the screw. The open side of the bracket faces up. On the thin upper tube, clip a shoe from the post's bag into the slot first.",
+      detail: "Push a nut into the keyhole on each post at this height and slide it down. Hook a bracket over it with a plate between, open side up, and tighten the screw with the allen key. On the thin upper tube, clip a shoe from the post's bag into the slot first.",
       add: [`B${i}L`, `B${i}R`],
-      fix: [-1, 1].map((sx) => fx("screw", [[sx * (px - 8), y - 20, pz]], [-sx, 0, 0], sx < 0 ? "PL" : "PR", { len: 16, dia: 5, name: "Bracket screw" })),
+      fix: [-1, 1].flatMap((sx) => postMount(sx < 0 ? "PL" : "PR", sx * px, -sx, y - 20, pz, "Bracket")),
       tools: ["allen"],
       from: { [`B${i}L`]: [-80, 0, 80], [`B${i}R`]: [80, 0, 80] },
     });
@@ -258,20 +295,20 @@ function section(s: ProductSpec): CustomParams {
     {
       title: "Drop a nut in for the clothes rail",
       detail: "One in each post, at the height you want the rail. This combination leaves a gap here so shirts can hang.",
-      fix: [-1, 1].map((sx) => fx("nut", [[sx * px, RAIL_Y, pz]], [0, -1, 0], sx < 0 ? "PL" : "PR", { name: "Square nut" })),
+      fix: [-1, 1].map((sx) => postMount(sx < 0 ? "PL" : "PR", sx * px, -sx, RAIL_Y, pz, "Holder")[0]),
     },
     {
       title: "Screw a holder to each post",
       detail: "The holder hooks into the nut. Tighten it with the allen key.",
       add: ["HL", "HR"],
-      fix: [-1, 1].map((sx) => fx("screw", [[sx * (px - 20), RAIL_Y, pz + 10]], [-sx, 0, 0], sx < 0 ? "PL" : "PR", { len: 16, dia: 5, name: "Holder screw" })),
+      fix: [-1, 1].map((sx) => postMount(sx < 0 ? "PL" : "PR", sx * px, -sx, RAIL_Y, pz, "Holder")[1]),
       tools: ["allen"],
     },
     {
       title: "Lay the rail in the holders",
       detail: "Rest the tube in both holders and tighten the screw under each one.",
       add: ["RL"],
-      fix: [-1, 1].map((sx) => fx("screw", [[sx * (SPAN / 2 - 70), RAIL_Y, pz + 30]], [0, 1, 0], "RL", { len: 20, dia: 4, name: "Rail screw" })),
+      fix: [-1, 1].map((sx) => fx("screw", [[sx * ((SPAN - 80) / 2 - 12), RAIL_Y - 14, pz]], [0, 1, 0], "RL", { len: 20, dia: 4, name: "Rail screw" })),
       tools: ["screwdriver"],
       from: { RL: [0, -200, 0] },
     },
@@ -279,19 +316,21 @@ function section(s: ProductSpec): CustomParams {
 
   const shelfTitle = ["Pin the lowest shelf and lower it on", "Pin the second shelf and lower it on", "Pin the third shelf and lower it on", "Pin the top shelf and lower it on"];
   SHELVES.forEach((y, i) => {
-    const pins = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx * (SHELF_W / 2 - 40), y - SHELF_T / 2, pz + sz * (SHELF_D / 2 - 40)] as Vec3));
     steps.push({
       title: shelfTitle[i],
       detail: "Press a threaded insert into each of the four holes underneath, screw in a pin, and lower the shelf onto the brackets. Shelves go on from the bottom up. Don't lean anything against the posts while you do this.",
       add: [`S${i}`],
-      fix: [fx("pin", pins, [0, -1, 0], `S${i}`, { name: "Shelf pin" })],
+      fix: shelfPins(`S${i}`, [-(SHELF_W / 2 - 20), SHELF_W / 2 - 20], y, pz),
+      kind: "shelves",
       from: { [`S${i}`]: [0, 160, 40] },
     });
   });
 
   steps.push({
     title: "Cover the spare holes",
-    detail: "Press a cover into every slot you are not using. Each post comes with 20.",
+    detail: "Push a cover into every keyhole you are not using and slide it down. Each post comes with 20.",
+    fix: [-1, 1].flatMap((sx) => holeCovers(sx < 0 ? "PL" : "PR", sx * px, postY, pz, { [-sx]: [...SHELVES.map((y) => y - 20), RAIL_Y] })),
+    kind: "general",
   });
 
   return { parts, steps };
@@ -362,9 +401,7 @@ function drawerSteps(i: number, yb: number, bay: Bay, which?: string): CustomSte
   const both = (fn: (sx: number) => CustomFix): CustomFix[] => [-1, 1].map(fn);
   // the box: corner screws on top of the bottom, the pins under it, cams near the bottom of each side
   const screws = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [wx + sx * (halfX - 22), yb + t, pz + sz * (halfZ - 22)] as Vec3));
-  const under = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [wx + sx * (halfX - 30), yb, pz + sz * (halfZ - 60)] as Vec3));
-  const sideX = (sx: number) => wx + sx * (DW / 2 - t / 2);
-  const outer = (sx: number, spots: [number, number][]): Vec3[] => spots.map(([dy, z]) => [sideX(sx) + sx * (t / 2 - 2), yb + dy, z]);
+  const under = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [wx + sx * (halfX - 4), yb, pz + sz * (halfZ - 60)] as Vec3));
   const inner = (sx: number, spots: [number, number][]): Vec3[] => spots.map(([dy, z]) => [wx + sx * (DW / 2 - t), yb + dy, z]);
   const camSpots: [number, number][] = [[36, pz - (DD / 2 - 28)], [36, pz + (DD / 2 - 28)]];
   const postAt = (sx: number) => (sx < 0 ? bay.xl : bay.xr);
@@ -382,7 +419,7 @@ function drawerSteps(i: number, yb: number, bay: Bay, which?: string): CustomSte
       title: `Fit four screws in the ${which ? `${which} drawer ` : ""}box bottom`,
       detail: "One near each corner, on the top face. Drive each one in straight, and stop while some thread still shows. A crooked screw, or one driven all the way in, will not seat.",
       add: [id("B")],
-      fix: [fx("screw", screws, [0, 1, 0], id("B"), { len: 30, dia: 6, name: "Corner screw" })],
+      fix: [fx("screw", screws, [0, -1, 0], id("B"), { len: 30, dia: 6, name: "Corner screw" })],
       tools: ["screwdriver"],
       scene: { id: `box${i}`, at: [wx, yb, pz] },
       from: { [id("B")]: [0, 0, 300] },
@@ -407,7 +444,7 @@ function drawerSteps(i: number, yb: number, bay: Bay, which?: string): CustomSte
       title: `Hook on the box sides and lock them`,
       detail: "Hook a side onto the screws at each end and fold it up. Lock each corner with a cam, arrow toward the edge.",
       add: [id("L"), id("R")],
-      fix: both((sx) => fx("cam", outer(sx, camSpots), [sx, 0, 0], side(sx), { name: "Cam lock" })),
+      fix: both((sx) => fx("cam", inner(sx, camSpots), [sx, 0, 0], side(sx), { name: "Cam lock" })),
       tools: ["screwdriver"],
       from: { [id("L")]: [-80, 40, 0], [id("R")]: [80, 40, 0] },
     },
@@ -415,9 +452,9 @@ function drawerSteps(i: number, yb: number, bay: Bay, which?: string): CustomSte
       title: `Fix the box sides to the posts`,
       detail: "Push a nut into the keyhole on each post, level with the hole near the top of the side, and slide it down to lock. Set a plate over each nut, then screw through the side into the plate with the allen key.",
       fix: [
-        ...both((sx) => fx("nut", [[postAt(sx) - sx * (POST_W / 2), yb + FIX_DY, pz]], [-sx, 0, 0], post(sx), { name: "Keyhole nut" })),
-        ...both((sx) => fx("plate", [[postAt(sx) - sx * (POST_W / 2 + 4), yb + FIX_DY, pz]], [-sx, 0, 0], post(sx), { len: 40, dia: 24, name: "Fixing plate" })),
-        ...both((sx) => fx("screw", inner(sx, [[FIX_DY, pz]]), [-sx, 0, 0], side(sx), { len: 16, dia: 6, name: "Fixing screw", mate: post(sx) })),
+        ...both((sx) => fx("nut", [[postAt(sx) - sx * (POST_W / 2), yb + FIX_DY, pz]], [sx, 0, 0], post(sx), { name: "Keyhole nut" })),
+        ...both((sx) => fx("plate", [[postAt(sx) - sx * (POST_W / 2 + 4), yb + FIX_DY, pz]], [sx, 0, 0], post(sx), { len: 40, dia: 24, name: "Fixing plate" })),
+        ...both((sx) => fx("screw", inner(sx, [[FIX_DY, pz]]), [sx, 0, 0], side(sx), { len: 16, dia: 6, name: "Fixing screw", mate: post(sx) })),
       ],
       tools: ["allen"],
       kind: "screws",
@@ -548,23 +585,23 @@ function wide(s: ProductSpec): CustomParams {
     add(`E${i}R`, "Bracket", [70, 16, 460], [xR - 28, y - 20, pz], undefined, "metal");
     add(`W${i}`, "80 cm shelf", [SHELF_W, SHELF_T, SHELF_D], [wx, y, pz], undefined, "board");
   });
-  add("HM", "Rail holder", [36, 28, 40], [xM + 28, RAIL_Y, pz + 30], undefined, "metal");
-  add("HR", "Rail holder", [36, 28, 40], [xR - 28, RAIL_Y, pz + 30], undefined, "metal");
-  parts.push({ id: "RL", name: "Clothes rail", size: [22, 780, 22], pos: [wx, RAIL_Y, pz + 30], shape: "cyl", rot: [0, 0, Math.PI / 2], material: "metal" });
+  add("HM", "Rail holder", [36, 28, 40], [xM + POST_W / 2 + 18, RAIL_Y, pz], undefined, "metal");
+  add("HR", "Rail holder", [36, 28, 40], [xR - POST_W / 2 - 18, RAIL_Y, pz], undefined, "metal");
+  parts.push({ id: "RL", name: "Clothes rail", size: [22, 780, 22], pos: [wx, RAIL_Y, pz], shape: "cyl", rot: [0, 0, Math.PI / 2], material: "metal" });
 
   const ceil = (x: number): Vec3[] => [-22, 22].map((dx) => [x + dx, H - 2, pz]);
   const prep = (tag: string, x: number): CustomFix[] => [
-    fx("screw", [[x, 16, pz]], [0, -1, 0], `P${tag}`, { len: 80, dia: 8, name: "Adjusting screw" }),
-    fx("nut", [[x, 28, pz]], [0, -1, 0], `P${tag}`, { name: "Adjusting nut" }),
+    fx("screw", [[x, 16, pz]], [0, 1, 0], `P${tag}`, { len: 80, dia: 8, name: "Adjusting screw" }),
+    fx("nut", [[x, 28, pz]], [0, 1, 0], `P${tag}`, { name: "Adjusting nut" }),
     fx("nut", [[x, postY + postH / 2 - 30, pz], [x, postY - 80, pz]], [0, -1, 0], `P${tag}`, { name: "Square nut" }),
-    fx("screw", [[x, H - 14, pz]], [0, 1, 0], `C${tag}`, { len: 16, dia: 4, name: "Plate screw" }),
+    fx("screw", [[x, H - 14, pz]], [0, -1, 0], `C${tag}`, { len: 16, dia: 4, name: "Plate screw" }),
   ];
   const ceilingFix = (tag: string, x: number): CustomFix[] => [
     fx("plug", ceil(x).map(([a, b, c]) => [a, b + 8, c] as Vec3), [0, 1, 0], `C${tag}`, { name: "Ceiling plug" }),
     fx("screw", ceil(x), [0, 1, 0], `C${tag}`, { len: 50, dia: 5, name: "Ceiling screw", notIncluded: true }),
   ];
   const bracketScrews = (y: number, mounts: [number, number, string][]): CustomFix[] =>
-    mounts.map(([x, face, tag]) => fx("screw", [[x + face * 8, y, pz]], [face, 0, 0], `P${tag}`, { len: 16, dia: 5, name: "Bracket screw" }));
+    mounts.flatMap(([x, face, tag]) => postMount(`P${tag}`, x, face, y, pz, "Bracket"));
 
   const steps: CustomParams["steps"] = [
     {
@@ -711,12 +748,12 @@ function wide(s: ProductSpec): CustomParams {
       tools: ["allen"],
       from: { [`B${i}L`]: [-80, 0, 80], [`B${i}M`]: [80, 0, 80] },
     });
-    const pins = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [nx + sx * (NARROW_W / 2 - 36), y - SHELF_T / 2, pz + sz * (SHELF_D / 2 - 40)] as Vec3));
     steps.push({
       title: `Pin the ${narrowWhere[i]} 40 cm shelf and lower it on`,
       detail: "Press a threaded insert into each of the four holes underneath, screw in a pin, and lower the shelf onto the brackets. Shelves go on from the bottom up. Don't lean anything against the posts while you do this.",
       add: [`N${i}`],
-      fix: [fx("pin", pins, [0, -1, 0], `N${i}`, { name: "Shelf pin" })],
+      fix: shelfPins(`N${i}`, [nx - (NARROW_W / 2 - 20), nx + (NARROW_W / 2 - 20)], y, pz),
+      kind: "shelves",
       from: { [`N${i}`]: [0, 160, 40] },
     });
   });
@@ -725,7 +762,7 @@ function wide(s: ProductSpec): CustomParams {
     steps.push(
       {
         title: `Fit the brackets for the ${which} drawer`,
-        detail: "Drop a nut into the slot on the middle post and the right post at this height, hook a bracket over each and tighten the screw. The open side faces up.",
+        detail: "Push a nut into the keyhole on each post at this height and slide it down. Hook a bracket over it with a plate between, open side up, and tighten the screw with the allen key.",
         add: [`G${i}M`, `G${i}R`],
         fix: bracketScrews(yb - 8, [[xM, 1, "M"], [xR, -1, "R"]]),
         tools: ["allen"],
@@ -741,15 +778,15 @@ function wide(s: ProductSpec): CustomParams {
     {
       title: "Drop a nut in for the clothes rail",
       detail: "One in the middle post and one in the right post, in the gap above the drawers, so shirts can hang.",
-      fix: [fx("nut", [[xM, RAIL_Y, pz]], [0, -1, 0], "PM", { name: "Square nut" }), fx("nut", [[xR, RAIL_Y, pz]], [0, -1, 0], "PR", { name: "Square nut" })],
+      fix: [postMount("PM", xM, 1, RAIL_Y, pz, "Holder")[0], postMount("PR", xR, -1, RAIL_Y, pz, "Holder")[0]],
     },
     {
       title: "Screw a holder to each post of the wide bay",
       detail: "The holder hooks into the nut. Tighten it with the allen key.",
       add: ["HM", "HR"],
       fix: [
-        fx("screw", [[xM + 20, RAIL_Y, pz + 10]], [1, 0, 0], "PM", { len: 16, dia: 5, name: "Holder screw" }),
-        fx("screw", [[xR - 20, RAIL_Y, pz + 10]], [-1, 0, 0], "PR", { len: 16, dia: 5, name: "Holder screw" }),
+        postMount("PM", xM, 1, RAIL_Y, pz, "Holder")[1],
+        postMount("PR", xR, -1, RAIL_Y, pz, "Holder")[1],
       ],
       tools: ["allen"],
     },
@@ -757,7 +794,7 @@ function wide(s: ProductSpec): CustomParams {
       title: "Lay the rail in the holders",
       detail: "Rest the tube in both holders and tighten the screw under each one.",
       add: ["RL"],
-      fix: [-1, 1].map((sx) => fx("screw", [[wx + sx * 360, RAIL_Y, pz + 30]], [0, 1, 0], "RL", { len: 20, dia: 4, name: "Rail screw" })),
+      fix: [-1, 1].map((sx) => fx("screw", [[wx + sx * (780 / 2 - 12), RAIL_Y - 14, pz]], [0, 1, 0], "RL", { len: 20, dia: 4, name: "Rail screw" })),
       tools: ["screwdriver"],
       from: { RL: [0, -200, 0] },
     },
@@ -773,19 +810,25 @@ function wide(s: ProductSpec): CustomParams {
       tools: ["allen"],
       from: { [`E${i}M`]: [-80, 0, 80], [`E${i}R`]: [80, 0, 80] },
     });
-    const pins = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => [wx + sx * (SHELF_W / 2 - 40), y - SHELF_T / 2, pz + sz * (SHELF_D / 2 - 40)] as Vec3));
     steps.push({
       title: `Pin the ${wideWhere[i]} 80 cm shelf and lower it on`,
       detail: "Press a threaded insert into each of the four holes underneath, screw in a pin, and lower the shelf onto the brackets.",
       add: [`W${i}`],
-      fix: [fx("pin", pins, [0, -1, 0], `W${i}`, { name: "Shelf pin" })],
+      fix: shelfPins(`W${i}`, [wx - (SHELF_W / 2 - 20), wx + (SHELF_W / 2 - 20)], y, pz),
+      kind: "shelves",
       from: { [`W${i}`]: [0, 160, 40] },
     });
   });
 
   steps.push({
     title: "Cover the spare holes",
-    detail: "Press a cover into every slot you are not using. Each post comes with 20.",
+    detail: "Push a cover into every keyhole you are not using and slide it down. Each post comes with 20.",
+    fix: [
+      ...holeCovers("PL", xL, postY, pz, { 1: NARROW.map((y) => y - 20) }),
+      ...holeCovers("PM", xM, postY, pz, { [-1]: NARROW.map((y) => y - 20), 1: [...DRAWERS.flatMap((yb) => [yb - 8, yb + DH - 60]), ...WIDE_SHELVES.map((y) => y - 20), RAIL_Y] }),
+      ...holeCovers("PR", xR, postY, pz, { [-1]: [...DRAWERS.flatMap((yb) => [yb - 8, yb + DH - 60]), ...WIDE_SHELVES.map((y) => y - 20), RAIL_Y] }),
+    ],
+    kind: "general",
   });
 
   return { parts, steps };

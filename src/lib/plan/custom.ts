@@ -298,8 +298,8 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
   // a part a step asks to wait (it takes its fittings now, a later step joins it) stands beside the build, then moves in
   const addedAfter = (n: Node, si: number) => steps.slice(si + 1).some((x) => x.add?.includes(n.id));
   const aside = new Set<Node>();
-  // parts built in a scene of their own (a drawer on the floor), until a step brings them in
-  const apart = new Set<Node>();
+  // parts built in a scene of their own (a drawer on the floor), and which scene, until a step brings them in
+  const apart = new Map<Node, string>();
   let pose: Pose = "+y";
   // dowels and cam bolts so far: a part they join has to arrive along them, not slide across them
   const pins: { host: Node; mate: string; dir: Vec3 }[] = [];
@@ -372,7 +372,7 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
           const at = st.scene.at;
           const p = n.part.pos;
           b.stage(n.key, [p[0] - at[0], p[1] - at[1], p[2] - at[2]], b.partItem(n.key).final.rot, off);
-          apart.add(n);
+          apart.set(n, st.scene.id);
         };
         // a part built in its own scene moves in as one piece, before anything is fitted to it: everything at once, the same way
         const brought = (st.bring ?? []).map((id) => nodes.get(id)).filter((n): n is Node => !!n && apart.has(n));
@@ -383,7 +383,12 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
             apart.delete(n);
           }
           b.then(0.15);
+          lastAdded = brought;
         }
+        // only parts in the scene this step shows: a drawer still on the floor isn't in the build yet, and the build isn't on the floor
+        const here = st.scene?.id ?? "main";
+        const live = placed.filter((n) => (apart.get(n) ?? "main") === here);
+        const latest = lastAdded.filter((n) => live.includes(n));
         const targets = new Set(fixes.flatMap((f) => f.to ?? []));
         const hits = (x: Node, y: Node) => !targets.size || targets.has(x.id) || targets.has(y.id);
         const pairs = (pool: Node[], keep: (x: Node, y: Node) => boolean) => {
@@ -397,17 +402,17 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
           return out;
         };
         // joints made in this step, joints about to be made (dowels go in first), and joints already made (cams, screws)
-        const now = adds.length ? pairs([...placed, ...adds], (x, y) => adds.includes(x) || adds.includes(y)) : [];
+        const now = adds.length ? pairs([...live, ...adds], (x, y) => adds.includes(x) || adds.includes(y)) : [];
         const future = adds.length ? [] : lookahead(steps, si, nodes, placed);
-        const soon = future.length ? pairs([...placed, ...future], (x, y) => (future.includes(x) || future.includes(y)) && hits(x, y)) : [];
-        const recent = lastAdded.length ? lastAdded : placed;
-        const made = pairs(placed, (x, y) => (targets.size ? hits(x, y) : recent.includes(x) || recent.includes(y)));
+        const soon = future.length ? pairs([...live, ...future], (x, y) => (future.includes(x) || future.includes(y)) && hits(x, y)) : [];
+        const recent = latest.length ? latest : live;
+        const made = pairs(live, (x, y) => (targets.size ? hits(x, y) : recent.includes(x) || recent.includes(y)));
         const jointsFor = (f: CustomFix) => (adds.length ? now : PRE.includes(f.kind) ? (soon.length ? soon : made) : made.length ? made : soon);
         const freshFor = (f: CustomFix) => (adds.length ? adds : PRE.includes(f.kind) && soon.length ? future : recent);
 
         const pre = fixes.filter((f) => PRE.includes(f.kind));
         const post = fixes.filter((f) => !PRE.includes(f.kind));
-        const preGroups = pre.flatMap((f) => planFits(f, jointsFor(f), freshFor(f), placed, ctx, nodes));
+        const preGroups = pre.flatMap((f) => planFits(f, jointsFor(f), freshFor(f), live, ctx, nodes));
         keep(preGroups);
 
         // a part that receives fittings before it is joined shows up now, so you can see where they go
@@ -420,7 +425,7 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
         const fresh = [...new Set([...hosts, ...toWait])].filter((n) => !aside.has(n));
         if (fresh.length) {
           for (const n of fresh) {
-            const off = arrive(n, [...placed, ...inStep], st.from?.[n.id]);
+            const off = arrive(n, [...live, ...inStep], st.from?.[n.id]);
             if (toWait.includes(n)) {
               const it = b.partItem(n.key);
               b.stage(n.key, beside(n, off, ctx), it.final.rot, off);
@@ -442,14 +447,14 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
 
         b.stagger(adds.length > 3 ? 0.18 : 0.26);
         for (const n of adds) {
-          put(n, arrive(n, [...placed, ...inStep], st.from?.[n.id]));
+          put(n, arrive(n, [...live, ...inStep], st.from?.[n.id]));
           inStep.push(n);
         }
         if (adds.length) b.then(0.12);
 
         b.stagger(0.05);
         for (const f of post) {
-          const groups = planFits(f, jointsFor(f), freshFor(f), [...placed, ...inStep], ctx, nodes);
+          const groups = planFits(f, jointsFor(f), freshFor(f), [...live, ...inStep], ctx, nodes);
           keep(groups);
           emit(b, groups, used);
           b.then(0.1);
