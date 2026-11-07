@@ -298,6 +298,8 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
   // a part a step asks to wait (it takes its fittings now, a later step joins it) stands beside the build, then moves in
   const addedAfter = (n: Node, si: number) => steps.slice(si + 1).some((x) => x.add?.includes(n.id));
   const aside = new Set<Node>();
+  // parts built in a scene of their own (a drawer on the floor), until a step brings them in
+  const apart = new Set<Node>();
   let pose: Pose = "+y";
   // dowels and cam bolts so far: a part they join has to arrive along them, not slide across them
   const pins: { host: Node; mate: string; dir: Vec3 }[] = [];
@@ -361,8 +363,27 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
         repeat: st.repeat,
         check: st.check,
         warnings: [...warnings].slice(0, 3),
+        scene: st.scene?.id,
       },
       () => {
+        // a part arriving: in a scene of its own it stands with `at` as the middle, otherwise it goes to its place
+        const put = (n: Node, off: Vec3) => {
+          if (!st.scene) return b.add(n.key, off);
+          const at = st.scene.at;
+          const p = n.part.pos;
+          b.stage(n.key, [p[0] - at[0], p[1] - at[1], p[2] - at[2]], b.partItem(n.key).final.rot, off);
+          apart.add(n);
+        };
+        // a part built in its own scene moves in as one piece, before anything is fitted to it: everything at once, the same way
+        const brought = (st.bring ?? []).map((id) => nodes.get(id)).filter((n): n is Node => !!n && apart.has(n));
+        if (brought.length) {
+          b.stagger(0);
+          for (const n of brought) {
+            b.add(n.key, st.from?.[n.id] ?? st.from?.[brought[0].id] ?? [0, 0, 460]);
+            apart.delete(n);
+          }
+          b.then(0.15);
+        }
         const targets = new Set(fixes.flatMap((f) => f.to ?? []));
         const hits = (x: Node, y: Node) => !targets.size || targets.has(x.id) || targets.has(y.id);
         const pairs = (pool: Node[], keep: (x: Node, y: Node) => boolean) => {
@@ -406,7 +427,7 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
               aside.add(n);
               waiting.push(n);
             } else {
-              b.add(n.key, off);
+              put(n, off);
               inStep.push(n);
             }
           }
@@ -421,7 +442,7 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
 
         b.stagger(adds.length > 3 ? 0.18 : 0.26);
         for (const n of adds) {
-          b.add(n.key, arrive(n, [...placed, ...inStep], st.from?.[n.id]));
+          put(n, arrive(n, [...placed, ...inStep], st.from?.[n.id]));
           inStep.push(n);
         }
         if (adds.length) b.then(0.12);

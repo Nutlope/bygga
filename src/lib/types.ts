@@ -208,6 +208,10 @@ export interface CustomStep {
   warnings?: WarnId[];
   from?: Record<string, Vec3>; // part id -> offset it arrives from (mm), when the guess isn't right
   wait?: string[]; // parts that take fittings in this step but are joined in a later one: shown beside the build until then
+  // built away from the rest (a drawer on the floor): parts arriving in this step stand in their own scene, moved so `at` is its middle,
+  // until a later step brings them in
+  scene?: { id: string; at: Vec3 };
+  bring?: string[]; // parts built in a scene that join the build in this step, at their place in the finished product
   repeat?: number; // "do this twice": the same step for the other side
   kind?: StepKind;
   check?: "square";
