@@ -291,7 +291,7 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
   const placed: Node[] = [];
   let lastAdded: Node[] = [];
   let stepHosts: Node[] = [];
-  const used: Used[] = [];
+  const used: Vec3[] = [];
   const ctx: Ctx = { center, lo, hi };
   const isPlaced = (n: Node) => placed.includes(n);
   const steps = normalizeSteps(c.steps, c.parts);
@@ -515,7 +515,6 @@ function approach(n: Node, others: Node[], pose: Pose): Vec3 {
 interface Fit extends FitOpts {
   host: Node;
   slide?: number;
-  placed?: boolean; // the recipe gave its exact point: it stays there, even beside another fitting
 }
 interface Group {
   def: HwDef;
@@ -536,7 +535,7 @@ function planFits(f: CustomFix, contacts: Contact[], fresh: Node[], placed: Node
     const fits: Fit[] = f.at.map((at) => {
       const host = (f.on && nodes.get(f.on)) || nearest(pool.length ? pool : [...nodes.values()], at);
       const mate = f.mate ? nodes.get(f.mate) : undefined;
-      return { on: host.key, host, at, dir, mate: mate?.key, twist: f.twist, hole: f.kind === "nail" || f.kind === "glide" || f.kind === "clip" ? false : undefined, placed: true };
+      return { on: host.key, host, at, dir, mate: mate?.key, twist: f.twist, hole: f.kind === "nail" || f.kind === "glide" || f.kind === "clip" ? false : undefined };
     });
     return [{ def: defFor(f), fits }];
   }
@@ -682,26 +681,16 @@ function planFits(f: CustomFix, contacts: Contact[], fresh: Node[], placed: Node
 const STACKS: HwKind[] = ["washer", "nut", "cap", "clamp"];
 
 /** Emit fittings, nudging any that would sit on top of one placed earlier. */
-/** A point a fitting already holds, and which fitting. */
-interface Used {
-  at: Vec3;
-  kind: string;
-}
-
-function emit(b: PlanBuilder, groups: Group[], used: Used[]) {
+function emit(b: PlanBuilder, groups: Group[], used: Vec3[]) {
   const total = groups.reduce((s, g) => s + g.fits.length, 0);
   for (const g of groups) {
-    const list: FitOpts[] = g.fits.map(({ host, slide, placed, ...o }) => {
+    const list: FitOpts[] = g.fits.map(({ host, slide, ...o }) => {
       const at: Vec3 = [...o.at];
       // moved along the joint, a fitting has to stay on the part it goes into
       const onHost = (p: Vec3) => [0, 1, 2].every((k) => o.dir[k] !== 0 || (p[k] >= host.box.min[k] - 1 && p[k] <= host.box.max[k] + 1));
-      const free = (p: Vec3) => used.every((u) => Math.hypot(u.at[0] - p[0], u.at[1] - p[1], u.at[2] - p[2]) > 22);
-      const kind = `${g.def.kind}:${g.def.len}:${g.def.dia}:${g.def.name ?? ""}`;
-      // the same fitting already on this very point: a second copy listed there, so it still moves aside
-      const twin = used.some((u) => u.kind === kind && Math.hypot(u.at[0] - at[0], u.at[1] - at[1], u.at[2] - at[2]) < 1);
+      const free = (p: Vec3) => used.every((u) => Math.hypot(u[0] - p[0], u[1] - p[1], u[2] - p[2]) > 22);
       // washers, nuts and caps go on the bolt already there, so they share its point
-      // one the recipe placed by hand stays put, a screw beside its nut or a pin under its insert, unless it is a twin
-      if ((!placed || twin) && !STACKS.includes(g.def.kind) && !free(at)) {
+      if (!STACKS.includes(g.def.kind) && !free(at)) {
         const axis = slide !== undefined ? [slide] : [0, 1, 2].filter((k) => !o.dir[k]);
         search: for (const step of [36, -36, 72, -72]) {
           for (const k of axis) {
@@ -717,7 +706,7 @@ function emit(b: PlanBuilder, groups: Group[], used: Used[]) {
         }
       }
       // a washer, nut or cap shares its bolt's point, so it never pushes the bolt listed after it off that point
-      if (!STACKS.includes(g.def.kind)) used.push({ at, kind });
+      if (!STACKS.includes(g.def.kind)) used.push(at);
       return { ...o, at };
     });
     b.fits(g.def, list, Math.min(0.07, 2.4 / Math.max(1, total)));
