@@ -750,6 +750,9 @@ function drawerAlone(): CustomParams {
   const bay: Bay = { xl: -SPAN / 2, xr: SPAN / 2, pz: 0, pl: "PM", pr: "PR" };
   const yb = 400;
   const parts: CustomPart[] = [
+    // the posts stand on their floor plates, as in the post manual, so they sit at the same height as in the wardrobes
+    { id: "FM", name: "Floor plate", size: [110, 16, 110], pos: [bay.xl, 8, 0], shape: "cyl", material: "metal", extra: true },
+    { id: "FR", name: "Floor plate", size: [110, 16, 110], pos: [bay.xr, 8, 0], shape: "cyl", material: "metal", extra: true },
     { id: "PM", name: "Post", size: [POST_W, postH, POST_D], pos: [bay.xl, postY, 0], material: "metal", pieces: postPieces(postH), extra: true },
     { id: "PR", name: "Post", size: [POST_W, postH, POST_D], pos: [bay.xr, postY, 0], material: "metal", pieces: postPieces(postH), extra: true },
     { id: "G0M", name: "Bracket", size: [70, 16, 460], pos: [bay.xl + 28, yb - 8, 0], material: "metal", extra: true },
@@ -760,7 +763,7 @@ function drawerAlone(): CustomParams {
     {
       title: "Put up the posts and the brackets",
       detail: "They come in their own boxes, with their own instructions. Two posts 86 cm apart, centre to centre, and a bracket on each at the height you want the drawer, open side up.",
-      add: ["PM", "PR", "G0M", "G0R"],
+      add: ["FM", "FR", "PM", "PR", "G0M", "G0R"],
       kind: "general",
     },
     ...drawerSteps(0, yb, bay),
