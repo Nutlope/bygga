@@ -4,7 +4,7 @@ import type { CustomFix, CustomParams, CustomPart, CustomStep, PartPiece, Produc
 /**
  * ELVARLI wardrobe combinations, read from the post, bracket, clothes rail, shelf and drawer manuals.
  * 991.579.02 is two posts, 92 cm wide: four 80 x 51 cm shelves and one 80 cm rail, posts 860 mm apart.
- * 891.581.53 is three posts, 135 cm wide: five 40 cm shelves in the left bay (460 mm), and in the right bay
+ * 091.581.52 is three posts, 135 cm wide: five 40 cm shelves in the left bay (460 mm), and in the right bay
  * (860 mm) two drawers, one 80 cm rail and two 80 cm shelves.
  * Ceiling screws and plugs are not in the box. Shelves are centred on the posts, so about 254 mm of each
  * 51 cm shelf sticks out behind the post.
@@ -579,7 +579,7 @@ function drawerSteps(i: number, yb: number, bay: Bay, which?: string): CustomSte
   ];
 }
 
-/** 891.581.53: three posts. The 40 cm shelves fill the left bay. Drawers, the rail and the 80 cm shelves fill the right. */
+/** 091.581.52: three posts. The 40 cm shelves fill the left bay. Drawers, the rail and the 80 cm shelves fill the right. */
 function wide(s: ProductSpec): CustomParams {
   const H = Math.round(s.size.h * 10) || 2220;
   const xL = -660;

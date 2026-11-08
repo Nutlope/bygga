@@ -300,7 +300,7 @@ ektorp-armchair-and-footstool|79633844 99633838 89633834 59553862 69553871 99633
 ektorp-corner-sofa-4-seat|69628664 19628666 29508994 89508986 89508991 39508984 59508997
 eldberget-malskar-swivel-chair|59331847
 elvarli-drawer-80-x-51|50433968
-elvarli-wardrobe-combination-135-x-51-x-222|89158153
+elvarli-wardrobe-combination-135-x-51-x-222|09158152
 elvarli-wardrobe-combination-92-x-51-x-222|99157902
 emmislov-pouf|30572738 70572741
 enhet-base-cb-f-sink-60-x-60-x-75|50440426

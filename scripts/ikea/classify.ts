@@ -732,7 +732,7 @@ const ADDED: Record<string, { kind: Kind; w: number; h: number; d: number; x?: X
   "40613903": { kind: "armchair", w: 84, h: 100, d: 95 }, // GRYTERYD recliner rocker (US)
   "70632684": { kind: "armchair", w: 110, h: 85, d: 90 }, // VENNGARN 1.5-seat armchair (US)
   "99157902": { kind: "open", w: 92, h: 222, d: 51, x: { cat: "Wardrobe combination" } }, // ELVARLI wardrobe combination
-  "89158153": { kind: "open", w: 135, h: 222, d: 51, x: { cat: "Wardrobe combination" } }, // ELVARLI wardrobe combination
+  "09158152": { kind: "open", w: 135, h: 222, d: 51, x: { cat: "Wardrobe combination" } }, // ELVARLI wardrobe combination
   "50433968": { kind: "chest", w: 80, h: 20, d: 51, x: { cat: "Drawer" } }, // ELVARLI drawer, for the posts
 };
 
