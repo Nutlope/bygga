@@ -155,6 +155,111 @@ function holeCovers(post: string, x: number, postY: number, z: number, used: Rec
   });
 }
 
+/** A post's length and centre height in a room `H` tall: 24 mm of floor plate and adjusting screw under it, 16 mm of ceiling plate over it. */
+function postFit(H: number) {
+  const postH = H - 40;
+  return { postH, postY: 24 + postH / 2 };
+}
+
+/** The floor plate, post and ceiling plate for each post, from the post manual. `ceiling: false` leaves the ceiling plates out. */
+function postParts(posts: { tag: string; x: number }[], H: number, z: number, o: { ceiling?: boolean; extra?: boolean } = {}): CustomPart[] {
+  const { postH, postY } = postFit(H);
+  const more = o.extra ? { extra: true } : {};
+  return posts.flatMap((p): CustomPart[] => [
+    { id: `F${p.tag}`, name: "Floor plate", size: [110, 16, 110], pos: [p.x, 8, z], shape: "cyl", material: "metal", ...more },
+    { id: `P${p.tag}`, name: "Post", size: [POST_W, postH, POST_D], pos: [p.x, postY, z], material: "metal", pieces: postPieces(postH), ...more },
+    ...(o.ceiling === false ? [] : [{ id: `C${p.tag}`, name: "Ceiling plate", size: [120, 14, 120], pos: [p.x, H - 7, z], shape: "cyl", material: "metal", ...more } as CustomPart]),
+  ]);
+}
+
+/** A bracket hooked on a post: `x` is the post's centre and `face` the side of the post the bay is on. */
+const bracketPart = (id: string, x: number, face: number, y: number, z: number, o: { extra?: boolean } = {}): CustomPart => ({
+  id,
+  name: "Bracket",
+  size: [70, 16, 460],
+  pos: [x + face * BRACKET_X, y, z],
+  material: "metal",
+  ...(o.extra ? { extra: true } : {}),
+});
+
+/** One end of a pair of brackets, or of the clothes rail: the post's tag and centre, and the side of it the bay is on. */
+interface Mount {
+  tag: string;
+  x: number;
+  face: number;
+}
+
+/** Hang a pair of brackets, `ids[k]` on `ends[k]`, with their nuts in the keyholes at `y`. */
+function bracketStep(title: string, detail: string, ends: [Mount, Mount], ids: [string, string], y: number, z: number): CustomStep {
+  return {
+    title,
+    detail,
+    add: [...ids],
+    fix: ends.flatMap((m, k) => postMount(`P${m.tag}`, ids[k], m.x, m.face, y, z, "Bracket")),
+    tools: ["allen"],
+    from: { [ids[0]]: [-80, 0, 80], [ids[1]]: [80, 0, 80] },
+  };
+}
+
+/** Lay shelf `id`, `w` wide and centred on `x`, on its brackets and pin it from underneath. */
+function shelfStep(title: string, detail: string, id: string, x: number, w: number, y: number, z: number): CustomStep {
+  return {
+    title,
+    detail,
+    add: [id],
+    fix: shelfPins(id, [x - (w / 2 - 20), x + (w / 2 - 20)], y, z),
+    kind: "shelves",
+    from: { [id]: [0, 160, 40] },
+  };
+}
+
+/** The clothes rail manual: a holder on each post and the rail between them. Holders are `H` plus the post's tag. */
+function railParts(ends: [Mount, Mount], y: number, z: number): CustomPart[] {
+  const [a, b] = ends;
+  return [
+    ...ends.map((m): CustomPart => ({ id: `H${m.tag}`, name: "Rail holder", size: [36, 28, 40], pos: [m.x + m.face * (POST_W / 2 + 18), y, z], material: "metal" })),
+    { id: "RL", name: "Clothes rail", size: [22, b.x - a.x - 80, 22], pos: [(a.x + b.x) / 2, y, z], shape: "cyl", rot: [0, 0, Math.PI / 2], material: "metal" },
+  ];
+}
+
+function railSteps(ends: [Mount, Mount], y: number, z: number, words: { nuts: string; holders: string }): CustomStep[] {
+  const [a, b] = ends;
+  const mount = (m: Mount) => postMount(`P${m.tag}`, `H${m.tag}`, m.x, m.face, y, z, "Holder");
+  const half = (b.x - a.x - 80) / 2 - 12;
+  return [
+    {
+      title: "Drop a nut in for the clothes rail",
+      detail: words.nuts,
+      fix: ends.map((m) => mount(m)[0]),
+    },
+    {
+      title: words.holders,
+      detail: "The holder hooks into the nut. Tighten it with the allen key.",
+      add: ends.map((m) => `H${m.tag}`),
+      fix: ends.map((m) => mount(m)[1]),
+      tools: ["allen"],
+    },
+    {
+      title: "Lay the rail in the holders",
+      detail: "Rest the tube in both holders and tighten the screw under each one.",
+      add: ["RL"],
+      fix: [-1, 1].map((sx) => fx("screw", [[(a.x + b.x) / 2 + sx * half, y - 14, z]], [0, 1, 0], "RL", { len: 20, dia: 4, name: "Rail screw" })),
+      tools: ["screwdriver"],
+      from: { RL: [0, -200, 0] },
+    },
+  ];
+}
+
+/** The last step of the post manual. `used` lists, for each post and face, the heights of the nuts in its keyholes. */
+function coverStep(posts: { tag: string; x: number; used: Record<number, number[]> }[], postY: number, z: number): CustomStep {
+  return {
+    title: "Cover the spare holes",
+    detail: "Push a cover into every keyhole you are not using and slide it down. Each post comes with 20.",
+    fix: posts.flatMap((p) => holeCovers(`P${p.tag}`, p.x, postY, z, p.used)),
+    kind: "general",
+  };
+}
+
 const BRACKET_DETAIL = "Push a nut into the keyhole on each post at this height and slide it down. Hook a bracket over it with a plate between, open side up, and tighten the screw with the allen key.";
 const SHELF_DETAIL = "Lower the shelf onto the brackets, then from underneath push a threaded insert into each of the four holes and screw a pin into it.";
 
@@ -304,47 +409,27 @@ function section(s: ProductSpec): CustomParams {
   const H = Math.round(s.size.h * 10) || 2220;
   const px = SPAN / 2;
   const pz = -200;
-  const postH = H - 40;
-  const postY = 24 + postH / 2;
+  const { postH, postY } = postFit(H);
   const SHELVES = SHELF_HOLES.map((i) => keyhole(postY, i) + 20);
   const RAIL_Y = keyhole(postY, RAIL_HOLE);
-  const parts: CustomPart[] = [];
-  const add = (id: string, name: string, size: Vec3, pos: Vec3, shape?: "cyl", material?: CustomPart["material"]) => {
-    parts.push({ id, name, size, pos, shape, material });
-  };
-  for (const [sx, tag] of [[-1, "L"], [1, "R"]] as const) {
-    const x = sx * px;
-    add(`F${tag}`, "Floor plate", [110, 16, 110], [x, 8, pz], "cyl", "metal");
-    parts.push({ id: `P${tag}`, name: "Post", size: [POST_W, postH, POST_D], pos: [x, postY, pz], material: "metal", pieces: postPieces(postH) });
-    add(`C${tag}`, "Ceiling plate", [120, 14, 120], [x, H - 7, pz], "cyl", "metal");
-  }
-  SHELVES.forEach((y, i) => {
-    for (const [sx, tag] of [[-1, "L"], [1, "R"]] as const) {
-      add(`B${i}${tag}`, "Bracket", [70, 16, 460], [sx * (px - BRACKET_X), y - 20, pz], undefined, "metal");
-    }
-    add(`S${i}`, "Shelf", [SHELF_W, SHELF_T, SHELF_D], [0, y, pz], undefined, "board");
-  });
-  add("HL", "Rail holder", [36, 28, 40], [-px + POST_W / 2 + 18, RAIL_Y, pz], undefined, "metal");
-  add("HR", "Rail holder", [36, 28, 40], [px - POST_W / 2 - 18, RAIL_Y, pz], undefined, "metal");
-  parts.push({ id: "RL", name: "Clothes rail", size: [22, SPAN - 80, 22], pos: [0, RAIL_Y, pz], shape: "cyl", rot: [0, 0, Math.PI / 2], material: "metal" });
+  const ends: [Mount, Mount] = [
+    { tag: "L", x: -px, face: 1 },
+    { tag: "R", x: px, face: -1 },
+  ];
+  const parts: CustomPart[] = [
+    ...postParts(ends, H, pz),
+    ...SHELVES.flatMap((y, i): CustomPart[] => [
+      ...ends.map((m) => bracketPart(`B${i}${m.tag}`, m.x, m.face, y - 20, pz)),
+      { id: `S${i}`, name: "Shelf", size: [SHELF_W, SHELF_T, SHELF_D], pos: [0, y, pz], material: "board" },
+    ]),
+    ...railParts(ends, RAIL_Y, pz),
+  ];
 
   const where = ["lowest", "next", "upper", "top"];
-  const bracketPair = (i: number): CustomStep => ({
-    title: `Fit the ${where[i]} pair of brackets`,
-    detail: `${BRACKET_DETAIL} On the thin upper tube, clip a shoe from the post's bag into the slot first.`,
-    add: [`B${i}L`, `B${i}R`],
-    fix: [-1, 1].flatMap((sx) => postMount(sx < 0 ? "PL" : "PR", `B${i}${sx < 0 ? "L" : "R"}`, sx * px, -sx, SHELVES[i] - 20, pz, "Bracket")),
-    tools: ["allen"],
-    from: { [`B${i}L`]: [-80, 0, 80], [`B${i}R`]: [80, 0, 80] },
-  });
-  const shelf = (i: number): CustomStep => ({
-    title: `Put on the ${where[i]} shelf`,
-    detail: i === 0 ? SHELF_DETAIL : `${SHELF_DETAIL} Shelves go on from the bottom up.`,
-    add: [`S${i}`],
-    fix: shelfPins(`S${i}`, [-(SHELF_W / 2 - 20), SHELF_W / 2 - 20], SHELVES[i], pz),
-    kind: "shelves",
-    from: { [`S${i}`]: [0, 160, 40] },
-  });
+  const bracketPair = (i: number) =>
+    bracketStep(`Fit the ${where[i]} pair of brackets`, `${BRACKET_DETAIL} On the thin upper tube, clip a shoe from the post's bag into the slot first.`, ends, [`B${i}L`, `B${i}R`], SHELVES[i] - 20, pz);
+  const shelf = (i: number) =>
+    shelfStep(`Put on the ${where[i]} shelf`, i === 0 ? SHELF_DETAIL : `${SHELF_DETAIL} Shelves go on from the bottom up.`, `S${i}`, 0, SHELF_W, SHELVES[i], pz);
   const rest = SHELVES.map((_, i) => i).slice(1);
 
   const steps: CustomStep[] = [
@@ -360,35 +445,17 @@ function section(s: ProductSpec): CustomParams {
       firstShelf: () => [bracketPair(0), shelf(0)],
     }),
     ...rest.map(bracketPair),
-    {
-      title: "Drop a nut in for the clothes rail",
-      detail: "One in each post, at the height you want the rail. This combination leaves a gap here so shirts can hang.",
-      fix: [-1, 1].map((sx) => postMount(sx < 0 ? "PL" : "PR", sx < 0 ? "HL" : "HR", sx * px, -sx, RAIL_Y, pz, "Holder")[0]),
-    },
-    {
-      title: "Screw a holder to each post",
-      detail: "The holder hooks into the nut. Tighten it with the allen key.",
-      add: ["HL", "HR"],
-      fix: [-1, 1].map((sx) => postMount(sx < 0 ? "PL" : "PR", sx < 0 ? "HL" : "HR", sx * px, -sx, RAIL_Y, pz, "Holder")[1]),
-      tools: ["allen"],
-    },
-    {
-      title: "Lay the rail in the holders",
-      detail: "Rest the tube in both holders and tighten the screw under each one.",
-      add: ["RL"],
-      fix: [-1, 1].map((sx) => fx("screw", [[sx * ((SPAN - 80) / 2 - 12), RAIL_Y - 14, pz]], [0, 1, 0], "RL", { len: 20, dia: 4, name: "Rail screw" })),
-      tools: ["screwdriver"],
-      from: { RL: [0, -200, 0] },
-    },
+    ...railSteps(ends, RAIL_Y, pz, {
+      nuts: "One in each post, at the height you want the rail. This combination leaves a gap here so shirts can hang.",
+      holders: "Screw a holder to each post",
+    }),
     ...rest.map(shelf),
+    coverStep(
+      ends.map((m) => ({ ...m, used: { [m.face]: [...SHELVES.map((y) => y - 20), RAIL_Y] } })),
+      postY,
+      pz,
+    ),
   ];
-
-  steps.push({
-    title: "Cover the spare holes",
-    detail: "Push a cover into every keyhole you are not using and slide it down. Each post comes with 20.",
-    fix: [-1, 1].flatMap((sx) => holeCovers(sx < 0 ? "PL" : "PR", sx * px, postY, pz, { [-sx]: [...SHELVES.map((y) => y - 20), RAIL_Y] })),
-    kind: "general",
-  });
 
   return { parts, steps };
 }
@@ -606,8 +673,7 @@ function wide(s: ProductSpec): CustomParams {
   const nx = (xL + xM) / 2;
   const wx = (xM + xR) / 2;
   const pz = -200;
-  const postH = H - 40;
-  const postY = 24 + postH / 2;
+  const { postH, postY } = postFit(H);
   // the keyholes each thing hangs on: the drawer boxes take two each, their bracket's and their fixing's
   const NARROW = [0, 2, 4, 6, 8].map((i) => keyhole(postY, i) + 20);
   const WIDE_SHELVES = [8, 9].map((i) => keyhole(postY, i) + 20);
@@ -616,88 +682,51 @@ function wide(s: ProductSpec): CustomParams {
   const NARROW_W = 400;
   const bay: Bay = { xl: xM, xr: xR, pz, pl: "PM", pr: "PR" };
 
-  const parts: CustomPart[] = [];
-  const add = (id: string, name: string, size: Vec3, pos: Vec3, shape?: "cyl", material?: CustomPart["material"]) => {
-    parts.push({ id, name, size, pos, shape, material });
-  };
-  for (const p of [
-    { tag: "L", x: xL },
-    { tag: "M", x: xM },
-    { tag: "R", x: xR },
-  ]) {
-    add(`F${p.tag}`, "Floor plate", [110, 16, 110], [p.x, 8, pz], "cyl", "metal");
-    parts.push({ id: `P${p.tag}`, name: "Post", size: [POST_W, postH, POST_D], pos: [p.x, postY, pz], material: "metal", pieces: postPieces(postH) });
-    add(`C${p.tag}`, "Ceiling plate", [120, 14, 120], [p.x, H - 7, pz], "cyl", "metal");
-  }
-  NARROW.forEach((y, i) => {
-    add(`B${i}L`, "Bracket", [70, 16, 460], [xL + BRACKET_X, y - 20, pz], undefined, "metal");
-    add(`B${i}M`, "Bracket", [70, 16, 460], [xM - BRACKET_X, y - 20, pz], undefined, "metal");
-    add(`N${i}`, "40 cm shelf", [NARROW_W, SHELF_T, SHELF_D], [nx, y, pz], undefined, "board");
-  });
-  DRAWERS.forEach((yb, i) => {
-    add(`G${i}M`, "Bracket", [70, 16, 460], [xM + BRACKET_X, yb - 8, pz], undefined, "metal");
-    add(`G${i}R`, "Bracket", [70, 16, 460], [xR - BRACKET_X, yb - 8, pz], undefined, "metal");
-    parts.push(...drawerParts(i, yb, bay));
-  });
-  WIDE_SHELVES.forEach((y, i) => {
-    add(`E${i}M`, "Bracket", [70, 16, 460], [xM + BRACKET_X, y - 20, pz], undefined, "metal");
-    add(`E${i}R`, "Bracket", [70, 16, 460], [xR - BRACKET_X, y - 20, pz], undefined, "metal");
-    add(`W${i}`, "80 cm shelf", [SHELF_W, SHELF_T, SHELF_D], [wx, y, pz], undefined, "board");
-  });
-  add("HM", "Rail holder", [36, 28, 40], [xM + POST_W / 2 + 18, RAIL_Y, pz], undefined, "metal");
-  add("HR", "Rail holder", [36, 28, 40], [xR - POST_W / 2 - 18, RAIL_Y, pz], undefined, "metal");
-  parts.push({ id: "RL", name: "Clothes rail", size: [22, 780, 22], pos: [wx, RAIL_Y, pz], shape: "cyl", rot: [0, 0, Math.PI / 2], material: "metal" });
+  // each bay's two ends: the narrow bay between L and M, the wide bay between M and R
+  const narrowEnds: [Mount, Mount] = [
+    { tag: "L", x: xL, face: 1 },
+    { tag: "M", x: xM, face: -1 },
+  ];
+  const wideEnds: [Mount, Mount] = [
+    { tag: "M", x: xM, face: 1 },
+    { tag: "R", x: xR, face: -1 },
+  ];
+  const pairIds = (pre: string, ends: [Mount, Mount]): [string, string] => [`${pre}${ends[0].tag}`, `${pre}${ends[1].tag}`];
+  const brackets = (pre: string, ends: [Mount, Mount], y: number) => ends.map((m) => bracketPart(`${pre}${m.tag}`, m.x, m.face, y, pz));
 
-  const bracketScrews = (y: number, mounts: [number, number, string, string][]): CustomFix[] =>
-    mounts.flatMap(([x, face, tag, bracket]) => postMount(`P${tag}`, bracket, x, face, y, pz, "Bracket"));
+  const parts: CustomPart[] = [
+    ...postParts([{ tag: "L", x: xL }, { tag: "M", x: xM }, { tag: "R", x: xR }], H, pz),
+    ...NARROW.flatMap((y, i): CustomPart[] => [
+      ...brackets(`B${i}`, narrowEnds, y - 20),
+      { id: `N${i}`, name: "40 cm shelf", size: [NARROW_W, SHELF_T, SHELF_D], pos: [nx, y, pz], material: "board" },
+    ]),
+    ...DRAWERS.flatMap((yb, i) => [...brackets(`G${i}`, wideEnds, yb - 8), ...drawerParts(i, yb, bay)]),
+    ...WIDE_SHELVES.flatMap((y, i): CustomPart[] => [
+      ...brackets(`E${i}`, wideEnds, y - 20),
+      { id: `W${i}`, name: "80 cm shelf", size: [SHELF_W, SHELF_T, SHELF_D], pos: [wx, y, pz], material: "board" },
+    ]),
+    ...railParts(wideEnds, RAIL_Y, pz),
+  ];
 
   const narrowWhere = ["lowest", "next", "middle", "upper", "top"];
   const narrowPair = (i: number): CustomStep[] => [
-    {
-      title: `Fit the ${narrowWhere[i]} pair of brackets in the narrow bay`,
-      detail: `${BRACKET_DETAIL} On the thin upper tube, clip a shoe from the post's bag into the slot first.`,
-      add: [`B${i}L`, `B${i}M`],
-      fix: bracketScrews(NARROW[i] - 20, [[xL, 1, "L", `B${i}L`], [xM, -1, "M", `B${i}M`]]),
-      tools: ["allen"],
-      from: { [`B${i}L`]: [-80, 0, 80], [`B${i}M`]: [80, 0, 80] },
-    },
-    {
-      title: `Put on the ${narrowWhere[i]} 40 cm shelf`,
-      detail: i === 0 ? SHELF_DETAIL : `${SHELF_DETAIL} Shelves go on from the bottom up.`,
-      add: [`N${i}`],
-      fix: shelfPins(`N${i}`, [nx - (NARROW_W / 2 - 20), nx + (NARROW_W / 2 - 20)], NARROW[i], pz),
-      kind: "shelves",
-      from: { [`N${i}`]: [0, 160, 40] },
-    },
+    bracketStep(
+      `Fit the ${narrowWhere[i]} pair of brackets in the narrow bay`,
+      `${BRACKET_DETAIL} On the thin upper tube, clip a shoe from the post's bag into the slot first.`,
+      narrowEnds,
+      pairIds(`B${i}`, narrowEnds),
+      NARROW[i] - 20,
+      pz,
+    ),
+    shelfStep(`Put on the ${narrowWhere[i]} 40 cm shelf`, i === 0 ? SHELF_DETAIL : `${SHELF_DETAIL} Shelves go on from the bottom up.`, `N${i}`, nx, NARROW_W, NARROW[i], pz),
   ];
   const wideWhere = ["lower", "top"];
   const widePair = (i: number): CustomStep[] => [
-    {
-      title: `Fit the brackets for the ${wideWhere[i]} 80 cm shelf`,
-      detail: BRACKET_DETAIL,
-      add: [`E${i}M`, `E${i}R`],
-      fix: bracketScrews(WIDE_SHELVES[i] - 20, [[xM, 1, "M", `E${i}M`], [xR, -1, "R", `E${i}R`]]),
-      tools: ["allen"],
-      from: { [`E${i}M`]: [-80, 0, 80], [`E${i}R`]: [80, 0, 80] },
-    },
-    {
-      title: `Put on the ${wideWhere[i]} 80 cm shelf`,
-      detail: SHELF_DETAIL,
-      add: [`W${i}`],
-      fix: shelfPins(`W${i}`, [wx - (SHELF_W / 2 - 20), wx + (SHELF_W / 2 - 20)], WIDE_SHELVES[i], pz),
-      kind: "shelves",
-      from: { [`W${i}`]: [0, 160, 40] },
-    },
+    bracketStep(`Fit the brackets for the ${wideWhere[i]} 80 cm shelf`, BRACKET_DETAIL, wideEnds, pairIds(`E${i}`, wideEnds), WIDE_SHELVES[i] - 20, pz),
+    shelfStep(`Put on the ${wideWhere[i]} 80 cm shelf`, SHELF_DETAIL, `W${i}`, wx, SHELF_W, WIDE_SHELVES[i], pz),
   ];
   const drawer = (i: number, which: string): CustomStep[] => [
-    {
-      title: `Fit the brackets for the ${which} drawer`,
-      detail: BRACKET_DETAIL,
-      add: [`G${i}M`, `G${i}R`],
-      fix: bracketScrews(DRAWERS[i] - 8, [[xM, 1, "M", `G${i}M`], [xR, -1, "R", `G${i}R`]]),
-      tools: ["allen"],
-      from: { [`G${i}M`]: [-80, 0, 80], [`G${i}R`]: [80, 0, 80] },
-    },
+    bracketStep(`Fit the brackets for the ${which} drawer`, BRACKET_DETAIL, wideEnds, pairIds(`G${i}`, wideEnds), DRAWERS[i] - 8, pz),
     ...drawerSteps(i, DRAWERS[i], bay, which),
   ];
 
@@ -724,39 +753,26 @@ function wide(s: ProductSpec): CustomParams {
     ...NARROW.slice(1).flatMap((_, k) => narrowPair(k + 1)),
     ...drawer(0, "first"),
     ...drawer(1, "second"),
-    {
-      title: "Drop a nut in for the clothes rail",
-      detail: "One in the middle post and one in the right post, in the gap above the drawers, so shirts can hang.",
-      fix: [postMount("PM", "HM", xM, 1, RAIL_Y, pz, "Holder")[0], postMount("PR", "HR", xR, -1, RAIL_Y, pz, "Holder")[0]],
-    },
-    {
-      title: "Screw a holder to each post of the wide bay",
-      detail: "The holder hooks into the nut. Tighten it with the allen key.",
-      add: ["HM", "HR"],
-      fix: [postMount("PM", "HM", xM, 1, RAIL_Y, pz, "Holder")[1], postMount("PR", "HR", xR, -1, RAIL_Y, pz, "Holder")[1]],
-      tools: ["allen"],
-    },
-    {
-      title: "Lay the rail in the holders",
-      detail: "Rest the tube in both holders and tighten the screw under each one.",
-      add: ["RL"],
-      fix: [-1, 1].map((sx) => fx("screw", [[wx + sx * (780 / 2 - 12), RAIL_Y - 14, pz]], [0, 1, 0], "RL", { len: 20, dia: 4, name: "Rail screw" })),
-      tools: ["screwdriver"],
-      from: { RL: [0, -200, 0] },
-    },
+    ...railSteps(wideEnds, RAIL_Y, pz, {
+      nuts: "One in the middle post and one in the right post, in the gap above the drawers, so shirts can hang.",
+      holders: "Screw a holder to each post of the wide bay",
+    }),
     ...widePair(1),
   ];
 
-  steps.push({
-    title: "Cover the spare holes",
-    detail: "Push a cover into every keyhole you are not using and slide it down. Each post comes with 20.",
-    fix: [
-      ...holeCovers("PL", xL, postY, pz, { 1: NARROW.map((y) => y - 20) }),
-      ...holeCovers("PM", xM, postY, pz, { [-1]: NARROW.map((y) => y - 20), 1: [...DRAWERS.flatMap((yb) => [yb - 8, yb + FIX_DY]), ...WIDE_SHELVES.map((y) => y - 20), RAIL_Y] }),
-      ...holeCovers("PR", xR, postY, pz, { [-1]: [...DRAWERS.flatMap((yb) => [yb - 8, yb + FIX_DY]), ...WIDE_SHELVES.map((y) => y - 20), RAIL_Y] }),
-    ],
-    kind: "general",
-  });
+  const narrowUsed = NARROW.map((y) => y - 20);
+  const wideUsed = [...DRAWERS.flatMap((yb) => [yb - 8, yb + FIX_DY]), ...WIDE_SHELVES.map((y) => y - 20), RAIL_Y];
+  steps.push(
+    coverStep(
+      [
+        { tag: "L", x: xL, used: { 1: narrowUsed } },
+        { tag: "M", x: xM, used: { [-1]: narrowUsed, 1: wideUsed } },
+        { tag: "R", x: xR, used: { [-1]: wideUsed } },
+      ],
+      postY,
+      pz,
+    ),
+  );
 
   return { parts, steps };
 }
@@ -764,18 +780,14 @@ function wide(s: ProductSpec): CustomParams {
 /** 504.339.68: the drawer bought alone, on posts and brackets that come in their own boxes. */
 function drawerAlone(): CustomParams {
   const H = 2220;
-  const postH = H - 40;
-  const postY = 24 + postH / 2;
+  const { postY } = postFit(H);
   const bay: Bay = { xl: -SPAN / 2, xr: SPAN / 2, pz: 0, pl: "PM", pr: "PR" };
   const yb = keyhole(postY, 1) + 8;
   const parts: CustomPart[] = [
     // the posts stand on their floor plates, as in the post manual, so they sit at the same height as in the wardrobes
-    { id: "FM", name: "Floor plate", size: [110, 16, 110], pos: [bay.xl, 8, 0], shape: "cyl", material: "metal", extra: true },
-    { id: "FR", name: "Floor plate", size: [110, 16, 110], pos: [bay.xr, 8, 0], shape: "cyl", material: "metal", extra: true },
-    { id: "PM", name: "Post", size: [POST_W, postH, POST_D], pos: [bay.xl, postY, 0], material: "metal", pieces: postPieces(postH), extra: true },
-    { id: "PR", name: "Post", size: [POST_W, postH, POST_D], pos: [bay.xr, postY, 0], material: "metal", pieces: postPieces(postH), extra: true },
-    { id: "G0M", name: "Bracket", size: [70, 16, 460], pos: [bay.xl + BRACKET_X, yb - 8, 0], material: "metal", extra: true },
-    { id: "G0R", name: "Bracket", size: [70, 16, 460], pos: [bay.xr - BRACKET_X, yb - 8, 0], material: "metal", extra: true },
+    ...postParts([{ tag: "M", x: bay.xl }, { tag: "R", x: bay.xr }], H, bay.pz, { ceiling: false, extra: true }),
+    bracketPart("G0M", bay.xl, 1, yb - 8, bay.pz, { extra: true }),
+    bracketPart("G0R", bay.xr, -1, yb - 8, bay.pz, { extra: true }),
     ...drawerParts(0, yb, bay),
   ];
   const steps: CustomStep[] = [
