@@ -399,7 +399,7 @@ function section(s: ProductSpec): CustomParams {
  */
 const DW = 780; // the box, outside
 const DD = 470;
-const DH = 240;
+const DH = 220;
 const DT = 16;
 const RUN_X = DW / 2 - DT - 6; // runner, against the inside of each box side
 const RUN_DY = DT + 20;
