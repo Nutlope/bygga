@@ -291,7 +291,7 @@ export function buildCustom(b: PlanBuilder, s: ProductSpec) {
   const placed: Node[] = [];
   let lastAdded: Node[] = [];
   let stepHosts: Node[] = [];
-  const used: Vec3[] = [];
+  const used: Used[] = [];
   const ctx: Ctx = { center, lo, hi };
   const isPlaced = (n: Node) => placed.includes(n);
   const steps = normalizeSteps(c.steps, c.parts);
@@ -515,6 +515,7 @@ function approach(n: Node, others: Node[], pose: Pose): Vec3 {
 interface Fit extends FitOpts {
   host: Node;
   slide?: number;
+  placed?: boolean; // the recipe gave its exact point: it stays there, even beside another fitting
 }
 interface Group {
   def: HwDef;
@@ -535,7 +536,7 @@ function planFits(f: CustomFix, contacts: Contact[], fresh: Node[], placed: Node
     const fits: Fit[] = f.at.map((at) => {
       const host = (f.on && nodes.get(f.on)) || nearest(pool.length ? pool : [...nodes.values()], at);
       const mate = f.mate ? nodes.get(f.mate) : undefined;
-      return { on: host.key, host, at, dir, mate: mate?.key, twist: f.twist, hole: f.kind === "nail" || f.kind === "glide" || f.kind === "clip" ? false : undefined };
+      return { on: host.key, host, at, dir, mate: mate?.key, twist: f.twist, hole: f.kind === "nail" || f.kind === "glide" || f.kind === "clip" ? false : undefined, placed: true };
     });
     return [{ def: defFor(f), fits }];
   }
@@ -681,16 +682,26 @@ function planFits(f: CustomFix, contacts: Contact[], fresh: Node[], placed: Node
 const STACKS: HwKind[] = ["washer", "nut", "cap", "clamp"];
 
 /** Emit fittings, nudging any that would sit on top of one placed earlier. */
-function emit(b: PlanBuilder, groups: Group[], used: Vec3[]) {
+/** A point a fitting already holds, and which fitting. */
+interface Used {
+  at: Vec3;
+  kind: string;
+}
+
+function emit(b: PlanBuilder, groups: Group[], used: Used[]) {
   const total = groups.reduce((s, g) => s + g.fits.length, 0);
   for (const g of groups) {
-    const list: FitOpts[] = g.fits.map(({ host, slide, ...o }) => {
+    const list: FitOpts[] = g.fits.map(({ host, slide, placed, ...o }) => {
       const at: Vec3 = [...o.at];
       // moved along the joint, a fitting has to stay on the part it goes into
       const onHost = (p: Vec3) => [0, 1, 2].every((k) => o.dir[k] !== 0 || (p[k] >= host.box.min[k] - 1 && p[k] <= host.box.max[k] + 1));
-      const free = (p: Vec3) => used.every((u) => Math.hypot(u[0] - p[0], u[1] - p[1], u[2] - p[2]) > 22);
+      const free = (p: Vec3) => used.every((u) => Math.hypot(u.at[0] - p[0], u.at[1] - p[1], u.at[2] - p[2]) > 22);
+      const kind = `${g.def.kind}:${g.def.len}:${g.def.dia}:${g.def.name ?? ""}`;
+      // the same fitting already on this very point: a second copy listed there, so it still moves aside
+      const twin = used.some((u) => u.kind === kind && Math.hypot(u.at[0] - at[0], u.at[1] - at[1], u.at[2] - at[2]) < 1);
       // washers, nuts and caps go on the bolt already there, so they share its point
-      if (!STACKS.includes(g.def.kind) && !free(at)) {
+      // one the recipe placed by hand stays put, a screw beside its nut or a pin under its insert, unless it is a twin
+      if ((!placed || twin) && !STACKS.includes(g.def.kind) && !free(at)) {
         const axis = slide !== undefined ? [slide] : [0, 1, 2].filter((k) => !o.dir[k]);
         search: for (const step of [36, -36, 72, -72]) {
           for (const k of axis) {
@@ -706,7 +717,7 @@ function emit(b: PlanBuilder, groups: Group[], used: Vec3[]) {
         }
       }
       // a washer, nut or cap shares its bolt's point, so it never pushes the bolt listed after it off that point
-      if (!STACKS.includes(g.def.kind)) used.push(at);
+      if (!STACKS.includes(g.def.kind)) used.push({ at, kind });
       return { ...o, at };
     });
     b.fits(g.def, list, Math.min(0.07, 2.4 / Math.max(1, total)));
@@ -714,10 +725,14 @@ function emit(b: PlanBuilder, groups: Group[], used: Vec3[]) {
 }
 
 /** Every part gets added exactly once, in order, and steps stay short enough to follow. */
+/** The most steps a guide keeps. */
+export const MAX_STEPS = 80;
+
 function normalizeSteps(steps: CustomStep[], parts: CustomPart[]): CustomStep[] {
   const seen = new Set<string>();
   const ids = new Set(parts.map((p) => p.id));
-  const out: CustomStep[] = steps.slice(0, 80).map((s) => {
+  if (steps.length > MAX_STEPS) console.warn(`custom guide has ${steps.length} steps: only the first ${MAX_STEPS} are kept, the rest are lost`);
+  const out: CustomStep[] = steps.slice(0, MAX_STEPS).map((s) => {
     const add = (s.add ?? []).filter((id) => ids.has(id) && !seen.has(id));
     add.forEach((id) => seen.add(id));
     return { ...s, add };
